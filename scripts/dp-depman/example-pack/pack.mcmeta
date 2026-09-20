@@ -1,0 +1,10 @@
+{
+  "pack": {
+    "description": "example-pack — demonstrates dp-depman dependency system",
+    "pack_format": 48,
+    "supported_formats": {
+      "min_inclusive": 41,
+      "max_inclusive": 71
+    }
+  }
+}

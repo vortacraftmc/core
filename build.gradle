@@ -1,0 +1,1150 @@
+// =============================================================================
+// vortacraftmc/core - root build.gradle
+//
+// This file only defines cross-cutting tasks that operate across the whole
+// monorepo (packs/, mods/, examples/). Per-subproject build logic lives in
+// each subproject's own build.gradle - this file never configures a
+// subproject's Java/Fabric toolchain directly.
+//
+// Sections in this file, in order:
+//   1. Shared repositories (allprojects)
+//   2. Aggregate tasks: lint, buildAll
+//   3. Origin watermark helpers (shared by section 4) + showOriginWatermarks /
+//      cleanOriginWatermarks (disabled) / checkOriginWatermarks
+//   3b. copyDirRecursive / zipDirectory helpers (used by zipPacks) +
+//       findMissingWatermarks provenance-guard helper (shared by
+//       zipPacks and checkOriginWatermarks)
+//   4. zipPacks - packages every pack under packs/ into build/packs-dist/
+//   5. checkPacks / printPackList / printModList - pack.mcmeta validation and listing
+//   6. mergeDatapacks - merges packs/merge-manifest.json into one datapack
+//   7. clean task extension - also wipes build/packs-dist and packs-remap
+//
+// Logging convention: every task prefixes its own output with "[taskName]"
+// so `gradle buildAll` (which runs several of these back to back) never
+// produces an ambiguous line - you can always tell which task printed what.
+//
+// Gradle 10 compatibility note: every doFirst/doLast/configureEach action in
+// this file avoids live Project API access at execution time (the bare
+// 'subprojects' getter, 'project.hasProperty'/'project.property', 'file(...)',
+// and AntBuilder via 'ant.copy'/'ant.zip' all resolve through Project, and
+// Gradle deprecated - and will remove in Gradle 10 - calling any of them once
+// a task is executing). Anything a doFirst/doLast needs from the Project is
+// captured into a plain local variable during configuration instead; see the
+// comments on 'lint', 'buildAll', 'zipPacks', and the 'clean' extension.
+// =============================================================================
+
+// -----------------------------------------------------------------------
+// 1. Shared repositories
+// -----------------------------------------------------------------------
+allprojects {
+    repositories {
+        mavenCentral()
+        maven { url 'https://maven.fabricmc.net/' }
+    }
+}
+
+// -----------------------------------------------------------------------
+// 2. Aggregate tasks
+// -----------------------------------------------------------------------
+tasks.register('lint') {
+    group = 'verification'
+    description = 'Runs checkstyle across all subprojects where configured.'
+    // Real task dependency (rather than manually invoking action.execute())
+    // so up-to-date checks, the task graph, and logging all work correctly.
+    def checkstyleTasks = subprojects.collect { sub -> sub.tasks.matching { it.name == 'checkstyleMain' } }
+    dependsOn checkstyleTasks
+    // Captured at configuration time: the bare 'subprojects' getter resolves
+    // through Project, and calling it (like project.hasProperty/ant.copy
+    // elsewhere in this file) from inside doFirst/doLast is the deprecated,
+    // Gradle-10-incompatible "Task.project at execution time" pattern.
+    def totalSubprojectCount = subprojects.size()
+    def withCheckstylePaths = subprojects.findAll { sub -> sub.tasks.findByName('checkstyleMain') != null }.collect { it.path }
+    doFirst {
+        println "[lint] running checkstyleMain on ${withCheckstylePaths.size()}/${totalSubprojectCount} subproject(s):"
+        withCheckstylePaths.each { println "[lint]   - ${it}" }
+    }
+    doLast {
+        println "[lint] completed (ran checkstyleMain where present)."
+    }
+}
+
+tasks.register('buildAll') {
+    group = 'build'
+    description = 'Builds all subprojects.'
+    // Lazy provider (not an eager .collect{} of resolved tasks at
+    // configuration time) so this doesn't fail if a subproject doesn't have
+    // a 'build' task yet.
+    dependsOn subprojects.collect { it.tasks.matching { t -> t.name == 'build' } }
+    // Captured at configuration time - see the 'lint' task above for why.
+    def totalSubprojectCount = subprojects.size()
+    def buildableCount = subprojects.count { it.tasks.findByName('build') != null }
+    doFirst {
+        println "[buildAll] building ${buildableCount}/${totalSubprojectCount} subproject(s) that declare a 'build' task."
+    }
+    doLast {
+        println "[buildAll] done."
+    }
+}
+
+// -----------------------------------------------------------------------
+// 3. Origin watermark helpers
+//
+// Every pack under packs/ is expected to carry a _rt_origin.mcfunction file
+// (under data/<namespace>/function/) proving it came from this monorepo and
+// wasn't hand-assembled or swapped before packaging. Kept as shared closures
+// so zipPacks, showOriginWatermarks, and cleanOriginWatermarks all agree on
+// how a watermark file - and a pack directory - is found.
+// -----------------------------------------------------------------------
+def findOriginWatermarks = { File packsRoot ->
+    def found = []
+    if (packsRoot.exists()) {
+        packsRoot.eachFileRecurse { f ->
+            if (f.name == '_rt_origin.mcfunction' && !f.path.contains("${File.separator}build${File.separator}")) {
+                found << f
+            }
+        }
+    }
+    found
+}
+
+def findPackDirs = { File packsRoot ->
+    def dirs = []
+    if (packsRoot.exists()) {
+        packsRoot.eachFileRecurse { f ->
+            if (f.name == 'pack.mcmeta' && !f.path.contains("${File.separator}build${File.separator}")) {
+                dirs << f.parentFile
+            }
+        }
+    }
+    dirs
+}
+
+// Shared provenance guard: given the pack dirs found by findPackDirs, returns
+// how many were exempted as resource-pack-only, and which datapacks are
+// missing their _rt_origin.mcfunction watermark. Used by both zipPacks (which
+// aborts the build on a miss) and checkOriginWatermarks (a standalone,
+// non-interactive check with no zip/build side effects) so the "what counts
+// as missing a watermark" logic is defined exactly once.
+def findMissingWatermarks = { List<File> packDirs ->
+    def resourcePackCount = 0
+    def missing = packDirs.findAll { dir ->
+        def isResourcePack = new File(dir, 'assets').exists() && !new File(dir, 'data').exists()
+        if (isResourcePack) {
+            resourcePackCount++
+            return false
+        }
+        def hasWatermark = false
+        dir.eachFileRecurse { f ->
+            if (f.name == '_rt_origin.mcfunction') {
+                hasWatermark = true
+            }
+        }
+        !hasWatermark
+    }
+    [resourcePackCount: resourcePackCount, missing: missing]
+}
+
+// -----------------------------------------------------------------------
+// 3b. Copy/zip helpers (used by zipPacks)
+//
+// Deliberately plain java.nio.file/java.util.zip instead of ant.copy/
+// ant.zip: AntBuilder is exposed via Project.getAnt(), and calling it from
+// inside a doLast/doFirst action is exactly the "Invocation of Task.project
+// at execution time" pattern Gradle deprecated and removes in Gradle 10.
+// These helpers touch no Project API at all, so they stay valid there with
+// no change in behavior (same recursive copy, same zip entry layout).
+// -----------------------------------------------------------------------
+// SECURITY: copyDirRecursive/zipDirectory previously copied and zipped
+// *every* file under a pack directory with zero filtering. That means a
+// stray .git/, .env, IDE folder, or credential file accidentally sitting
+// inside a packs/<name>/ directory would be silently included in the
+// public distribution ZIP shipped to Modrinth/CurseForge/GitHub Releases.
+// Nothing sensitive was found in any current packs/ directory (checked),
+// but the pipeline itself had no safety net against it happening in the
+// future. This denylist is defense-in-depth, not a full whitelist rewrite
+// (that would need to know every legitimate top-level file every pack
+// uses, which risks silently dropping something valid) -- it blocks the
+// specific, well-known classes of accidental leaks the packaging skill
+// calls out.
+def SENSITIVE_PATH_NAMES = ['.git', '.env', '.idea', '.vscode', '.DS_Store', 'Thumbs.db', 'node_modules'] as Set
+def isSensitivePathEntry = { File srcDir, File f ->
+    srcDir.toPath().relativize(f.toPath()).any { part ->
+        def name = part.toString()
+        SENSITIVE_PATH_NAMES.contains(name) ||
+            name.startsWith('.env.') ||
+            name.endsWith('.pem') ||
+            name.endsWith('.key') ||
+            name.endsWith('.p12')
+    }
+}
+
+def copyDirRecursive = { File srcDir, File destDir ->
+    srcDir.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+        if (isSensitivePathEntry(srcDir, f)) return
+        def rel = srcDir.toPath().relativize(f.toPath())
+        def target = destDir.toPath().resolve(rel)
+        java.nio.file.Files.createDirectories(target.parent)
+        java.nio.file.Files.copy(f.toPath(), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
+}
+
+def zipDirectory = { File srcDir, File zipFile ->
+    zipFile.parentFile.mkdirs()
+    new java.util.zip.ZipOutputStream(new java.io.FileOutputStream(zipFile)).withCloseable { zos ->
+        def files = []
+        // Second, independent check at zip time (not just at copy time):
+        // stays correct even if a future caller zips a directory directly
+        // without going through copyDirRecursive first.
+        srcDir.eachFileRecurse(groovy.io.FileType.FILES) { f -> if (!isSensitivePathEntry(srcDir, f)) files << f }
+        files.sort { it.path }.each { f ->
+            def rel = srcDir.toPath().relativize(f.toPath()).toString().replace(File.separator, '/')
+            zos.putNextEntry(new java.util.zip.ZipEntry(rel))
+            f.withInputStream { is -> zos << is }
+            zos.closeEntry()
+        }
+    }
+}
+
+tasks.register('showOriginWatermarks') {
+    group = 'verification'
+    description = 'Prints the content of every _rt_origin.mcfunction watermark found under packs/.'
+    def packsRoot = rootProject.file('packs')
+    doLast {
+        def watermarks = findOriginWatermarks(packsRoot)
+        if (watermarks.isEmpty()) {
+            println "[showOriginWatermarks] no _rt_origin.mcfunction watermark files found under packs/."
+            return
+        }
+        println "[showOriginWatermarks] found ${watermarks.size()} watermark file(s):"
+        watermarks.sort { it.path }.each { f ->
+            println "==================================================================="
+            println "Watermark: ${packsRoot.toPath().relativize(f.toPath())}"
+            println "-------------------------------------------------------------------"
+            println f.text
+        }
+        println "==================================================================="
+        println "[showOriginWatermarks] ${watermarks.size()} watermark file(s) listed."
+    }
+}
+
+// cleanOriginWatermarks: DISABLED BY DESIGN.
+//
+// Previously this task deleted _rt_origin.mcfunction files from packs/ (the
+// real source tree) as a finalizedBy step after zipPacks. That is no longer
+// the desired behavior: watermarks must persist permanently in packs/ as
+// proof of origin, and are only ever stripped from the disposable
+// build/packs-remap/ working copy that zipPacks builds ZIPs from (see
+// section 4). This task stays registered - so external references to
+// `cleanOriginWatermarks` don't break - but always refuses to run, so
+// nothing can delete a watermark from packs/ anymore, accidentally or
+// otherwise.
+tasks.register('cleanOriginWatermarks') {
+    group = 'build'
+    description = 'DISABLED: watermarks in packs/ are no longer deleted by the build. See zipPacks (build/packs-remap/).'
+    doLast {
+        throw new GradleException(
+            "[cleanOriginWatermarks] disabled: watermarks in packs/ are permanent and are never deleted " +
+            "by this build anymore. zipPacks now strips watermarks only from the disposable " +
+            "build/packs-remap/ copy it builds ZIPs from. packs/ is never touched."
+        )
+    }
+}
+
+// checkOriginWatermarks: standalone, non-interactive provenance check.
+//
+// zipPacks already refuses to build if a datapack is missing its watermark,
+// but that check only runs as a side effect of the full (interactive,
+// confirmation-gated) zip build. There was previously no way to ask "does
+// every pack have its watermark?" on its own - e.g. in a PR-check CI job
+// that shouldn't also produce ZIPs or prompt for confirmation. This task
+// runs the same findMissingWatermarks guard used by zipPacks, but only
+// reads packs/ - it never writes to build/ and never touches packs/.
+tasks.register('checkOriginWatermarks') {
+    group = 'verification'
+    description = 'Verifies every non-resource-pack folder under packs/ has a _rt_origin.mcfunction watermark. Read-only: unlike zipPacks, never prompts, never zips, never touches build/.'
+    def packsRoot = rootProject.file('packs')
+    doLast {
+        def packDirs = findPackDirs(packsRoot)
+        println "[checkOriginWatermarks] scanning ${packsRoot} -> found ${packDirs.size()} pack(s) with a pack.mcmeta."
+        if (packDirs.isEmpty()) {
+            return
+        }
+        def guard = findMissingWatermarks(packDirs)
+        def watermarkedCount = packDirs.size() - guard.resourcePackCount - guard.missing.size()
+        println "[checkOriginWatermarks] ${guard.resourcePackCount} resource-pack-only dir(s) exempted, " +
+                "${watermarkedCount} datapack(s) have a watermark."
+        if (guard.missing) {
+            def details = guard.missing.collect { "  - ${packsRoot.toPath().relativize(it.toPath())}" }.join('\n')
+            throw new GradleException(
+                "[checkOriginWatermarks] failed: the following pack(s) are missing a _rt_origin.mcfunction " +
+                "watermark under data/<namespace>/function/:\n${details}"
+            )
+        }
+        println "[checkOriginWatermarks] OK: all ${watermarkedCount} datapack(s) have a watermark."
+    }
+}
+
+// -----------------------------------------------------------------------
+// 4. zipPacks
+//
+// Finds every folder under packs/ containing a pack.mcmeta (datapack or
+// resource pack, data/ and/or assets/) and zips each one independently into
+// build/packs-dist/<folder-name>.zip.
+//
+// The source tree under packs/ is NEVER modified. Watermarks stay in
+// packs/ permanently as proof of origin.
+//
+// Flow:
+//   1. Provenance guard on packs/ (datapacks only): every pack that isn't a
+//      pure resource pack must already have its watermark, or the build
+//      fails before anything is copied/zipped.
+//   2. Confirmation gate: requires -PconfirmZip=yes, or an interactive
+//      "yes" typed within a bounded timeout.
+//   3. Each pack dir is COPIED to build/packs-remap/<pack-name>/.
+//   4. The watermark is removed ONLY from the build/packs-remap/ copy.
+//   5. The ZIP is built from the cleaned build/packs-remap/ copy, so the
+//      final .zip does NOT contain _rt_origin.mcfunction.
+//   6. packs/ itself is untouched at every step - nothing is ever deleted
+//      from the repository.
+// -----------------------------------------------------------------------
+tasks.register('zipPacks') {
+    group = 'build'
+    description = 'Zips every pack.mcmeta-containing folder under packs/ into build/packs-dist/, stripping watermarks from a build/packs-remap/ copy only (packs/ is never modified).'
+    def packsRoot = rootProject.file('packs')
+    def remapDir = file('build/packs-remap')
+    def outDir = file('build/packs-dist')
+    // Captured at configuration time (task registration body runs during
+    // configuration, not execution). '-P' project properties are fixed for
+    // the whole build invocation before configuration even starts, so
+    // reading it here is equivalent to reading it later - but reading it
+    // later, from inside doFirst, would be a live 'project.hasProperty'/
+    // 'project.property' call during task execution, which Gradle
+    // deprecated and removes in Gradle 10 ("Invocation of Task.project at
+    // execution time"). See also the 'lint'/'buildAll' tasks above, and the
+    // copyDirRecursive/zipDirectory helpers (section 3b) for the same fix
+    // applied to ant.copy/ant.zip below.
+    def confirmZipProp = project.findProperty('confirmZip')
+
+    doFirst {
+        def packDirs = findPackDirs(packsRoot)
+        println "[zipPacks] scanning ${packsRoot} -> found ${packDirs.size()} pack(s) with a pack.mcmeta."
+        if (packDirs.isEmpty()) {
+            return
+        }
+
+        // 1. Provenance guard: datapacks must have watermarks; resource packs (assets/ only) bypass this check.
+        //    Shared with checkOriginWatermarks - see findMissingWatermarks (section 3b).
+        def guard = findMissingWatermarks(packDirs)
+        println "[zipPacks] provenance guard: ${guard.resourcePackCount} resource-pack-only dir(s) exempted, " +
+                "${packDirs.size() - guard.resourcePackCount - guard.missing.size()} datapack(s) have a watermark."
+        if (guard.missing) {
+            def details = guard.missing.collect { "  - ${packsRoot.toPath().relativize(it.toPath())}" }.join('\n')
+            throw new GradleException(
+                "[zipPacks] failed: the following pack(s) are missing a _rt_origin.mcfunction watermark " +
+                "under data/<namespace>/function/, so provenance cannot be verified before packaging:\n${details}\n" +
+                "Add the watermark before zipping."
+            )
+        }
+
+        // 2. Pre-zip warning + confirmation.
+        def watermarks = findOriginWatermarks(packsRoot)
+        println "==================================================================="
+        println "vortacraftmc/core - MIT License, Copyright (c) 2026 vortacraftmc"
+        println "See LICENSE for full license text and NOTICE.md / CONTRIBUTING.md"
+        println "for the project's usage and _rt_origin.mcfunction watermark policy."
+        println "-------------------------------------------------------------------"
+        println "About to package ${packDirs.size()} pack(s) into ZIP archives."
+        println "Watermarks stay untouched in packs/. They will only be stripped from"
+        println "the build/packs-remap/ working copy used to build the ZIPs:"
+        watermarks.sort { it.path }.each { f ->
+            println "  - ${packsRoot.toPath().relativize(f.toPath())}"
+        }
+        println "==================================================================="
+
+        def confirmed = false
+        if (confirmZipProp != null) {
+            confirmed = (confirmZipProp.toString().toLowerCase() == 'yes')
+            println "[zipPacks] -PconfirmZip=${confirmZipProp} supplied on the command line."
+            if (!confirmed) {
+                throw new GradleException(
+                    "[zipPacks] aborted: -PconfirmZip was set but not to 'yes'. Pass -PconfirmZip=yes to proceed."
+                )
+            }
+        } else {
+            // System.console() is null in many interactive-but-not-a-real-TTY
+            // environments (VS Code integrated terminal, Codespaces, some IDE
+            // consoles), which previously made zipPacks abort immediately even
+            // though a person was right there able to answer. Read from
+            // System.in instead (works in both a real console and these
+            // environments), but don't block forever: give it a bounded
+            // timeout and treat a timeout as "not confirmed" so a truly
+            // non-interactive run (CI with no -PconfirmZip) still fails fast
+            // instead of hanging the build.
+            def timeoutSeconds = 15
+            println "Proceed with packaging (watermarks stripped from the remap copy only)?"
+            print "Type 'yes' to continue (auto-cancels in ${timeoutSeconds}s with no input): "
+            System.out.flush()
+
+            def answerHolder = new java.util.concurrent.atomic.AtomicReference<String>(null)
+            def reader = Thread.start {
+                try {
+                    def line = System.in.newReader().readLine()
+                    answerHolder.set(line)
+                } catch (Exception ignored) {
+                    // stdin closed/unavailable - leave answerHolder null, handled below
+                }
+            }
+            reader.join(timeoutSeconds * 1000L)
+
+            if (reader.isAlive()) {
+                // Timed out waiting for input.
+                reader.interrupt()
+                throw new GradleException(
+                    "[zipPacks] aborted: no 'yes' received within ${timeoutSeconds}s (timed out waiting for input). " +
+                    "Re-run and confirm promptly, or pass -PconfirmZip=yes to skip the prompt (e.g. in CI)."
+                )
+            }
+
+            def answer = answerHolder.get()
+            confirmed = (answer?.trim()?.toLowerCase() == 'yes')
+            println "[zipPacks] interactive confirmation received: '${answer ?: '<no input>'}'"
+            if (!confirmed) {
+                throw new GradleException(
+                    "[zipPacks] aborted: confirmation not received (expected 'yes', got: ${answer ?: '<no input>'})."
+                )
+            }
+        }
+    }
+
+    doLast {
+        def packDirs = findPackDirs(packsRoot)
+        if (packDirs.isEmpty()) {
+            println "[zipPacks] no pack.mcmeta files found under packs/."
+            return
+        }
+
+        // 3. Fresh remap workspace every run, so stale copies never linger.
+        if (remapDir.exists()) {
+            println "[zipPacks] clearing stale remap workspace at ${remapDir}"
+            remapDir.deleteDir()
+        }
+        remapDir.mkdirs()
+        outDir.mkdirs()
+
+        packDirs.each { dir ->
+            def relPath = packsRoot.toPath().relativize(dir.toPath()).toString()
+            def safeName = relPath.replace(File.separator, '-').replace('/', '-')
+
+            // Copy source pack -> build/packs-remap/<safeName>/ (packs/ untouched).
+            def remapPackDir = new File(remapDir, safeName)
+            remapPackDir.mkdirs()
+            copyDirRecursive(dir, remapPackDir)
+
+            // 4. Strip the watermark from the remap copy only.
+            def stripped = 0
+            remapPackDir.eachFileRecurse { f ->
+                if (f.name == '_rt_origin.mcfunction') {
+                    f.delete()
+                    stripped++
+                }
+            }
+
+            // 5. Zip from the cleaned remap copy.
+            def zipName = "${safeName}.zip"
+            def zipFile = new File(outDir, zipName)
+            println "[zipPacks] zipping ${remapPackDir} -> build/packs-dist/${zipName} (stripped ${stripped} watermark(s) from remap copy)"
+            zipDirectory(remapPackDir, zipFile)
+        }
+        println "[zipPacks] done: ${packDirs.size()} pack(s) zipped into ${outDir}. packs/ source tree left untouched."
+    }
+}
+
+// Make zipPacks run as part of the normal build
+tasks.named('buildAll') { dependsOn 'zipPacks' }
+
+// -----------------------------------------------------------------------
+// 5. checkPacks / printPackList
+// -----------------------------------------------------------------------
+tasks.register('checkPacks') {
+    group = 'verification'
+    description = 'Validates that every pack.mcmeta under packs/ is valid JSON and declares a format (pack_format, or min_format/max_format for 1.21.9+).'
+    def packsRoot = rootProject.file('packs')
+    doLast {
+        if (!packsRoot.exists()) {
+            println "[checkPacks] no packs/ directory found, skipping."
+            return
+        }
+        def slurper = new groovy.json.JsonSlurper()
+        def errors = []
+        def checked = 0
+        packsRoot.eachFileRecurse { f ->
+            if (f.name == 'pack.mcmeta' && !f.path.contains("${File.separator}build${File.separator}")) {
+                checked++
+                try {
+                    def parsed = slurper.parse(f)
+                    def pack = parsed?.pack
+                    // 1.21.9+ pack.mcmeta uses min_format/max_format instead of
+                    // pack_format (see minecraft-versions notes). Since 26.x is
+                    // the target, either form must be accepted, otherwise
+                    // current v26.x macroEngine packs get flagged as false
+                    // positives.
+                    def hasLegacyFormat = pack?.pack_format != null
+                    def hasNewFormat = pack?.min_format != null && pack?.max_format != null
+                    if (!hasLegacyFormat && !hasNewFormat) {
+                        errors << "${f}: neither 'pack.pack_format' nor 'pack.min_format'+'max_format' present"
+                    }
+                } catch (Exception e) {
+                    errors << "${f}: invalid JSON - ${e.message}"
+                }
+            }
+        }
+        println "[checkPacks] validated ${checked} pack.mcmeta file(s)."
+        if (errors) {
+            errors.each { println "[checkPacks] ERROR: ${it}" }
+            throw new GradleException("[checkPacks] failed: ${errors.size()} problematic pack.mcmeta file(s) found.")
+        }
+        println "[checkPacks] OK: all pack.mcmeta files are valid."
+    }
+}
+// Require validation before zipPacks
+tasks.named('zipPacks') { dependsOn 'checkPacks' }
+
+tasks.register('printPackList') {
+    group = 'help'
+    description = 'Lists every detected pack folder under packs/ without zipping anything.'
+    def packsRoot = rootProject.file('packs')
+    doLast {
+        if (!packsRoot.exists()) {
+            println "[printPackList] no packs/ directory found."
+            return
+        }
+        def found = []
+        packsRoot.eachFileRecurse { f ->
+            if (f.name == 'pack.mcmeta' && !f.path.contains("${File.separator}build${File.separator}")) {
+                found << packsRoot.toPath().relativize(f.parentFile.toPath()).toString()
+            }
+        }
+        if (found.isEmpty()) {
+            println "[printPackList] no packs found."
+        } else {
+            println "[printPackList] detected ${found.size()} pack(s):"
+            found.sort().each { println "[printPackList]   - ${it}" }
+        }
+    }
+}
+
+// printModList: the mods/ counterpart to printPackList above. There was
+// previously no way to list mod subprojects without either reading
+// settings.gradle by hand or running a real build ('buildAll'/':mods:x:build').
+// A mod folder is detected the same way Gradle itself would include it as a
+// subproject: it's an immediate child of mods/ with its own build.gradle.
+tasks.register('printModList') {
+    group = 'help'
+    description = 'Lists every detected Fabric mod folder under mods/ (immediate subfolders with their own build.gradle) without building anything.'
+    def modsRoot = rootProject.file('mods')
+    doLast {
+        if (!modsRoot.exists()) {
+            println "[printModList] no mods/ directory found."
+            return
+        }
+        def found = []
+        modsRoot.eachFile { d ->
+            if (d.isDirectory() && new File(d, 'build.gradle').exists()) {
+                found << d.name
+            }
+        }
+        if (found.isEmpty()) {
+            println "[printModList] no mods found."
+        } else {
+            println "[printModList] detected ${found.size()} mod(s):"
+            found.sort().each { println "[printModList]   - ${it}" }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------
+// 6. mergeDatapacks
+//
+// Reads packs/merge-manifest.json and merges the listed pack folders under
+// packs/ into a single output datapack at build/merged-datapack/. Non-JSON
+// files are copied straight through. Colliding files are handled
+// explicitly, never silently overwritten:
+//   - data/minecraft/tags/function(s)/{load,tick}.json (and any other
+//     tags/function(s)/*.json) are merged by unioning their "values"
+//     arrays, since every pack's load/tick hook lives there and a plain
+//     copy would let the last pack processed clobber every other pack's
+//     hook (verified collision: 6 of 7 packs in this repo write to
+//     minecraft:load/minecraft:tick).
+//   - any other file path that appears in more than one included pack
+//     fails the build loudly, since there's no generically safe way to
+//     merge two different function/loot_table/etc. files.
+// pack_format mismatches across included packs also fail the build unless
+// the manifest sets "allowMismatchedFormats": true, because packs in this
+// repo span pack_format 10-101 (roughly MC 1.16-1.21.9+) and silently
+// merging across that range produces a broken pack.
+// -----------------------------------------------------------------------
+tasks.register('mergeDatapacks') {
+    group = 'build'
+    description = 'Merges the packs listed in packs/merge-manifest.json into build/merged-datapack/.'
+    def packsRoot = rootProject.file('packs')
+    def manifestFile = file('packs/merge-manifest.json')
+    def outDir = file('build/merged-datapack')
+    doLast {
+        if (!manifestFile.exists()) {
+            throw new GradleException("[mergeDatapacks] failed: packs/merge-manifest.json not found. Create it with { \"output\": {...}, \"include\": [...] }.")
+        }
+        def slurper = new groovy.json.JsonSlurper()
+        def manifest
+        try {
+            manifest = slurper.parse(manifestFile)
+        } catch (Exception e) {
+            throw new GradleException("[mergeDatapacks] failed: packs/merge-manifest.json is not valid JSON - ${e.message}")
+        }
+
+        def include = manifest.include ?: []
+        def exclude = (manifest.exclude ?: []) as Set
+        def output = manifest.output ?: [:]
+        def allowMismatchedFormats = manifest.allowMismatchedFormats == true
+
+        println "[mergeDatapacks] manifest: ${include.size()} pack(s) listed in 'include', " +
+                "${exclude.size()} in 'exclude', allowMismatchedFormats=${allowMismatchedFormats}."
+
+        if (include.isEmpty()) {
+            throw new GradleException("[mergeDatapacks] failed: manifest 'include' list is empty. Nothing to merge.")
+        }
+
+        def packDirs = [:]
+        include.each { packName ->
+            if (exclude.contains(packName)) {
+                println "[mergeDatapacks] skipping ${packName}: listed in manifest 'exclude'."
+                return
+            }
+            // 'include' entries may be a top-level packs/<name> dir, or a
+            // relative sub-path like 'dataLib-dp/datapacks/dataLib' for
+            // datapacks nested inside a mod/tooling repo folder.
+            def dir = new File(packsRoot, packName)
+            if (!dir.exists() || !new File(dir, 'pack.mcmeta').exists()) {
+                throw new GradleException("[mergeDatapacks] failed: packs/${packName} not found or has no pack.mcmeta.")
+            }
+            packDirs[packName] = dir
+        }
+
+        if (packDirs.isEmpty()) {
+            throw new GradleException("[mergeDatapacks] failed: every entry in 'include' was excluded or missing.")
+        }
+        println "[mergeDatapacks] resolved ${packDirs.size()} pack dir(s) to merge: ${packDirs.keySet().join(', ')}"
+
+        // Validate pack_format compatibility before touching any files.
+        // Normalize to the actual numeric format(s) so a pack declaring
+        // pack_format=107 and a pack declaring min_format=107/max_format=107
+        // are recognized as the same format instead of compared as strings.
+        def normalizeFormat = { f ->
+            if (f == null) return null
+            if (f instanceof List) return f[0]
+            return f
+        }
+        def formats = [:]
+        def normFormats = [:]
+        packDirs.each { packName, dir ->
+            def meta = slurper.parse(new File(dir, 'pack.mcmeta'))
+            def pack = meta?.pack
+            def fmt = pack?.pack_format != null ? "pack_format=${pack.pack_format}" : "min=${pack?.min_format} max=${pack?.max_format}"
+            formats[packName] = fmt
+            def minF = pack?.min_format != null ? pack.min_format : pack?.pack_format
+            def maxF = pack?.max_format != null ? pack.max_format : pack?.pack_format
+            normFormats[packName] = [normalizeFormat(minF), normalizeFormat(maxF)]
+        }
+        println "[mergeDatapacks] pack_format per pack:"
+        formats.each { packName, fmt -> println "[mergeDatapacks]   - ${packName}: ${fmt}" }
+
+        def distinctFormats = normFormats.values().toSet()
+        if (distinctFormats.size() > 1 && !allowMismatchedFormats) {
+            def details = formats.collect { k, v -> "  - ${k}: ${v}" }.join('\n')
+            throw new GradleException(
+                "[mergeDatapacks] failed: included packs declare different pack_format values, merging them " +
+                "produces a datapack that is broken for at least one of them:\n${details}\n" +
+                "Set \"allowMismatchedFormats\": true in the manifest to merge anyway (not recommended)."
+            )
+        }
+
+        if (outDir.exists()) {
+            println "[mergeDatapacks] clearing stale output at ${outDir}"
+            outDir.deleteDir()
+        }
+        outDir.mkdirs()
+
+        // Collect every relative file path across all included packs so we
+        // can detect collisions before writing anything.
+        def relPathToSources = [:]
+        packDirs.each { packName, dir ->
+            dir.eachFileRecurse { f ->
+                if (f.isFile()) {
+                    def rel = dir.toPath().relativize(f.toPath()).toString().replace(File.separator, '/')
+                    // pack.mcmeta, README, LICENSE, etc. at pack root are per-pack
+                    // metadata, not merged content - skip them explicitly.
+                    if (!rel.contains('/')) {
+                        return
+                    }
+                    relPathToSources.computeIfAbsent(rel) { [] } << [pack: packName, file: f]
+                }
+            }
+        }
+        println "[mergeDatapacks] collected ${relPathToSources.size()} distinct relative file path(s) across all included packs."
+
+        // Paths where a tags/function(s)/*.json union-merge applies.
+        def isFunctionTagFile = { String rel ->
+            (rel ==~ /data\/[^\/]+\/tags\/function\/.+\.json/) ||
+            (rel ==~ /data\/[^\/]+\/tags\/functions\/.+\.json/)
+        }
+
+        def hardCollisions = []
+        relPathToSources.each { rel, sources ->
+            if (sources.size() > 1 && !isFunctionTagFile(rel)) {
+                hardCollisions << "${rel} (in: ${sources.collect { it.pack }.join(', ')})"
+            }
+        }
+        if (hardCollisions) {
+            throw new GradleException(
+                "[mergeDatapacks] failed: the following files exist in more than one included pack " +
+                "and cannot be safely merged automatically:\n" +
+                hardCollisions.collect { "  - ${it}" }.join('\n') +
+                "\nResolve the conflict manually (rename/remove in one pack) and re-run."
+            )
+        }
+
+        // Write everything out.
+        relPathToSources.each { rel, sources ->
+            def outFile = new File(outDir, rel)
+            outFile.parentFile.mkdirs()
+            if (sources.size() == 1) {
+                outFile.bytes = sources[0].file.bytes
+            } else {
+                // Union-merge tags/function(s) files by combining "values".
+                def mergedValues = [] as LinkedHashSet
+                def replaceFlag = false
+                sources.each { src ->
+                    def parsed = slurper.parse(src.file)
+                    (parsed.values ?: []).each { mergedValues << it }
+                    if (parsed.replace == true) {
+                        replaceFlag = true
+                    }
+                }
+                def mergedJson = groovy.json.JsonOutput.toJson([
+                    replace: replaceFlag,
+                    values : mergedValues.toList()
+                ])
+                outFile.text = groovy.json.JsonOutput.prettyPrint(mergedJson)
+                println "[mergeDatapacks] merged ${rel} <- ${sources.collect { it.pack }.join(', ')} (${mergedValues.size()} value(s))"
+            }
+        }
+
+        // Write the merged pack.mcmeta from the manifest's "output" block.
+        // pack_format is optional as of 25w31a (data pack format 82+ /
+        // resource pack 65+); min_format+max_format are the required pair
+        // for that range. Support whichever the manifest provides; fail if
+        // neither is given.
+        def outPack = [description: output.description ?: "Merged datapack (${packDirs.keySet().join(', ')})"]
+        if (output.pack_format != null) {
+            outPack.pack_format = output.pack_format
+        }
+        if (output.min_format != null && output.max_format != null) {
+            outPack.min_format = output.min_format
+            outPack.max_format = output.max_format
+        }
+        if (output.pack_format == null && (output.min_format == null || output.max_format == null)) {
+            throw new GradleException(
+                "[mergeDatapacks] failed: manifest 'output' must declare either 'pack_format' " +
+                "(pre-82/legacy) or both 'min_format' and 'max_format' (required for 82+)."
+            )
+        }
+        def outMeta = [pack: outPack]
+        new File(outDir, 'pack.mcmeta').text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(outMeta))
+
+        println "[mergeDatapacks] OK: merged ${packDirs.size()} pack(s) -> ${outDir}"
+        println "[mergeDatapacks] included: ${packDirs.keySet().join(', ')}"
+    }
+}
+
+// -----------------------------------------------------------------------
+// 7. clean task extension
+//
+// The default 'clean' already deletes build/, but this makes sure the
+// packs-dist/packs-remap cleanup happens explicitly and is logged,
+// regardless of how a subproject overrides 'clean'.
+// -----------------------------------------------------------------------
+tasks.matching { it.name == 'clean' }.configureEach {
+    // Captured at configuration time (configureEach's own closure body runs
+    // during task realization/configuration, before any doLast runs) - see
+    // the 'lint' task above for why 'file(...)' can't be called from inside
+    // doLast itself.
+    def packsDistDir = file('build/packs-dist')
+    def packsRemapDir = file('build/packs-remap')
+    doLast {
+        if (packsDistDir.exists()) {
+            packsDistDir.deleteDir()
+            println "[clean] removed build/packs-dist/"
+        }
+        if (packsRemapDir.exists()) {
+            packsRemapDir.deleteDir()
+            println "[clean] removed build/packs-remap/"
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// verifyMod – monorepo-aware Fabric mod sanity check
+task verifyMod {
+    group = 'verification'
+    description = 'Runs Fabric mod sanity checks across mods/ and examples/ (fabric.mod.json, mixins, duplicate ids).'
+
+    doLast {
+        List<String> errors = []
+        List<String> warnings = []
+
+        // Only look at source fabric.mod.json files, never build/ outputs
+        def allModJsons = fileTree(dir: rootDir, include: [
+            'mods/*/src/main/resources/fabric.mod.json',
+            'examples/*/src/main/resources/fabric.mod.json'
+        ]).files.findAll { f ->
+            // Skip the two folders that settings.gradle already excludes
+            !f.path.contains("${File.separator}datapack-fixer${File.separator}") &&
+            !f.path.contains("${File.separator}RTWrapper${File.separator}rtwrapper-fabric${File.separator}")
+        }
+
+        if (allModJsons.isEmpty()) {
+            println '[verifyMod] no fabric.mod.json found under mods/ or examples/ – nothing to check.'
+            return
+        }
+
+        println "[verifyMod] checking ${allModJsons.size()} fabric.mod.json file(s)"
+
+        def idsSeen = [:]
+
+        allModJsons.each { modJsonFile ->
+            def rel = rootDir.toPath().relativize(modJsonFile.toPath()).toString()
+            def modJson
+            try {
+                modJson = new groovy.json.JsonSlurper().parse(modJsonFile)
+            } catch (Exception e) {
+                errors << "${rel}: invalid JSON – ${e.message}"
+                return
+            }
+
+            // required fields
+            ['schemaVersion', 'id', 'version', 'name'].each { field ->
+                if (!modJson.containsKey(field)) {
+                    errors << "${rel}: missing required field '${field}'"
+                }
+            }
+
+            // duplicate id detection (source files only)
+            if (modJson.id) {
+                if (idsSeen.containsKey(modJson.id)) {
+                    warnings << "Duplicate mod id '${modJson.id}' in:\n  - ${idsSeen[modJson.id]}\n  - ${rel}"
+                } else {
+                    idsSeen[modJson.id] = rel
+                }
+            }
+
+            // entrypoints → source classes (warning only – templates often lack client classes)
+            def entrypoints = modJson.entrypoints
+            if (entrypoints instanceof Map) {
+                def modRoot = modJsonFile.parentFile.parentFile.parentFile.parentFile // .../src/main/resources → mod root
+                entrypoints.each { String key, value ->
+                    (value instanceof List ? value : [value]).each { entry ->
+                        String className = (entry instanceof Map) ? entry.value : entry?.toString()
+                        if (className) {
+                            String relPath = className.replace('.', '/') + '.java'
+                            def javaFile = new File(modRoot, "src/main/java/${relPath}")
+                            if (!javaFile.exists()) {
+                                warnings << "${rel}: entrypoint '${key}' → '${className}' has no source at ${javaFile}"
+                            }
+                        }
+                    }
+                }
+            }
+
+            // mixin configs – warning only (TEMPLATE-MOD and similar stubs often omit them)
+            def mixins = modJson.mixins
+            if (mixins instanceof List) {
+                mixins.each { m ->
+                    String mixinPath = (m instanceof Map) ? m.config : m?.toString()
+                    if (mixinPath) {
+                        def mixinFile = new File(modJsonFile.parentFile, mixinPath)
+                        if (!mixinFile.exists()) {
+                            warnings << "${rel}: mixin config '${mixinPath}' not found"
+                        }
+                    }
+                }
+            }
+        }
+
+        // root build.gradle smells
+        def rootBuild = file('build.gradle')
+        if (rootBuild.exists()) {
+            String text = rootBuild.text
+            if (text.contains('mavenLocal()')) {
+                warnings << "root build.gradle uses mavenLocal() – remove for reproducible CI builds"
+            }
+        }
+
+        // Report
+        println ''
+        println '================ verifyMod report ================'
+        if (warnings.isEmpty() && errors.isEmpty()) {
+            println 'No issues found.'
+        }
+        warnings.each { println "WARN  ${it}\n" }
+        errors.each { println "ERROR ${it}\n" }
+        println "Summary: ${errors.size()} error(s), ${warnings.size()} warning(s)."
+        println '====================================================='
+        println ''
+
+        // Only hard-fail on real errors (invalid JSON / missing required fields)
+        if (!errors.isEmpty()) {
+            throw new GradleException("verifyMod found ${errors.size()} error(s). See report above.")
+        }
+    }
+}
+
+// Root project has no Java plugin → no default 'check' task.
+// maybeCreate makes ./gradlew check and the build lifecycle work.
+tasks.maybeCreate('check').configure {
+    group = 'verification'
+    description = 'Runs suite-level verification tasks (including verifyMod).'
+    dependsOn 'verifyMod'
+}
