@@ -5,7 +5,8 @@
   "name": "RTWrapper",
   "description": "Queued, permission-checked native command dispatch API for other mods/datapacks. Fabric reimplementation of the vortacraftmc RTWrapper datapack protocol.",
   "authors": [
-    "runtoolkit"
+    "vortacraftmc",
+    "Runtoolkit (original source)"
   ],
   "contact": {
     "homepage": "https://modrinth.com/datapack/rtwrapper",
