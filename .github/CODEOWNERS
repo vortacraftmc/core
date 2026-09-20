@@ -1,0 +1,12 @@
+# Requires review from a maintainer whenever the datapack lock manifest
+# itself changes - this is the file that unlocks a protected pack, so its
+# own changes need a second set of eyes independent of the CI check in
+# .github/workflows/datapack-immutability.yml.
+#
+# Replace the placeholder below with the actual GitHub team or usernames
+# for this repo, then turn on "Require review from Codeowners" under
+# Settings -> Rulesets or Branches for `main`.
+
+/packs/.datapack-lock.json @vortacraftmc/maintainers
+/packs/*/data/*/function/_rt_origin.mcfunction @vortacraftmc/maintainers
+/packs/*/data/*/functions/_rt_origin.mcfunction @vortacraftmc/maintainers

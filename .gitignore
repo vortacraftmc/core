@@ -1,0 +1,16 @@
+.idea/
+*.iml
+.vscode/
+.minecraft/
+local.properties
+/run/
+/logs/
+*.log
+.env
+*.env
+*.pem
+.gradle/
+build/
+out/
+*.tar.gz
+*.bak

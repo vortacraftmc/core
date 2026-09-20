@@ -1,0 +1,14 @@
+{
+  "output": {
+    "name": "merged-datapack",
+    "description": "Merged vortacraftmc datapack",
+    "_comment": "min_format/max_format required for format 82+ (25w31a+); pack_format optional/legacy-only.",
+    "min_format": 107,
+    "max_format": 107
+  },
+  "include": [
+    "guikit-datapack",
+    "macroEngine-Datapack-v26.3"
+  ],
+  "exclude": []
+}

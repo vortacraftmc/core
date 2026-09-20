@@ -1,0 +1,22 @@
+{
+  "name": "vortacraftmc/core",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "configureZshAsDefaultShell": true
+    }
+  },
+  "remoteEnv": {
+    "GITHUB_TOKEN": "${localEnv:RT_CONSOLIDATE_TOKEN}"
+  },
+  "postCreateCommand": "bash setup.sh",
+  "postStartCommand": "bash start.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "eamodio.gitlens",
+        "github.copilot"
+      ]
+    }
+  }
+}

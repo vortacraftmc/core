@@ -1,0 +1,19 @@
+{
+  "pack": {
+    "description": "macroEngine | 26.3-rc-1",
+    "pack_format": 121,
+    "min_format": [
+      121,
+      0
+    ],
+    "max_format": [
+      121,
+      0
+    ]
+  },
+  "features": {
+    "enabled": [
+      "minecraft:vanilla"
+    ]
+  }
+}
