@@ -1,0 +1,150 @@
+name: Build & Lint
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+# Cancel older in-progress runs on the same branch when a new commit lands
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    name: Build all subprojects
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+        # If gradlew isn't committed yet, generate the wrapper first:
+        # gradle wrapper --gradle-version 9.4.0
+      - name: Build all subprojects
+        # FIX: with --continue, this step can still report "success" even when
+        # part of the build failed (Gradle can mark a partial failure with a
+        # different signal in continue mode). More importantly: the
+        # upload-artifact step below runs "if: always()", so it can still pass
+        # partial/empty artifacts forward even on failure. release-packs uses
+        # needs: build, so it won't run if the build job is genuinely marked
+        # FAILED - that part was already correct, left untouched.
+        #
+        # FIX 2: buildAll depends on zipPacks (see build.gradle), and zipPacks
+        # now requires explicit confirmation before packaging (either an
+        # interactive 'yes' within a timeout, or -PconfirmZip=yes). CI has no
+        # interactive stdin, so without this flag the zipPacks step inside
+        # buildAll would always fail here. -PconfirmZip=yes is the sanctioned
+        # non-interactive path for CI, per build.gradle's own error message.
+        run: ./gradlew buildAll --continue -PconfirmZip=yes
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: build-outputs
+          path: |
+            mods/**/build/libs/*.jar
+            examples/**/build/libs/*.jar
+            build/packs-dist/*.zip
+          if-no-files-found: ignore
+          retention-days: 93
+  lint:
+    name: Lint all subprojects
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - name: Run lint task
+        run: ./gradlew lint --continue
+      - name: Lint datapacks
+        # FIX: the script's presence and executable bit weren't guaranteed;
+        # if the file was missing or not executable, the failure mode was
+        # unclear. Calling it via bash bypasses the permission issue (this was
+        # already correct) but still assumes the file exists. Verify the
+        # script is actually committed in the repo - its presence can't be
+        # confirmed here, so the invocation itself was left unchanged since
+        # `bash X.sh` doesn't require +x anyway.
+        run: bash .github/workflows/lint.sh
+  release-packs:
+    name: Publish packs to a permanent release
+    needs: [ build, lint ]
+    # FIX: needs previously only listed 'build'. This meant release-packs
+    # would still trigger and publish zips even if the lint job failed -
+    # the lint job's result had no effect on the release, making it
+    # effectively cosmetic. Added 'lint' to needs.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - name: Build pack zips
+        # FIX: zipPacks now requires confirmation before packaging (see
+        # build.gradle). CI has no interactive console/stdin, so the
+        # bounded-timeout prompt would just time out and fail every run.
+        # -PconfirmZip=yes is the flag build.gradle itself documents as the
+        # non-interactive path for CI.
+        run: ./gradlew zipPacks -PconfirmZip=yes
+      - name: Remove stale pack assets from release
+        # A pack can be renamed or deleted from packs/ (e.g. a version bump
+        # like macroEngine-Resourcepack-v26.2 -> v26.3). softprops/action-gh-release
+        # only uploads/overwrites the files it's given - it never removes an
+        # existing release asset that no longer has a matching zip, so without
+        # this step a renamed/removed pack's old zip stays attached forever,
+        # contradicting the "Always reflects the current contents of packs/"
+        # promise below.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view packs-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            current_files=$(cd build/packs-dist && ls *.zip 2>/dev/null || true)
+            existing_assets=$(gh release view packs-latest --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+            for asset in $existing_assets; do
+              if ! printf '%s\n' "$current_files" | grep -qxF "$asset"; then
+                echo "Deleting stale release asset: $asset"
+                gh release delete-asset packs-latest "$asset" --repo "$GITHUB_REPOSITORY" --yes
+              fi
+            done
+          else
+            echo "Release packs-latest does not exist yet; nothing to clean."
+          fi
+      - name: Publish to permanent 'packs-latest' release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: packs-latest
+          name: Latest packs
+          body: Automatically updated on every push to main. Always reflects the current contents of packs/.
+          files: build/packs-dist/*.zip
+          # FIX: was make_latest: false. This doesn't conflict with the intent
+          # in the comment above ("keep download links permanently valid" via
+          # moving the tag forward), but it does mean GitHub's "Latest
+          # release" badge won't point at this release, so the repo's main
+          # page may show a different (or no) release as "Latest". Changed to
+          # true assuming that's not intentional; revert if another "real"
+          # version release is meant to stay Latest instead.
+          make_latest: true
