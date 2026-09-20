@@ -16,8 +16,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.PUSH_TOKEN }}
 
       - name: Run a one-line script
         run: unzip -q -o core.zip || true
@@ -27,7 +25,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -q -m "Initial import from runtoolkit/suite [skip ci]" \
+          # GITHUB_TOKEN cannot push workflow files, so leave them out of the commit
+          git reset -q -- .github/workflows || true
+          git commit -q -m "Initial import from runtoolkit/suite" \
             -m "Migrated from the runtoolkit organization with:" \
             -m "- misplaced CODEOWNERS/workflow paths fixed" \
             -m "- Turkish comments/strings translated to English" \
