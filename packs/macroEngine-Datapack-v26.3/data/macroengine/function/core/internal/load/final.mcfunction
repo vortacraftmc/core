@@ -1,5 +1,5 @@
 data modify storage macroengine:engine global.version set value "v26.3"
-scoreboard players set #runtoolkit.packs.macroengine.version macroengine.meta 620
+scoreboard players set #vortacraftmc.packs.macroengine.version macroengine.meta 620
 
 tellraw @a ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"macroEngine v26.3 loaded.","color":"green"}]
 

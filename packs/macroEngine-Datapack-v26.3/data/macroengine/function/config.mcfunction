@@ -1,14 +1,14 @@
 # macroengine:config
-# Single source of runtime configuration (replaces _rt_origin + scattered defaults).
+# Single source of runtime configuration (replaces _vc_origin + scattered defaults).
 # Other packs may read macroengine:engine config / macroengine.meta scores; do not hardcode.
 
 # ── Version (620 = 6.2.0) ──────────────────────────────────────────
 scoreboard objectives add macroengine.meta dummy
-scoreboard players set #runtoolkit.packs.macroengine.version macroengine.meta 620
+scoreboard players set #vortacraftmc.packs.macroengine.version macroengine.meta 620
 
 # Archived flag: set to 1 to show archive warning on every /reload
-# scoreboard players set #runtoolkit.archivedpacks.macroengine macroengine.meta 1
-execute unless score #runtoolkit.archivedpacks.macroengine macroengine.meta matches -2147483648..2147483647 run scoreboard players set #runtoolkit.archivedpacks.macroengine macroengine.meta 0
+# scoreboard players set #vortacraftmc.archivedpacks.macroengine macroengine.meta 1
+execute unless score #vortacraftmc.archivedpacks.macroengine macroengine.meta matches -2147483648..2147483647 run scoreboard players set #vortacraftmc.archivedpacks.macroengine macroengine.meta 0
 
 # ── Engine defaults (only fill missing keys — preserves live data) ─
 execute unless data storage macroengine:engine global run data modify storage macroengine:engine global set value {}
@@ -59,4 +59,4 @@ execute unless data storage macroengine:engine flags.experimental.combat_tag run
 execute unless data storage macroengine:engine flags.experimental.scoreboard_hud run data modify storage macroengine:engine flags.experimental.scoreboard_hud set value 0b
 
 
-scoreboard players set #runtoolkit.archivedpacks.macroengine macroengine.meta 1
+scoreboard players set #vortacraftmc.archivedpacks.macroengine macroengine.meta 1

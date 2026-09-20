@@ -136,6 +136,10 @@ organization has since been retired in favor of `vortacraftmc`; the old repos
 are archived with a pointer to this monorepo, and are not otherwise
 maintained.
 
+**Original source:** this project originated as [`runtoolkit/suite`](https://github.com/runtoolkit/suite)
+by **Runtoolkit**. It is maintained here as `vortacraftmc/core`; the original
+copyright notices in each `LICENSE`/`NOTICE` file are preserved.
+
 **Note on `inv_gui`:** this pack was originally brought in as a renamed fork
 of [rarula/Sketch](https://github.com/rarula/Sketch). Its licensing relative
 to the upstream project was never properly cleared before the fork was

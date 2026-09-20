@@ -15,8 +15,8 @@
 #
 set -euo pipefail
 
-ORG="runtoolkit"
-REPO="TunnelScript"
+ORG="vortacraftmc"
+REPO="core"
 API="https://api.github.com"
 
 : "${GH_TOKEN:?Set GH_TOKEN to a token with org custom-properties write access}"

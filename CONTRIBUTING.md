@@ -44,9 +44,9 @@ Keep commit messages short and descriptive. Reference related issues or PRs wher
 
 This project follows a security-first development philosophy, particularly around Minecraft datapack macro injection risks and namespace isolation. If you find a security issue, avoid opening a public issue — contact a maintainer directly instead.
 
-## Provenance watermark (`_rt_origin.mcfunction`)
+## Provenance watermark (`_vc_origin.mcfunction`)
 
-Every datapack under `packs/` carries a `_rt_origin.mcfunction` file (under
+Every datapack under `packs/` carries a `_vc_origin.mcfunction` file (under
 `data/<namespace>/function/`) that `build.gradle`'s `zipPacks` task checks
 for before packaging. This file is not build output and should not be
 removed, renamed, or hand-edited in `packs/` by a contributor's PR —
