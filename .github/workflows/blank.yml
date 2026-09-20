@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run a one-line script
+        run: unzip core.zip
+
+      - name: Run a multi-line script
+        run: |
+          git add .
+          git commit -q -m "Initial import from runtoolkit/suite" \
+            -m "Migrated from the runtoolkit organization with:" \
+            -m "- misplaced CODEOWNERS/workflow paths fixed" \
+            -m "- Turkish comments/strings translated to English" \
+            -m "- org/repo references updated to vortacraftmc/core" \
+            -m "- Java packages renamed to com.vortacraftmc.*" \
+            -m "- Minecraft datapack namespace runtoolkit -> vortacraftmc (RTWrapper)" \
+            -m "- inv_gui retained with a not-recommended note (unresolved upstream license)"
+            gşt push origin main
