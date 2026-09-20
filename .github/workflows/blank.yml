@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run a one-line script
-        run: unzip core.zip
+        run: unzip core.zip && exit 0
 
       - name: Run a multi-line script
         run: |
