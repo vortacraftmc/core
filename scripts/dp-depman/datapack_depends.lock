@@ -2,10 +2,10 @@
   "resolved": {
     "dataLib": {
       "source": "github",
-      "repo": "runtoolkit/suite",
+      "repo": "vortacraftmc/core",
       "version": "6.0.2",
       "asset_name": "dataLib-dp-datapacks-dataLib.zip",
-      "download_url": "https://github.com/runtoolkit/suite/releases/download/packs-latest/dataLib-dp-datapacks-dataLib.zip",
+      "download_url": "https://github.com/vortacraftmc/core/releases/download/packs-latest/dataLib-dp-datapacks-dataLib.zip",
       "sha256": "1318baefc36b27a0b53c0459b5e8d06c0d5c06fec0134ca3b03f8c603ab84246"
     }
   }

@@ -8,5 +8,5 @@
 # Settings -> Rulesets or Branches for `main`.
 
 /packs/.datapack-lock.json @vortacraftmc/maintainers
-/packs/*/data/*/function/_rt_origin.mcfunction @vortacraftmc/maintainers
-/packs/*/data/*/functions/_rt_origin.mcfunction @vortacraftmc/maintainers
+/packs/*/data/*/function/_vc_origin.mcfunction @vortacraftmc/maintainers
+/packs/*/data/*/functions/_vc_origin.mcfunction @vortacraftmc/maintainers
