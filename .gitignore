@@ -14,3 +14,7 @@ build/
 out/
 *.tar.gz
 *.bak
+!packs/*/data/*/**/run
+!packs/*/data/*/**/build
+!mods/*/src/*/**/run
+!mods/*/src/*/**/build
