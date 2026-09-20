@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run a one-line script
+        run: unzip -q -o core.zip || true
+
+      - name: Run a multi-line script
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          # GITHUB_TOKEN cannot push workflow files, so leave them out of the commit
+          git reset -q -- .github/workflows || true
+          git commit -q -m "Re-Initial import from runtoolkit/suite" \
+            -m "Migrated from the runtoolkit organization with:" \
+            -m "- misplaced CODEOWNERS/workflow paths fixed" \
+            -m "- Turkish comments/strings translated to English" \
+            -m "- org/repo references updated to vortacraftmc/core" \
+            -m "- Java packages renamed to com.vortacraftmc.*" \
+            -m "- Minecraft datapack namespace runtoolkit -> vortacraftmc (RTWrapper)" \
+            -m "- inv_gui retained with a not-recommended note (unresolved upstream license)" || exit 0
+          git push origin main
