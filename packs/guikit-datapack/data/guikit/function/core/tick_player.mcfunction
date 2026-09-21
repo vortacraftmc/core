@@ -21,11 +21,10 @@ execute store result score @s guikit.click run clear @s *[custom_data~{guikit:{w
 execute if score @s guikit.click matches 1.. run function guikit:internal/click_handle
 
 # drop detection: a GUI item in the inventory == the player dropped it.
-# same counting trick as click. Kept in its own branch so click_handle can tell
+# same counting trick as click. Kept in its own branch so drop_handle can tell
 # which event fired (guikit.click vs guikit.drop), instead of both landing here
 # indistinguishably.
-execute if score @s guikit.drop matches 1.. run function guikit:internal/click_handle
-execute if score @s guikit.drop matches 1.. run scoreboard players set @s guikit.drop 0
+execute if score @s guikit.drop matches 1.. run function guikit:internal/drop_handle
 
 # redraw when a click happened or a handler asked for it
 execute if score @s guikit.dirty matches 1 run function guikit:core/redraw
