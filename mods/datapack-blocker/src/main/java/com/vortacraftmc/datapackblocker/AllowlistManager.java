@@ -153,15 +153,24 @@ public final class AllowlistManager {
      * quarantined entry with that name was found.
      */
     public boolean approve(String name) throws IOException {
+        name = requireSafeEntryName(name);
         Path quarantineRoot = stateDir.resolve(QUARANTINE_DIR_NAME);
         if (!Files.isDirectory(quarantineRoot)) {
             return false;
         }
+        Path datapacksRoot = datapacksDir.toAbsolutePath().normalize();
         try (DirectoryStream<Path> batches = Files.newDirectoryStream(quarantineRoot)) {
             for (Path batch : batches) {
-                Path candidate = batch.resolve(name);
+                Path candidate = batch.resolve(name).normalize();
+                // Candidate must stay under this batch directory.
+                if (!candidate.startsWith(batch.toAbsolutePath().normalize())) {
+                    continue;
+                }
                 if (Files.exists(candidate)) {
-                    Path destination = datapacksDir.resolve(name);
+                    Path destination = datapacksDir.resolve(name).toAbsolutePath().normalize();
+                    if (!destination.startsWith(datapacksRoot)) {
+                        throw new IllegalArgumentException("Resolved destination escapes datapacks directory");
+                    }
                     Files.move(candidate, destination, StandardCopyOption.REPLACE_EXISTING);
                     Set<String> allowlist = readAllowlist();
                     allowlist.add(name);
@@ -190,18 +199,50 @@ public final class AllowlistManager {
         return names;
     }
 
+
+    /**
+     * Rejects path-traversal and multi-segment names. Entry names must be a
+     * single path segment (no {@code /}, {@code \}, {@code .}, or {@code ..}).
+     * Used for operator-supplied arguments such as {@code /datapackblocker approve}.
+     */
+    private static String requireSafeEntryName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Datapack entry name must not be empty");
+        }
+        if (name.indexOf('/') >= 0 || name.indexOf('\\') >= 0
+                || name.equals(".") || name.equals("..")) {
+            throw new IllegalArgumentException("Invalid datapack entry name (path traversal rejected): " + name);
+        }
+        Path asPath = Path.of(name);
+        if (asPath.getNameCount() != 1 || asPath.isAbsolute()) {
+            throw new IllegalArgumentException("Invalid datapack entry name (must be a single segment): " + name);
+        }
+        return name;
+    }
+
     // -- internals --------------------------------------------------------
 
     private void quarantineEntry(String name) throws IOException {
+        name = requireSafeEntryName(name);
         Path batchDir = stateDir.resolve(QUARANTINE_DIR_NAME).resolve(String.valueOf(Instant.now().toEpochMilli()));
         Files.createDirectories(batchDir);
-        Path source = datapacksDir.resolve(name);
-        Path destination = batchDir.resolve(name);
+        Path datapacksRoot = datapacksDir.toAbsolutePath().normalize();
+        Path source = datapacksDir.resolve(name).toAbsolutePath().normalize();
+        if (!source.startsWith(datapacksRoot)) {
+            throw new IllegalArgumentException("Source path escapes datapacks directory: " + name);
+        }
+        Path destination = batchDir.resolve(name).normalize();
         Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
     }
 
     private void lockEntry(String name) throws IOException {
-        setWritableRecursive(datapacksDir.resolve(name), false);
+        name = requireSafeEntryName(name);
+        Path datapacksRoot = datapacksDir.toAbsolutePath().normalize();
+        Path target = datapacksDir.resolve(name).toAbsolutePath().normalize();
+        if (!target.startsWith(datapacksRoot)) {
+            throw new IllegalArgumentException("Lock target escapes datapacks directory: " + name);
+        }
+        setWritableRecursive(target, false);
     }
 
     private void setWritableRecursive(Path root, boolean writable) throws IOException {
