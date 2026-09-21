@@ -10,7 +10,7 @@
 	"contact": {
 		"sources": "https://github.dev/vortacraftmc/core"
 	},
-	"license": "MIT",
+	"license": "Unlicense",
 	"icon": "assets/template-mod/icon.png",
 	"environment": "*",
 	"entrypoints": {

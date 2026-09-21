@@ -58,4 +58,4 @@ above.
 
 ## License
 
-[MIT](LICENSE), © Runtoolkit.
+[Unlicense](LICENSE) (public domain).
