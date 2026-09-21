@@ -1,53 +1,106 @@
 #!/usr/bin/env python3
 """
 Fails (non-zero exit) if a pull request touches any file under a
-packs/<name>/ directory that is marked "locked": true in
-packs/.datapack-lock.json.
+packs/<name>/ directory that is marked "locked": true.
 
 Usage:
-    check_lock.py <path-to-lock-json> <changed-file-1> [<changed-file-2> ...]
+    check_lock.py <path-to-lock-json> [changed-file ...]
+    check_lock.py <path-to-lock-json> --from-file <path-with-one-file-per-line>
 
-Design notes (read before changing the logic):
-- A top-level packs/ directory that has NO entry in the lock file at all
-  is treated as new/unreviewed content and is allowed through here - that
-  is the intentional path for adding a brand new pack. It is reported as
-  a warning so a human notices and adds a locked entry for it in a
-  prompt follow-up PR.
-- A directory with an entry and "locked": true is protected: any changed
-  path under it fails the check, full stop. Unlocking must happen as its
-  own reviewed change to the lock file, merged *before* the edit, not in
-  the same PR as the edit - otherwise "flip the flag and edit in one PR"
-  would defeat the point of requiring separate review for the unlock.
-- A directory with an entry and "locked": false is explicitly under
-  maintenance and changes are allowed.
+Lock file is read from the path given on the command line. CI should pass
+the lock file from the *base* branch (not the PR head) so that unlocking
+and editing in the same PR cannot bypass the check.
+
+Design notes:
+- A top-level packs/ directory with NO entry in the lock file is treated as
+  new content and is allowed (with a NOTE). Add and lock it in a follow-up.
+- locked: true → any changed path under that pack fails the job.
+- locked: false → changes allowed (maintenance mode).
+- Unlock must be a separate merged PR before content edits; evaluating the
+  base-branch lock file enforces that.
 """
+from __future__ import annotations
+
+import argparse
 import json
 import sys
 from collections import defaultdict
+from pathlib import Path
 
 
 def top_level_pack_name(changed_path: str, packs_prefix: str = "packs/") -> str | None:
+    # Normalize separators for Windows-style paths in rare diffs
+    changed_path = changed_path.replace("\\", "/")
     if not changed_path.startswith(packs_prefix):
         return None
-    rest = changed_path[len(packs_prefix):]
-    if rest.startswith("."):
-        # the lock file itself, or other dotfiles directly under packs/ - not a pack.
+    rest = changed_path[len(packs_prefix) :]
+    if not rest or rest.startswith("."):
+        # lock file itself or other dotfiles under packs/ — not a pack
         return None
     parts = rest.split("/", 1)
-    return parts[0] if parts else None
+    name = parts[0]
+    return name if name else None
 
 
-def main(argv: list[str]) -> int:
-    if len(argv) < 2:
-        print("usage: check_lock.py <lock-json-path> [changed-file ...]", file=sys.stderr)
+def load_changed_files(positional: list[str], from_file: str | None) -> list[str]:
+    files: list[str] = []
+    if from_file is not None:
+        path = Path(from_file)
+        if path.is_file():
+            for line in path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    files.append(line)
+    files.extend(positional)
+    # de-dupe, preserve order
+    seen: set[str] = set()
+    out: list[str] = []
+    for f in files:
+        if f not in seen:
+            seen.add(f)
+            out.append(f)
+    return out
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Block PR changes to locked datapacks.")
+    parser.add_argument(
+        "lock_json",
+        help="Path to packs/.datapack-lock.json (prefer base-branch copy in CI)",
+    )
+    parser.add_argument(
+        "changed_files",
+        nargs="*",
+        help="Changed paths (packs/...)",
+    )
+    parser.add_argument(
+        "--from-file",
+        dest="from_file",
+        default=None,
+        help="File with one changed path per line (avoids shell word-splitting)",
+    )
+    args = parser.parse_args(argv)
+
+    lock_path = Path(args.lock_json)
+    if not lock_path.is_file():
+        print(f"ERROR: lock file not found: {lock_path}", file=sys.stderr)
         return 2
 
-    lock_path = argv[0]
-    changed_files = argv[1:]
+    try:
+        lock_data = json.loads(lock_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"ERROR: invalid JSON in {lock_path}: {exc}", file=sys.stderr)
+        return 2
 
-    with open(lock_path, "r", encoding="utf-8") as handle:
-        lock_data = json.load(handle)
-    packs = lock_data.get("packs", {})
+    packs = lock_data.get("packs")
+    if not isinstance(packs, dict):
+        print(f"ERROR: {lock_path} missing object key 'packs'", file=sys.stderr)
+        return 2
+
+    changed_files = load_changed_files(args.changed_files, args.from_file)
+    if not changed_files:
+        print("OK: no pack files in the diff.")
+        return 0
 
     touched_by_pack: dict[str, list[str]] = defaultdict(list)
     for changed_file in changed_files:
@@ -59,17 +112,26 @@ def main(argv: list[str]) -> int:
     violations: list[tuple[str, list[str]]] = []
     new_packs: list[str] = []
 
-    for pack_name, files in touched_by_pack.items():
+    for pack_name, files in sorted(touched_by_pack.items()):
         entry = packs.get(pack_name)
         if entry is None:
             new_packs.append(pack_name)
             continue
+        if not isinstance(entry, dict):
+            print(
+                f"ERROR: lock entry for {pack_name!r} must be an object, got {type(entry).__name__}",
+                file=sys.stderr,
+            )
+            return 2
         if entry.get("locked", False):
             violations.append((pack_name, files))
 
     if new_packs:
-        print("NOTE: new top-level pack director(y/ies) not yet in the lock file "
-              f"(allowed through, but should be added and locked in a follow-up PR): {sorted(new_packs)}")
+        print(
+            "NOTE: new top-level pack director(y/ies) not yet in the lock file "
+            f"(allowed through, but should be added and locked in a follow-up PR): "
+            f"{sorted(new_packs)}"
+        )
 
     if violations:
         print("\nFAILED: this PR modifies file(s) inside locked pack(s):\n", file=sys.stderr)
@@ -78,9 +140,14 @@ def main(argv: list[str]) -> int:
             for f in files:
                 print(f"    - {f}", file=sys.stderr)
         print(
-            "\nTo edit a locked pack: open and merge a separate PR that sets its entry to "
-            "'locked: false' in packs/.datapack-lock.json first, then make your change, "
-            "then open a follow-up PR that sets it back to 'locked: true'.",
+            "\nLocked datapacks are blocked from content changes in the same PR.\n"
+            "To edit a locked pack:\n"
+            "  1. Open and merge a separate PR that sets its entry to "
+            "'locked: false' in packs/.datapack-lock.json\n"
+            "  2. Open a PR with your content changes\n"
+            "  3. Open a follow-up PR that sets 'locked: true' again\n"
+            "Unlocking and editing in one PR is intentionally rejected "
+            "(lock status is taken from the base branch).",
             file=sys.stderr,
         )
         return 1
@@ -90,4 +157,4 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+    raise SystemExit(main())
