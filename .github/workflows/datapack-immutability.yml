@@ -5,36 +5,45 @@ name: Datapack Immutability Check
 #
 # Deliberately NOT using pull_request_target: read-only diff check, no secrets,
 # no elevated base-branch token against untrusted PR content.
+#
+# Both the lock file AND the checker script are loaded from the base branch,
+# so a PR cannot unlock a pack or neuter the checker in the same change.
+#
+# No `paths:` filter on purpose: if this is a required status check, a
+# path-filtered workflow never reports on unrelated PRs and blocks the merge.
+# The diff step below already handles the "nothing changed under packs/" case.
 on:
   pull_request:
     branches: [main]
-    paths:
-      - "packs/**"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: datapack-immutability-${{ github.event.pull_request.number || github.ref }}
+  group: datapack-immutability-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   check-lock:
     name: Block locked datapack edits
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Checkout PR head
+      - name: Checkout PR
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Fetch base branch (for lock file + diff)
+      - name: Fetch base branch
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
-          git fetch --no-tags --prune --depth=1 origin "$BASE_REF"
-          # Resolve merge-base / three-dot range against origin/base
+          # Full history is already present (fetch-depth: 0); no --depth here,
+          # a shallow fetch could truncate history and break the merge-base.
+          git fetch --no-tags --prune origin \
+            "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
           if ! git rev-parse --verify "origin/${BASE_REF}" >/dev/null 2>&1; then
             echo "ERROR: origin/${BASE_REF} not available after fetch" >&2
             exit 1
@@ -51,36 +60,46 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
-          # Three-dot: changes on the PR side since merge-base with base
-          git diff --name-only "origin/${BASE_REF}...HEAD" -- packs/ \
-            | sort -u > changed_pack_files.txt
+          # Three-dot: changes on the PR side since merge-base with base.
+          # --no-renames: report both old and new paths, so moving a file
+          # out of a locked pack cannot hide the original location.
+          # core.quotepath=false: keep non-ASCII names unquoted.
+          git -c core.quotepath=false diff --name-only --no-renames \
+            "origin/${BASE_REF}...HEAD" -- packs/ \
+            | sort -u > "$RUNNER_TEMP/changed_pack_files.txt"
           echo "Changed paths under packs/:"
-          if [ ! -s changed_pack_files.txt ]; then
+          if [ ! -s "$RUNNER_TEMP/changed_pack_files.txt" ]; then
             echo "(none)"
           else
-            cat changed_pack_files.txt
+            cat "$RUNNER_TEMP/changed_pack_files.txt"
           fi
-          echo "count=$(wc -l < changed_pack_files.txt | tr -d ' ')" >> "$GITHUB_OUTPUT"
+          echo "count=$(wc -l < "$RUNNER_TEMP/changed_pack_files.txt" | tr -d ' ')" >> "$GITHUB_OUTPUT"
 
-      - name: Extract base-branch lock file
+      - name: Load lock file and checker from base
+        if: steps.diff.outputs.count != '0'
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
-          # Evaluate lock status from BASE, not PR head — prevents
-          # "unlock + edit in one PR" bypass.
-          if git cat-file -e "origin/${BASE_REF}:packs/.datapack-lock.json" 2>/dev/null; then
-            git show "origin/${BASE_REF}:packs/.datapack-lock.json" > base-datapack-lock.json
-          else
-            echo "ERROR: packs/.datapack-lock.json missing on origin/${BASE_REF}" >&2
-            exit 1
-          fi
+          # Evaluate lock status and checker logic from BASE, not PR head:
+          # prevents "unlock + edit in one PR" and "edit the checker" bypasses.
+          for f in packs/.datapack-lock.json scripts/datapack_lock/check_lock.py; do
+            if ! git cat-file -e "origin/${BASE_REF}:${f}" 2>/dev/null; then
+              echo "ERROR: ${f} missing on origin/${BASE_REF}" >&2
+              exit 1
+            fi
+          done
+          git show "origin/${BASE_REF}:packs/.datapack-lock.json" \
+            > "$RUNNER_TEMP/base-datapack-lock.json"
+          git show "origin/${BASE_REF}:scripts/datapack_lock/check_lock.py" \
+            > "$RUNNER_TEMP/check_lock.py"
           echo "Base lock file:"
-          cat base-datapack-lock.json
+          cat "$RUNNER_TEMP/base-datapack-lock.json"
 
       - name: Enforce locked datapacks (block)
+        if: steps.diff.outputs.count != '0'
         run: |
           set -euo pipefail
-          python3 scripts/datapack_lock/check_lock.py \
-            base-datapack-lock.json \
-            --from-file changed_pack_files.txt
+          python3 "$RUNNER_TEMP/check_lock.py" \
+            "$RUNNER_TEMP/base-datapack-lock.json" \
+            --from-file "$RUNNER_TEMP/changed_pack_files.txt"
