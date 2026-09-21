@@ -254,4 +254,4 @@ declare the same file path, last write wins. Check build output for conflict war
 
 ## License
 
-MIT
+Unlicense

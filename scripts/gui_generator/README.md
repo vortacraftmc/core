@@ -258,4 +258,4 @@ twine check dist/*
 
 ## License
 
-MIT
+Unlicense
