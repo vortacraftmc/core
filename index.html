@@ -3,13 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>vortacraftmc/core</title>
-
   <meta property="og:title" content="vortacraftmc/core">
   <meta property="og:description" content="Consolidated Fabric mods, datapacks & tools">
   <meta property="og:image" content="https://vortacraftmc.github.io/core/banner.png">
-
   <style>
     :root {
       --bg: #0d1117;
@@ -18,39 +15,29 @@
       --text: #e6edf3;
       --muted: #8b949e;
       --accent: #3fb950;
+      --danger: #f85149;
+      --warning: #d29922;
     }
-
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       background: var(--bg);
       color: var(--text);
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Helvetica,
-        Arial,
-        sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
       line-height: 1.6;
+      min-height: 100vh;
     }
-
     .banner {
       width: 100%;
       max-width: 1200px;
       display: block;
       margin: 0 auto;
     }
-
     main {
       max-width: 900px;
       margin: 0 auto;
       padding: 0 24px 80px;
     }
-
     h2 {
       font-size: 22px;
       font-weight: 600;
@@ -59,43 +46,138 @@
       border-bottom: 1px solid var(--border);
       padding-bottom: 8px;
     }
+    p.lead { color: var(--muted); font-size: 16px; }
 
-    p.lead {
-      color: var(--muted);
-      font-size: 16px;
+    #loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
     }
+    #loading-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .spinner.sm {
+      width: 16px;
+      height: 16px;
+      border-width: 2px;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading-status {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+      max-width: 320px;
+    }
+    #loading-progress {
+      margin-top: 12px;
+      width: 200px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    #loading-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 0.25s ease;
+    }
+
+    #error-banner {
+      display: none;
+      background: rgba(248, 81, 73, 0.12);
+      border: 1px solid var(--danger);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 24px 0 0;
+      color: var(--text);
+      font-size: 14px;
+    }
+    #error-banner.visible { display: block; }
+    #error-banner strong { color: var(--danger); }
+    #error-banner .error-detail {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      word-break: break-word;
+    }
+    #error-banner button {
+      margin-top: 10px;
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #error-banner button:hover { opacity: 0.9; }
+
+    #api-status {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    #api-status .ok { color: var(--accent); }
+    #api-status .warn { color: var(--warning); }
+    #api-status .err { color: var(--danger); }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(
-        auto-fill,
-        minmax(240px, 1fr)
-      );
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
       gap: 16px;
     }
-
     .card {
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 16px;
+      display: flex;
+      flex-direction: column;
     }
-
     .card h3 {
       margin: 0 0 6px;
       font-size: 15px;
       font-weight: 600;
       word-break: break-word;
     }
-
     .card p {
       margin: 0 0 12px;
       font-size: 13px;
       color: var(--muted);
+      flex: 1;
     }
-
+    .card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
     .btn {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       background: var(--accent);
       color: #0d1117;
       text-decoration: none;
@@ -103,23 +185,46 @@
       font-weight: 600;
       padding: 6px 12px;
       border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1.4;
     }
-
-    .btn:hover {
-      opacity: 0.85;
+    .btn:hover:not(:disabled) { opacity: 0.85; }
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
     }
-
+    .btn.secondary {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    .btn.danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--danger);
+    }
+    .dl-status {
+      font-size: 12px;
+      margin-top: 8px;
+      min-height: 1.2em;
+    }
+    .dl-status.ok { color: var(--accent); }
+    .dl-status.err { color: var(--danger); }
+    .dl-status.info { color: var(--muted); }
+    .empty-state {
+      color: var(--muted);
+      font-size: 13px;
+      grid-column: 1 / -1;
+    }
     footer {
       text-align: center;
       color: var(--muted);
       font-size: 13px;
       margin-top: 64px;
     }
-
-    footer a {
-      color: var(--accent);
-    }
-
+    footer a { color: var(--accent); }
     code {
       background: var(--card);
       border: 1px solid var(--border);
@@ -127,249 +232,524 @@
       padding: 2px 6px;
       font-size: 13px;
     }
+
+    /* Download toast */
+    #dl-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      max-width: 360px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      z-index: 10000;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    #dl-toast.visible { display: flex; }
+    #dl-toast.ok { border-color: var(--accent); }
+    #dl-toast.err { border-color: var(--danger); }
+    #dl-toast .toast-body { flex: 1; }
+    #dl-toast .toast-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0;
+    }
   </style>
 </head>
-
 <body>
+  <div id="loading-overlay" role="status" aria-live="polite" aria-busy="true">
+    <div class="spinner" aria-hidden="true"></div>
+    <div id="loading-status">Connecting to GitHub…</div>
+    <div id="loading-progress"><div id="loading-progress-bar"></div></div>
+  </div>
 
-  <img
-    class="banner"
-    src="banner.png"
-    alt="vortacraftmc/core"
-  >
+  <div id="dl-toast" role="status" aria-live="polite">
+    <div class="toast-body" id="dl-toast-body"></div>
+    <button type="button" class="toast-close" id="dl-toast-close" aria-label="Dismiss">&times;</button>
+  </div>
+
+  <img class="banner" src="banner.png" alt="vortacraftmc/core" onerror="this.style.display='none'">
 
   <main>
-
     <p class="lead">
       A consolidated monorepo for the vortacraftmc ecosystem:
       Fabric mods, datapacks, and helper scripts, all in one place.
     </p>
+    <p id="api-status"></p>
 
-    <h2>Datapacks &amp; resource packs</h2>
-
-    <p class="lead" style="font-size: 13px;">
-      The packs below are automatically rebuilt on every push to
-      <code>main</code> and published to the
-      <code>packs-latest</code> release. Links are permanent.
-    </p>
-
-    <div class="grid" id="packs-grid">
-      <!--
-        This list is maintained by hand based on the pack folders
-        seen in CI output.
-
-        When a new pack is added, add a matching object to the
-        packs array below.
-      -->
+    <div id="error-banner" role="alert">
+      <strong>Something went wrong</strong>
+      <div class="error-detail" id="error-detail"></div>
+      <button type="button" id="error-retry">Retry</button>
     </div>
 
-    <h2>Fabric mods</h2>
-
+    <h2>Datapacks &amp; resource packs</h2>
     <p class="lead" style="font-size: 13px;">
-      Projects under <code>mods/</code> aren't wired into the
-      automated build/release pipeline yet.
-      You can browse the source directly on GitHub.
+      Packs are rebuilt on pushes to <code>main</code> and published to the
+      <code>packs-latest</code> release when available. Downloads are verified
+      against GitHub before starting (HEAD check). A static fallback list is
+      used if the API is unreachable.
     </p>
+    <div class="grid" id="packs-grid"></div>
 
+    <h2>Fabric mods</h2>
+    <p class="lead" style="font-size: 13px;">
+      Projects under <code>mods/</code>. Source links come from the repository
+      tree when the API is available.
+    </p>
     <div class="grid" id="mods-grid"></div>
 
     <footer>
-      <a
-        href="https://github.com/vortacraftmc/core"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
+      <a href="https://github.com/vortacraftmc/core" target="_blank" rel="noopener noreferrer">
         github.com/vortacraftmc/core
       </a>
       &nbsp;·&nbsp;
-      <a
-        href="https://github.com/vortacraftmc/core/wiki"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="GitHub Wiki sayfası"
-      >
-        Wiki
-      </a>
+      <a href="https://github.com/vortacraftmc/core/wiki" target="_blank" rel="noopener noreferrer">Wiki</a>
       &nbsp;·&nbsp;
-      <a
-        href="https://github.com/vortacraftmc/core/issues"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Issues / Bug report sayfası"
-      >
-        Issues
-      </a>
+      <a href="https://github.com/vortacraftmc/core/issues" target="_blank" rel="noopener noreferrer">Issues</a>
       &nbsp;·&nbsp;
-      <a
-        href="https://github.com/vortacraftmc/core/fork"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Repo'yu fork'la"
-      >
-        Fork
-      </a>
+      <a href="https://github.com/vortacraftmc/core/fork" target="_blank" rel="noopener noreferrer">Fork</a>
     </footer>
-
   </main>
 
   <script>
-    // GitHub Release containing the latest automatically-built packs.
-    const RELEASE_BASE =
-      "https://github.com/vortacraftmc/core/releases/download/packs-latest/";
+(function () {
+  "use strict";
 
-    /*
-     * Pack list.
-     *
-     * The "zip" value MUST exactly match the ZIP filename
-     * generated by the build system.
-     */
-    const packs = [
-      {
-        name: "InteractionClickDetection",
-        zip: "InteractionClickDetection.zip"
-      },
-      {
-        name: "LeftClickDetection",
-        zip: "LeftClickDetection.zip"
-      },
-      {
-        name: "RTWrapper (1.21.1)",
-        zip: "RTWrapper-1.21.1.zip"
-      },
-      {
-        name: "RTWrapper (v1.0.1)",
-        zip: "RTWrapper-v1.0.1.zip"
-      },
-      {
-        name: "RTWrapper Datapack",
-        zip: "RTWrapper-datapack-RTWrapper-Datapack.zip"
-      },
-      {
-        name: "TunnelScript",
-        zip: "TunnelScript.zip"
-      },
-      {
-        name: "cmdTunnel-datapack",
-        zip: "cmdTunnel-datapack.zip"
-      },
-      {
-        name: "inv_gui",
-        zip: "inv_gui.zip"
-      },
-      {
-        name: "inv_gui (Example)",
-        zip: "inv_gui-Example.zip"
-      },
-      {
-        name: "macroEngine (Datapack, v26.3)",
-        zip: "macroEngine-Datapack-v26.3.zip"
-      },
-      {
-        name: "macroEngine (Resource pack, v26.3)",
-        zip: "macroEngine-Resourcepack-v26.3.zip"
-      },
-      {
-        name: "DailyBonus",
-        zip: "DailyBonus.zip"
-      },
-      {
-        name: "BorderPing",
-        zip: "BorderPing.zip"
-      },
-      {
-        name: "QuickShare",
-        zip: "QuickShare.zip"
+  const OWNER = "vortacraftmc";
+  const REPO = "core";
+  const RELEASE_TAG = "packs-latest";
+  const RELEASE_BASE =
+    "https://github.com/" + OWNER + "/" + REPO + "/releases/download/" + RELEASE_TAG + "/";
+  const MODS_TREE_BASE =
+    "https://github.com/" + OWNER + "/" + REPO + "/tree/main/mods/";
+  const API_RELEASE =
+    "https://api.github.com/repos/" + OWNER + "/" + REPO + "/releases/tags/" + RELEASE_TAG;
+  const API_CONTENTS_MODS =
+    "https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/mods";
+  const FETCH_TIMEOUT_MS = 12000;
+  const HEAD_TIMEOUT_MS = 8000;
+
+  const FALLBACK_PACKS = [
+    { name: "InteractionClickDetection", zip: "InteractionClickDetection.zip" },
+    { name: "LeftClickDetection", zip: "LeftClickDetection.zip" },
+    { name: "RTWrapper (1.21.1)", zip: "RTWrapper-1.21.1.zip" },
+    { name: "RTWrapper (v1.0.1)", zip: "RTWrapper-v1.0.1.zip" },
+    { name: "RTWrapper Datapack", zip: "RTWrapper-datapack-RTWrapper-Datapack.zip" },
+    { name: "TunnelScript", zip: "TunnelScript.zip" },
+    { name: "cmdTunnel-datapack", zip: "cmdTunnel-datapack.zip" },
+    { name: "inv_gui", zip: "inv_gui.zip" },
+    { name: "inv_gui (Example)", zip: "inv_gui-Example.zip" },
+    { name: "macroEngine (Datapack, v26.3)", zip: "macroEngine-Datapack-v26.3.zip" },
+    { name: "macroEngine (Resource pack, v26.3)", zip: "macroEngine-Resourcepack-v26.3.zip" },
+    { name: "DailyBonus", zip: "DailyBonus.zip" },
+    { name: "BorderPing", zip: "BorderPing.zip" },
+    { name: "QuickShare", zip: "QuickShare.zip" }
+  ];
+  const FALLBACK_MODS = [
+    { name: "datapack-fixer", dir: "datapack-fixer" },
+    { name: "rtwrapper-mod", dir: "rtwrapper-mod" }
+  ];
+
+  const el = {
+    overlay: document.getElementById("loading-overlay"),
+    status: document.getElementById("loading-status"),
+    bar: document.getElementById("loading-progress-bar"),
+    errorBanner: document.getElementById("error-banner"),
+    errorDetail: document.getElementById("error-detail"),
+    errorRetry: document.getElementById("error-retry"),
+    apiStatus: document.getElementById("api-status"),
+    packsGrid: document.getElementById("packs-grid"),
+    modsGrid: document.getElementById("mods-grid"),
+    toast: document.getElementById("dl-toast"),
+    toastBody: document.getElementById("dl-toast-body"),
+    toastClose: document.getElementById("dl-toast-close")
+  };
+
+  let toastTimer = null;
+
+  function setProgress(pct, message) {
+    el.bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
+    if (message) el.status.textContent = message;
+  }
+
+  function hideLoading() {
+    el.overlay.classList.add("hidden");
+    el.overlay.setAttribute("aria-busy", "false");
+  }
+
+  function showError(summary, detail) {
+    el.errorDetail.textContent = detail || summary;
+    el.errorBanner.classList.add("visible");
+  }
+
+  function clearError() {
+    el.errorBanner.classList.remove("visible");
+    el.errorDetail.textContent = "";
+  }
+
+  function showToast(message, kind) {
+    el.toastBody.textContent = message;
+    el.toast.classList.remove("ok", "err");
+    if (kind) el.toast.classList.add(kind);
+    el.toast.classList.add("visible");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      el.toast.classList.remove("visible");
+    }, 5000);
+  }
+
+  el.toastClose.addEventListener("click", function () {
+    el.toast.classList.remove("visible");
+    if (toastTimer) clearTimeout(toastTimer);
+  });
+
+  function fetchWithTimeout(url, options, timeoutMs) {
+    const controller = new AbortController();
+    const ms = timeoutMs || FETCH_TIMEOUT_MS;
+    const timer = setTimeout(function () { controller.abort(); }, ms);
+    return fetch(url, Object.assign({}, options || {}, { signal: controller.signal }))
+      .then(function (res) {
+        clearTimeout(timer);
+        return res;
+      })
+      .catch(function (err) {
+        clearTimeout(timer);
+        throw err;
+      });
+  }
+
+  function prettyNameFromZip(filename) {
+    return filename.replace(/\.zip$/i, "").replace(/-/g, " ");
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  function escapeAttr(s) {
+    return escapeHtml(s).replace(/'/g, "&#39;");
+  }
+
+  /**
+   * Download system:
+   * 1) Disable button + show spinner
+   * 2) HEAD (or GET range) the URL to confirm the asset exists
+   * 3) On success, trigger browser download via temporary <a download>
+   * 4) On failure, show inline error + toast
+   */
+  async function startDownload(pack, btn, statusEl) {
+    const url = pack.downloadUrl || (RELEASE_BASE + encodeURIComponent(pack.zip));
+    const filename = pack.zip || (pack.name + ".zip");
+
+    btn.disabled = true;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner sm" aria-hidden="true"></span>Checking…';
+    statusEl.className = "dl-status info";
+    statusEl.textContent = "Verifying file on GitHub…";
+
+    try {
+      // Prefer HEAD; some CDNs only allow GET — fall back carefully
+      let ok = false;
+      let status = 0;
+      let sizeHint = "";
+
+      try {
+        const headRes = await fetchWithTimeout(url, { method: "HEAD", redirect: "follow" }, HEAD_TIMEOUT_MS);
+        status = headRes.status;
+        if (headRes.ok) {
+          ok = true;
+          const len = headRes.headers.get("content-length");
+          if (len) {
+            const n = parseInt(len, 10);
+            if (!isNaN(n) && n > 0) {
+              sizeHint = n > 1048576
+                ? (n / 1048576).toFixed(1) + " MB"
+                : Math.round(n / 1024) + " KB";
+            }
+          }
+        } else if (status === 405 || status === 501) {
+          // HEAD not allowed — try a range GET
+          const rangeRes = await fetchWithTimeout(url, {
+            method: "GET",
+            headers: { Range: "bytes=0-0" },
+            redirect: "follow"
+          }, HEAD_TIMEOUT_MS);
+          status = rangeRes.status;
+          ok = rangeRes.ok || status === 206;
+          // Abort body consumption
+          if (rangeRes.body && rangeRes.body.cancel) rangeRes.body.cancel();
+        }
+      } catch (netErr) {
+        // CORS may block HEAD from pages on github.io for release CDN —
+        // in that case we still offer a direct navigation download.
+        if (netErr.name === "AbortError") {
+          throw new Error("Verification timed out");
+        }
+        // Opaque / CORS failure: proceed with best-effort download
+        statusEl.textContent = "Could not pre-check (CORS). Starting download…";
+        triggerBrowserDownload(url, filename);
+        statusEl.className = "dl-status ok";
+        statusEl.textContent = "Download started" + (sizeHint ? " (" + sizeHint + ")" : "") + ".";
+        showToast("Download started: " + filename, "ok");
+        return;
       }
-    ];
 
-    /*
-     * Fabric mods.
-     *
-     * Add entries here when mods/ projects are ready to be listed.
-     *
-     * Example:
-     *
-     * {
-     *   name: "dataLib-FabricMod",
-     *   dir: "dataLib-FabricMod"
-     * }
-     */
-    const modsRepoBase =
-      "https://github.com/vortacraftmc/core/tree/main/mods/";
-
-    const mods = [
-      {
-        name: "datapack-fixer",
-        dir: "datapack-fixer"
-      },
-      {
-        name: "rtwrapper-mod",
-        dir: "rtwrapper-mod"
+      if (!ok) {
+        if (status === 404) {
+          throw new Error("File not found on GitHub (404). The release asset may be missing.");
+        }
+        if (status === 403) {
+          throw new Error("Access denied (403). Rate limit or private asset.");
+        }
+        throw new Error("Server returned HTTP " + status);
       }
-    ];
 
-    // -------------------------
-    // Datapacks
-    // -------------------------
+      statusEl.textContent = "Starting download…";
+      triggerBrowserDownload(url, filename);
+      statusEl.className = "dl-status ok";
+      statusEl.textContent = "Download started" + (sizeHint ? " (" + sizeHint + ")" : "") + ".";
+      showToast("Download started: " + filename, "ok");
+    } catch (err) {
+      const msg = err && err.message ? err.message : String(err);
+      statusEl.className = "dl-status err";
+      statusEl.textContent = msg;
+      showToast("Download failed: " + filename + " — " + msg, "err");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  }
 
-    const packsGrid = document.getElementById("packs-grid");
+  function triggerBrowserDownload(url, filename) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.setAttribute("download", filename);
+    a.rel = "noopener noreferrer";
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 
-    packs.forEach((pack) => {
+  function renderPacks(packs, sourceLabel) {
+    el.packsGrid.innerHTML = "";
+    if (!packs || packs.length === 0) {
+      el.packsGrid.innerHTML = '<p class="empty-state">No packs available.</p>';
+      return;
+    }
+    packs.forEach(function (pack) {
       const card = document.createElement("div");
-
       card.className = "card";
 
-      card.innerHTML = `
-        <h3>${pack.name}</h3>
-        <p>Datapack / resource pack</p>
-        <a
-          class="btn"
-          href="${RELEASE_BASE}${encodeURIComponent(pack.zip)}"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Download (.zip)
-        </a>
-      `;
+      const title = document.createElement("h3");
+      title.textContent = pack.name;
 
-      packsGrid.appendChild(card);
-    });
+      const desc = document.createElement("p");
+      desc.textContent =
+        "Datapack / resource pack" +
+        (sourceLabel ? " · " + sourceLabel : "");
 
-    // -------------------------
-    // Fabric mods
-    // -------------------------
+      const actions = document.createElement("div");
+      actions.className = "card-actions";
 
-    const modsGrid = document.getElementById("mods-grid");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn";
+      btn.textContent = "Download (.zip)";
 
-    if (mods.length === 0) {
-      modsGrid.innerHTML = `
-        <p class="lead" style="font-size: 13px;">
-          No mods listed yet.
-        </p>
-      `;
-    } else {
-      mods.forEach((mod) => {
-        const card = document.createElement("div");
+      const statusEl = document.createElement("div");
+      statusEl.className = "dl-status";
 
-        card.className = "card";
-
-        card.innerHTML = `
-          <h3>${mod.name}</h3>
-          <p>Fabric mod (source)</p>
-          <a
-            class="btn"
-            href="${modsRepoBase}${encodeURIComponent(mod.dir)}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View source
-          </a>
-        `;
-
-        modsGrid.appendChild(card);
+      btn.addEventListener("click", function () {
+        startDownload(pack, btn, statusEl);
       });
-    }
-  </script>
 
+      actions.appendChild(btn);
+      card.appendChild(title);
+      card.appendChild(desc);
+      card.appendChild(actions);
+      card.appendChild(statusEl);
+      el.packsGrid.appendChild(card);
+    });
+  }
+
+  function renderMods(mods, sourceLabel) {
+    el.modsGrid.innerHTML = "";
+    if (!mods || mods.length === 0) {
+      el.modsGrid.innerHTML = '<p class="empty-state">No mods listed yet.</p>';
+      return;
+    }
+    mods.forEach(function (mod) {
+      const card = document.createElement("div");
+      card.className = "card";
+      const href = MODS_TREE_BASE + encodeURIComponent(mod.dir);
+      card.innerHTML =
+        "<h3>" + escapeHtml(mod.name) + "</h3>" +
+        "<p>Fabric mod (source)" +
+        (sourceLabel ? " · " + escapeHtml(sourceLabel) : "") +
+        "</p>" +
+        '<div class="card-actions">' +
+        '<a class="btn" href="' + escapeAttr(href) + '" target="_blank" rel="noopener noreferrer">View source</a>' +
+        "</div>";
+      el.modsGrid.appendChild(card);
+    });
+  }
+
+  function packsFromReleaseAssets(assets) {
+    if (!Array.isArray(assets)) return [];
+    return assets
+      .filter(function (a) {
+        return a && typeof a.name === "string" && /\.zip$/i.test(a.name);
+      })
+      .map(function (a) {
+        return {
+          name: prettyNameFromZip(a.name),
+          zip: a.name,
+          downloadUrl: a.browser_download_url || (RELEASE_BASE + encodeURIComponent(a.name))
+        };
+      })
+      .sort(function (a, b) {
+        return a.name.localeCompare(b.name);
+      });
+  }
+
+  function modsFromContents(items) {
+    if (!Array.isArray(items)) return [];
+    return items
+      .filter(function (item) {
+        return item && item.type === "dir" && item.name && item.name !== "TEMPLATE-MOD";
+      })
+      .map(function (item) {
+        return { name: item.name, dir: item.name };
+      })
+      .sort(function (a, b) {
+        return a.name.localeCompare(b.name);
+      });
+  }
+
+  async function loadAll() {
+    clearError();
+    setProgress(5, "Connecting to GitHub…");
+    el.apiStatus.innerHTML = "";
+
+    let packs = null;
+    let mods = null;
+    let packsSource = "fallback";
+    let modsSource = "fallback";
+    const errors = [];
+
+    setProgress(20, "Fetching packs-latest release…");
+    try {
+      const res = await fetchWithTimeout(API_RELEASE, {
+        headers: { Accept: "application/vnd.github+json" }
+      });
+      if (res.status === 404) {
+        errors.push("Release “packs-latest” not found (404). Using static pack list.");
+      } else if (res.status === 403) {
+        errors.push("GitHub API rate limit or forbidden (403) for releases. Using static pack list.");
+      } else if (!res.ok) {
+        errors.push("Release API HTTP " + res.status + ". Using static pack list.");
+      } else {
+        const data = await res.json();
+        const fromApi = packsFromReleaseAssets(data.assets);
+        if (fromApi.length > 0) {
+          packs = fromApi;
+          packsSource = "GitHub API";
+        } else {
+          errors.push("Release has no .zip assets. Using static pack list.");
+        }
+      }
+    } catch (err) {
+      const msg = err.name === "AbortError" ? "timed out" : (err.message || String(err));
+      errors.push("Release API failed (" + msg + "). Using static pack list.");
+    }
+
+    setProgress(55, "Fetching mods directory…");
+    try {
+      const res = await fetchWithTimeout(API_CONTENTS_MODS, {
+        headers: { Accept: "application/vnd.github+json" }
+      });
+      if (res.status === 404) {
+        errors.push("mods/ path not found (404). Using static mod list.");
+      } else if (res.status === 403) {
+        errors.push("GitHub API rate limit or forbidden (403) for contents. Using static mod list.");
+      } else if (!res.ok) {
+        errors.push("Contents API HTTP " + res.status + ". Using static mod list.");
+      } else {
+        const data = await res.json();
+        const fromApi = modsFromContents(data);
+        if (fromApi.length > 0) {
+          mods = fromApi;
+          modsSource = "GitHub API";
+        } else {
+          errors.push("No mod directories returned. Using static mod list.");
+        }
+      }
+    } catch (err) {
+      const msg = err.name === "AbortError" ? "timed out" : (err.message || String(err));
+      errors.push("Contents API failed (" + msg + "). Using static mod list.");
+    }
+
+    setProgress(85, "Rendering…");
+
+    if (!packs) packs = FALLBACK_PACKS.slice();
+    if (!mods) mods = FALLBACK_MODS.slice();
+
+    renderPacks(packs, packsSource === "GitHub API" ? "live" : "offline list");
+    renderMods(mods, modsSource === "GitHub API" ? "live" : "offline list");
+
+    const packOk = packsSource === "GitHub API";
+    const modOk = modsSource === "GitHub API";
+    if (packOk && modOk) {
+      el.apiStatus.innerHTML = '<span class="ok">● Live data from GitHub API</span>';
+    } else if (!packOk && !modOk) {
+      el.apiStatus.innerHTML = '<span class="warn">● Offline fallback lists (API unavailable)</span>';
+    } else {
+      el.apiStatus.innerHTML =
+        '<span class="warn">● Partial: packs ' +
+        (packOk ? "live" : "fallback") +
+        ", mods " +
+        (modOk ? "live" : "fallback") +
+        "</span>";
+    }
+
+    if (errors.length > 0) {
+      showError("Some data could not be loaded from GitHub.", errors.join(" "));
+    }
+
+    setProgress(100, "Done");
+    setTimeout(hideLoading, 200);
+  }
+
+  el.errorRetry.addEventListener("click", function () {
+    el.overlay.classList.remove("hidden");
+    el.overlay.setAttribute("aria-busy", "true");
+    setProgress(0, "Retrying…");
+    loadAll();
+  });
+
+  loadAll().catch(function (err) {
+    setProgress(100, "Failed");
+    hideLoading();
+    renderPacks(FALLBACK_PACKS, "offline list");
+    renderMods(FALLBACK_MODS, "offline list");
+    el.apiStatus.innerHTML = '<span class="err">● Load failed — showing fallback lists</span>';
+    showError("Page load failed", err && err.message ? err.message : String(err));
+  });
+})();
+  </script>
 </body>
 </html>
