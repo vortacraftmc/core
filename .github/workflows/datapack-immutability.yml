@@ -1,22 +1,26 @@
 name: Datapack Immutability Check
 
-# Read-only content check: fails a PR that touches tracked files inside a
-# packs/<name>/ directory marked "locked": true in packs/.datapack-lock.json.
-# Deliberately NOT using pull_request_target - this only needs to read the
-# diff, never needs repo secrets, and should never run with the elevated
-# permissions/base-branch token that pull_request_target grants against
-# untrusted PR content.
+# Blocks PRs that modify files under packs/<name>/ when that pack is
+# marked "locked": true in packs/.datapack-lock.json on the *base* branch.
+#
+# Deliberately NOT using pull_request_target: read-only diff check, no secrets,
+# no elevated base-branch token against untrusted PR content.
 on:
   pull_request:
     branches: [main]
     paths:
-      - 'packs/**'
+      - "packs/**"
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: datapack-immutability-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check-lock:
+    name: Block locked datapack edits
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR head
@@ -24,17 +28,59 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch base branch (for lock file + diff)
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --prune --depth=1 origin "$BASE_REF"
+          # Resolve merge-base / three-dot range against origin/base
+          if ! git rev-parse --verify "origin/${BASE_REF}" >/dev/null 2>&1; then
+            echo "ERROR: origin/${BASE_REF} not available after fetch" >&2
+            exit 1
+          fi
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
-      - name: List files changed vs base
+      - name: List pack files changed vs base
         id: diff
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          git diff --name-only "origin/${{ github.base_ref }}"...HEAD -- packs/ > changed_pack_files.txt
-          cat changed_pack_files.txt
+          set -euo pipefail
+          # Three-dot: changes on the PR side since merge-base with base
+          git diff --name-only "origin/${BASE_REF}...HEAD" -- packs/ \
+            | sort -u > changed_pack_files.txt
+          echo "Changed paths under packs/:"
+          if [ ! -s changed_pack_files.txt ]; then
+            echo "(none)"
+          else
+            cat changed_pack_files.txt
+          fi
+          echo "count=$(wc -l < changed_pack_files.txt | tr -d ' ')" >> "$GITHUB_OUTPUT"
 
-      - name: Enforce packs/.datapack-lock.json
+      - name: Extract base-branch lock file
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          python3 scripts/datapack_lock/check_lock.py packs/.datapack-lock.json $(cat changed_pack_files.txt)
+          set -euo pipefail
+          # Evaluate lock status from BASE, not PR head — prevents
+          # "unlock + edit in one PR" bypass.
+          if git cat-file -e "origin/${BASE_REF}:packs/.datapack-lock.json" 2>/dev/null; then
+            git show "origin/${BASE_REF}:packs/.datapack-lock.json" > base-datapack-lock.json
+          else
+            echo "ERROR: packs/.datapack-lock.json missing on origin/${BASE_REF}" >&2
+            exit 1
+          fi
+          echo "Base lock file:"
+          cat base-datapack-lock.json
+
+      - name: Enforce locked datapacks (block)
+        run: |
+          set -euo pipefail
+          python3 scripts/datapack_lock/check_lock.py \
+            base-datapack-lock.json \
+            --from-file changed_pack_files.txt
