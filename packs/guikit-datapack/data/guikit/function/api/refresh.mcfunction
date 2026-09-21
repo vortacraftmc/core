@@ -11,4 +11,3 @@
 # handler may call this several times in one tick and the menu is still drawn only once.
 execute unless score @s guikit.uid matches 1.. run return 0
 scoreboard players set @s guikit.dirty 1
-return 1
