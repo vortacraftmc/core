@@ -96,6 +96,9 @@ public final class BlockerCommand {
                 context.getSource().sendError(Text.literal("No quarantined pack named '" + name + "' was found."));
                 return 0;
             }
+        } catch (IllegalArgumentException exception) {
+            context.getSource().sendError(Text.literal("Datapack Blocker approve rejected: " + exception.getMessage()));
+            return 0;
         } catch (IOException exception) {
             context.getSource().sendError(Text.literal("Datapack Blocker approve failed: " + exception.getMessage()));
             return 0;
