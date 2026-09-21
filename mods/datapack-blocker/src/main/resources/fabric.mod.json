@@ -8,7 +8,7 @@
   "contact": {
     "sources": "https://github.com/vortacraftmc"
   },
-  "license": "MIT",
+  "license": "Unlicense",
   "environment": "*",
   "entrypoints": {
     "main": ["com.vortacraftmc.datapackblocker.DatapackBlockerMod"]
