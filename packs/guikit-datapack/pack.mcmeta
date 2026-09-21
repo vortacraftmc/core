@@ -1,7 +1,17 @@
 {
   "pack": {
     "description": "guikit - Minecraft GUI framework (chest_minecart + left-click)",
+    "pack_format": 121,
+    "supported_formats": [
+      121,
+      121
+    ],
     "min_format": 121,
     "max_format": 121
+  },
+  "features": {
+    "enabled": [
+      "minecraft:vanilla"
+    ]
   }
 }
