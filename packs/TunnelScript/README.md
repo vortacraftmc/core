@@ -281,5 +281,5 @@ are committed to this repo, and please don't add any. There's more detail in
 
 ## License
 
-[MIT](LICENSE), © Runtoolkit. See [CHANGELOG.md](CHANGELOG.md) for the version
+[Unlicense](LICENSE) (public domain). See [CHANGELOG.md](CHANGELOG.md) for the version
 history.
