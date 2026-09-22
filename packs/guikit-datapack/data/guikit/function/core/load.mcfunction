@@ -15,7 +15,7 @@ scoreboard objectives add guikit.pid dummy
 scoreboard objectives add guikit.var dummy
 scoreboard objectives add guikit.open trigger
 
-scoreboard players set #version guikit.const 2
+scoreboard players set #version guikit.const 3
 # uid counter is only initialised once so uids stay unique across reloads
 execute unless score #next_uid guikit.const matches 0.. run scoreboard players set #next_uid guikit.const 1
 execute unless score #next_pid guikit.const matches 1.. run scoreboard players set #next_pid guikit.const 1
@@ -23,8 +23,12 @@ execute unless score #next_menu guikit.const matches 1.. run scoreboard players 
 
 # transient scratch storage / scores are dropped on every reload (stale state from a previous run)
 function guikit:internal/clear/in
+function guikit:internal/clear/w
+function guikit:internal/clear/cond
 function guikit:internal/clear/tmp
 function guikit:internal/btn/clear_cur
+function guikit:internal/clear/mtr
+function guikit:internal/clear/scores
 
 # carts that lost their owner across a reload / relog are removed
 function guikit:internal/sweep/orphans
