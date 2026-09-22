@@ -28,6 +28,10 @@ function guikit:internal/summon/main with storage guikit:in
 execute unless entity @e[type=#guikit:container,tag=guikit.new,distance=..1] run return run function guikit:internal/open_fail
 scoreboard players operation @e[type=#guikit:container,tag=guikit.new,distance=..1,limit=1] guikit.uid = @s guikit.uid
 tag @e[type=#guikit:container,tag=guikit.new,distance=..1] remove guikit.new
+scoreboard players reset @s guikit.arm
+scoreboard players reset @s guikit.armt
+scoreboard players operation #guid guikit.tmp = @s guikit.uid
+execute as @e[type=#guikit:container,tag=guikit.cart,distance=..2,sort=nearest,limit=1] if score @s guikit.uid = #guid guikit.tmp at @s run function guikit:internal/guard/sync
 
 # state
 # guikit.drop is the vanilla drop statistic: it also counts drops made while no menu was open, so start clean

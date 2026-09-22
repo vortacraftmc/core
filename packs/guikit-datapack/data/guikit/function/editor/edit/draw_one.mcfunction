@@ -12,5 +12,6 @@ data modify storage guikit:w lore set from storage guikit:work w.lore
 execute unless data storage guikit:w lore run data modify storage guikit:w lore set value []
 data modify storage guikit:w type set value "edit"
 execute store result storage guikit:work slot int 1 run scoreboard players get #slot guikit.tmp
+function guikit:play/rule_lore
 function guikit:editor/edit/draw_id with storage guikit:work
 function guikit:widget/draw

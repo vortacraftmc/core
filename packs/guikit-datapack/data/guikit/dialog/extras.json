@@ -1,0 +1,58 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "Click rules", "color": "light_purple" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 280,
+    "contents": { "text": "Keep leaves that rule unchanged. Confirm asks for a second click within 2 seconds. Cooldown is per player. The tag is vip, member, or staff.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "inputs": [
+    {
+      "type": "minecraft:single_option",
+      "key": "confirm",
+      "label": { "text": "Confirm" },
+      "width": 260,
+      "options": [
+        { "id": "keep", "display": "Keep", "initial": true },
+        { "id": "0", "display": "Off" },
+        { "id": "1", "display": "On (click twice)" }
+      ]
+    },
+    {
+      "type": "minecraft:single_option",
+      "key": "cd",
+      "label": { "text": "Cooldown" },
+      "width": 260,
+      "options": [
+        { "id": "keep", "display": "Keep", "initial": true },
+        { "id": "none", "display": "None" },
+        { "id": "s3", "display": "3 seconds" },
+        { "id": "s10", "display": "10 seconds" },
+        { "id": "s30", "display": "30 seconds" }
+      ]
+    },
+    {
+      "type": "minecraft:single_option",
+      "key": "need",
+      "label": { "text": "Required tag" },
+      "width": 260,
+      "options": [
+        { "id": "keep", "display": "Keep", "initial": true },
+        { "id": "none", "display": "None" },
+        { "id": "vip", "display": "vip" },
+        { "id": "member", "display": "member" },
+        { "id": "staff", "display": "staff" }
+      ]
+    }
+  ],
+  "action": {
+    "label": { "text": "Save", "color": "green" },
+    "width": 260,
+    "action": {
+      "type": "dynamic/run_command",
+      "template": "function guikit:editor/ui/extras {confirm:$(confirm),cd:$(cd),need:$(need)}"
+    }
+  }
+}
