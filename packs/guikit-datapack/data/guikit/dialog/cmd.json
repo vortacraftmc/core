@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "Command", "color": "red" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 300,
+    "contents": { "text": "Runs when any player clicks, at datapack permission level (default 2) — same trust as a command block. No apostrophes. Do not put player-typed text here.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "inputs": [
+    {
+      "type": "minecraft:text",
+      "key": "cmd",
+      "label": { "text": "Command" },
+      "initial": "say hello",
+      "max_length": 200,
+      "width": 280
+    }
+  ],
+  "action": {
+    "label": { "text": "Save command", "color": "red" },
+    "width": 260,
+    "action": {
+      "type": "dynamic/run_command",
+      "template": "function guikit:editor/ui/cmd {cmd:'$(cmd)'}"
+    }
+  }
+}

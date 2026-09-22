@@ -1,0 +1,2 @@
+# guikit :: help
+tellraw @s [{"text":"[guikit] ","color":"gold"},{"text":"In-game editor\n","color":"white"},{"text":"Operators: ","color":"gray"},{"text":"/function guikit:editor/open\n","color":"aqua"},{"text":"Players: ","color":"gray"},{"text":"/trigger guikit.open\n","color":"aqua"},{"text":"Menus are saved in the world (storage guikit:lib), not in function files.\n","color":"gray"},{"text":"Backup: ","color":"gray"},{"text":"/data get storage guikit:lib","color":"aqua"}]

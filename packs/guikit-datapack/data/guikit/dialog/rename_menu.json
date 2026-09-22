@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "Rename menu", "color": "gold" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 280,
+    "contents": { "text": "Letters, numbers and spaces. No quotes or backslashes.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "inputs": [
+    {
+      "type": "minecraft:text",
+      "key": "name",
+      "label": { "text": "Name" },
+      "max_length": 32,
+      "width": 260
+    }
+  ],
+  "action": {
+    "label": { "text": "Save", "color": "green" },
+    "width": 260,
+    "action": {
+      "type": "dynamic/run_command",
+      "template": "function guikit:editor/ui/rename_menu {name:\"$(name)\"}"
+    }
+  }
+}

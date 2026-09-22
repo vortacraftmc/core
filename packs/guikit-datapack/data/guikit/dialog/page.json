@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "Go to page", "color": "white" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 260,
+    "contents": { "text": "Pages are numbered from 0.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "inputs": [
+    {
+      "type": "minecraft:number_range",
+      "key": "page",
+      "label": { "text": "Page" },
+      "start": 0,
+      "end": 8,
+      "step": 1,
+      "initial": 0,
+      "width": 260
+    }
+  ],
+  "action": {
+    "label": { "text": "Save", "color": "green" },
+    "width": 260,
+    "action": {
+      "type": "dynamic/run_command",
+      "template": "function guikit:editor/ui/page {page:$(page)}"
+    }
+  }
+}

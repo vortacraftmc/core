@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "GUI Editor", "color": "gold" },
+  "body": [
+    {
+      "type": "minecraft:plain_message",
+      "width": 300,
+      "contents": { "text": "Left-click a slot to edit it. Hold an item to use it as the icon. The bottom-right book is Tools, not part of the menu.", "color": "gray" }
+    },
+    {
+      "type": "minecraft:plain_message",
+      "width": 300,
+      "contents": { "text": "Players open the published list with /trigger guikit.open. Menus are stored in the world, so /reload does not wipe them.", "color": "gray" }
+    }
+  ],
+  "pause": false,
+  "can_close_with_escape": true,
+  "action": {
+    "label": { "text": "Back", "color": "green" },
+    "width": 200,
+    "action": { "type": "run_command", "command": "function guikit:editor/ui/back" }
+  }
+}

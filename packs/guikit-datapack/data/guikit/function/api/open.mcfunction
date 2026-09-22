@@ -39,6 +39,9 @@ scoreboard players operation @s guikit.tmax = @s guikit.timer
 data modify storage guikit:ctx menu set from storage guikit:in menu
 function guikit:internal/set_menu_tag with storage guikit:ctx
 
+# In-game editor binds its session here (uid exists, redraw has not run). No-op unless an opener set guikit:ed pending.
+function #guikit:on_open
+
 scoreboard players set @s guikit.dirty 1
 function guikit:core/redraw
 
