@@ -4,3 +4,4 @@
 tag @e[type=#guikit:container,tag=guikit.cart] add guikit.orphan
 execute as @a[scores={guikit.uid=1..}] run function guikit:internal/sweep/keep
 execute as @e[type=#guikit:container,tag=guikit.cart,tag=guikit.orphan] run function guikit:internal/pad/dispose_cart
+execute as @e[type=minecraft:interaction,tag=guikit.guard] run function guikit:internal/guard/orphan

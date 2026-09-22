@@ -6,4 +6,6 @@
 scoreboard players operation #ds guikit.tmp = @s guikit.slots
 execute unless score #ds guikit.tmp matches 1.. run scoreboard players set #ds guikit.tmp 27
 function guikit:internal/pad/dispose_slot
+scoreboard players operation #guid guikit.tmp = @s guikit.uid
+execute as @e[type=minecraft:interaction,tag=guikit.guard] if score @s guikit.uid = #guid guikit.tmp run kill @s
 kill @s

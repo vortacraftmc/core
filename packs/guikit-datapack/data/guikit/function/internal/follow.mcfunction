@@ -6,3 +6,5 @@ scoreboard players set #found guikit.tmp 1
 # "Container types", `ride @s mount ...`), teleporting a boat with its rider in every tick fights the ride.
 tp @s[type=minecraft:chest_minecart] ~ ~1 ~
 tp @s[type=minecraft:hopper_minecart] ~ ~1 ~
+# Position is still the owner until `at @s`. Guard must sit on the cart, including boats.
+execute at @s run function guikit:internal/guard/sync
