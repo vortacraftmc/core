@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:confirmation",
+  "title": { "text": "Delete this menu?", "color": "red" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 260,
+    "contents": { "text": "This cannot be undone. The world storage entry is removed.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "yes": {
+    "label": { "text": "Delete", "color": "red" },
+    "action": { "type": "run_command", "command": "function guikit:editor/ui/delete_yes" }
+  },
+  "no": {
+    "label": { "text": "Cancel", "color": "gray" },
+    "action": { "type": "run_command", "command": "function guikit:editor/ui/back" }
+  }
+}

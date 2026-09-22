@@ -1,0 +1,35 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "Message", "color": "gold" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 280,
+    "contents": { "text": "No quotes or backslashes. Shown as plain text.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "inputs": [
+    {
+      "type": "minecraft:text",
+      "key": "msg",
+      "label": { "text": "Message" },
+      "max_length": 120,
+      "width": 260
+    },
+    {
+      "type": "minecraft:text",
+      "key": "lore",
+      "label": { "text": "Lore" },
+      "max_length": 80,
+      "width": 260
+    }
+  ],
+  "action": {
+    "label": { "text": "Save", "color": "green" },
+    "width": 260,
+    "action": {
+      "type": "dynamic/run_command",
+      "template": "function guikit:editor/ui/tell {msg:\"$(msg)\",lore:\"$(lore)\"}"
+    }
+  }
+}
