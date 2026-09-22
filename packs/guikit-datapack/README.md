@@ -57,6 +57,18 @@ Preview is the real menu. Chat suggests `/function guikit:editor/resume` to come
 | Sound | One of six built-in sounds, only the clicking player hears it |
 | Web link | Clickable `https` link in chat; the menu closes so chat is visible |
 | Command | Stored command, see trust model below |
+| Click rules | Confirm (second click within 2 seconds), per-player cooldown (3 / 10 / 30 seconds), or a required tag (`vip`, `member`, `staff`) |
+
+Click rules are on the slot dialog, after the action is placed. **Keep** leaves a rule as it is. Tags are not typed: an operator grants them with `/tag <player> add vip` (or `member` / `staff`). A button can have more than one rule. While a cooldown is running the icon is a barrier.
+
+## Other players
+
+A menu cart follows its owner. While anyone else is within 8 blocks, a `minecraft:interaction` stands on the cart (wider and taller than a chest boat or minecart) and takes the right-click. It is not ridden: a passenger sits above the cart, and an interaction's hitbox only grows upward, so it would not cover the click.
+
+- The other player gets “That menu belongs to another player.”
+- The owner, if they click while someone is that close, gets “Someone is too close…”. The lock stays up until the other player steps away.
+- Taking a widget out anyway does not run the action: each icon is stamped with the owner's id and stripped from anyone else.
+- This does not kick a cart that is already open. Vanilla cannot close one player's chest without closing the owner's too. Stolen icons are deleted; the menu still times out.
 
 Container presets: chest, hopper (5 slots), barrel, ender chest, trapped chest, shulker box, copper chest.
 Themed chests are still a `chest_minecart` with a different pane and title — Minecraft has no barrel entity to summon.
@@ -106,7 +118,7 @@ still exist and are **not** `replace: true`, so another pack can still add a lis
 `#guikit:on_open` is new: it runs after the cart is bound and before the first redraw.
 The editor's fill/probe no-op unless this open set `guikit:ed pending`.
 
-Widget helpers (`guikit:widget/*`) are unchanged and are what the editor draws with.
+Widget helpers (`guikit:widget/*`) are what the editor draws with. Drawn icons also store `own` (the opener's uid) so a stolen stack can be stripped.
 Prefer the editor for new menus. A hand-written `#guikit:fill` pack still works beside it;
 do not clear `guikit:lib` from that pack.
 
@@ -125,3 +137,6 @@ See `guikit:internal/selftest` if a world wipes inventories — that bug was nev
 - Dialog buttons run as the player, so they need operator permission. That is why editing is `/function` and playing is a chest click / trigger.
 - Two operators editing the same menu: last write wins.
 - Donkey / mule containers are still registered by the engine and still refused (unchanged).
+- The interaction lock is not a substitute for a live 26.3 test. `F3+B` shows the guard box while someone else is within 8 blocks.
+- A player who already has the chest open when the guard appears is not force-closed. Do not kill the cart to kick them; that closes the owner as well.
+- Click-rule tags are only `vip`, `member`, and `staff`. There is no free-typed tag.

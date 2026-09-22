@@ -71,6 +71,11 @@
       "action": { "type": "show_dialog", "dialog": "guikit:cmd" }
     },
     {
+      "label": { "text": "Click rules…", "color": "light_purple" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/extras_open" }
+    },
+    {
       "label": { "text": "Clear slot", "color": "dark_red" },
       "width": 280,
       "action": { "type": "run_command", "command": "function guikit:editor/ui/delete_slot" }

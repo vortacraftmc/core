@@ -14,12 +14,18 @@ scoreboard objectives add guikit.drop minecraft.custom:minecraft.drop
 scoreboard objectives add guikit.pid dummy
 scoreboard objectives add guikit.var dummy
 scoreboard objectives add guikit.open trigger
+scoreboard objectives add guikit.arm dummy
+scoreboard objectives add guikit.armt dummy
+scoreboard objectives add guikit.gmsg dummy
+scoreboard objectives add guikit.ack trigger
 
-scoreboard players set #version guikit.const 2
+scoreboard players set #version guikit.const 3
 # uid counter is only initialised once so uids stay unique across reloads
 execute unless score #next_uid guikit.const matches 0.. run scoreboard players set #next_uid guikit.const 1
 execute unless score #next_pid guikit.const matches 1.. run scoreboard players set #next_pid guikit.const 1
 execute unless score #next_menu guikit.const matches 1.. run scoreboard players set #next_menu guikit.const 1
+execute unless score #tick guikit.const matches 0.. run scoreboard players set #tick guikit.const 0
+scoreboard players enable @a guikit.ack
 
 # transient scratch storage / scores are dropped on every reload (stale state from a previous run)
 function guikit:internal/clear/in

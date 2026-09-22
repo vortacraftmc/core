@@ -12,5 +12,7 @@ execute unless data storage guikit:w lore run data modify storage guikit:w lore 
 data modify storage guikit:w type set from storage guikit:work w.kind
 execute unless data storage guikit:w type run data modify storage guikit:w type set value "widget"
 execute store result storage guikit:work slot int 1 run scoreboard players get #slot guikit.tmp
+function guikit:play/rule_lore
+function guikit:play/cd_visual
 function guikit:play/draw_id with storage guikit:work
 function guikit:widget/draw

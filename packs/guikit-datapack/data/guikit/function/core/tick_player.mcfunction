@@ -30,3 +30,8 @@ execute if score @s guikit.drop matches 1.. run function guikit:internal/drop_ha
 execute if score @s guikit.dirty matches 1 run function guikit:core/redraw
 execute if score @s guikit.dirty matches 1 run scoreboard players set @s guikit.dirty 0
 scoreboard players reset @s guikit.click
+
+# confirm window (2 seconds). Decrement after clicks so the last tick still counts.
+execute if score @s guikit.armt matches 1.. run scoreboard players remove @s guikit.armt 1
+execute if score @s guikit.armt matches 0 run scoreboard players reset @s guikit.arm
+execute if score @s guikit.armt matches 0 run scoreboard players reset @s guikit.armt
