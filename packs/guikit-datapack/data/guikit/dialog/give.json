@@ -1,0 +1,45 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "Give item", "color": "green" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 280,
+    "contents": { "text": "Uses the item in your hand. Cost is taken when a player clicks.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "inputs": [
+    {
+      "type": "minecraft:number_range",
+      "key": "count",
+      "label": { "text": "Count" },
+      "start": 1,
+      "end": 64,
+      "step": 1,
+      "initial": 1,
+      "width": 260
+    },
+    {
+      "type": "minecraft:single_option",
+      "key": "cost",
+      "label": { "text": "Cost" },
+      "width": 260,
+      "options": [
+        { "id": "none", "display": "Free", "initial": true },
+        { "id": "diamond1", "display": "1 diamond" },
+        { "id": "diamond3", "display": "3 diamonds" },
+        { "id": "emerald1", "display": "1 emerald" },
+        { "id": "gold8", "display": "8 gold ingots" },
+        { "id": "iron16", "display": "16 iron ingots" }
+      ]
+    }
+  ],
+  "action": {
+    "label": { "text": "Save", "color": "green" },
+    "width": 260,
+    "action": {
+      "type": "dynamic/run_command",
+      "template": "function guikit:editor/ui/give {count:$(count),cost:$(cost)}"
+    }
+  }
+}

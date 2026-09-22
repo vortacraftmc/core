@@ -1,0 +1,79 @@
+{
+  "type": "minecraft:multi_action",
+  "title": { "text": "Slot", "color": "gold" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 280,
+    "contents": { "text": "Hold the item you want as the icon, then pick an action. Decoration is not clickable.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "columns": 1,
+  "exit_action": {
+    "label": { "text": "Back", "color": "gray" },
+    "width": 280,
+    "action": { "type": "run_command", "command": "function guikit:editor/ui/back" }
+  },
+  "actions": [
+    {
+      "label": { "text": "Place held item (decoration)", "color": "white" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/place" }
+    },
+    {
+      "label": { "text": "Give held item…", "color": "green" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:give" }
+    },
+    {
+      "label": { "text": "Message…", "color": "gold" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:tell" }
+    },
+    {
+      "label": { "text": "Close button", "color": "red" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/close_btn" }
+    },
+    {
+      "label": { "text": "Go to page…", "color": "white" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:page" }
+    },
+    {
+      "label": { "text": "Open another menu…", "color": "aqua" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/pick_menu" }
+    },
+    {
+      "label": { "text": "Toggle", "color": "green" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/toggle" }
+    },
+    {
+      "label": { "text": "Counter +1", "color": "aqua" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/add" }
+    },
+    {
+      "label": { "text": "Sound…", "color": "white" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:sound" }
+    },
+    {
+      "label": { "text": "Web link…", "color": "blue" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:link" }
+    },
+    {
+      "label": { "text": "Command…", "color": "red" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:cmd" }
+    },
+    {
+      "label": { "text": "Clear slot", "color": "dark_red" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/delete_slot" }
+    }
+  ]
+}

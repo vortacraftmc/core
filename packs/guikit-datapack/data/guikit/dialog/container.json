@@ -1,0 +1,36 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "Container", "color": "white" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 280,
+    "contents": { "text": "Themed chests are still a minecart with a different pane and title. Hopper has 5 slots.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "inputs": [
+    {
+      "type": "minecraft:single_option",
+      "key": "container",
+      "label": { "text": "Type" },
+      "width": 260,
+      "options": [
+        { "id": "chest", "display": "Chest", "initial": true },
+        { "id": "hopper", "display": "Hopper (5 slots)" },
+        { "id": "barrel", "display": "Barrel" },
+        { "id": "ender", "display": "Ender chest" },
+        { "id": "trapped", "display": "Trapped chest" },
+        { "id": "shulker", "display": "Shulker box" },
+        { "id": "copper", "display": "Copper chest" }
+      ]
+    }
+  ],
+  "action": {
+    "label": { "text": "Save", "color": "green" },
+    "width": 260,
+    "action": {
+      "type": "dynamic/run_command",
+      "template": "function guikit:editor/ui/set_container_choice {container:$(container)}"
+    }
+  }
+}
