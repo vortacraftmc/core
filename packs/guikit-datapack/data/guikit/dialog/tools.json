@@ -1,0 +1,74 @@
+{
+  "type": "minecraft:multi_action",
+  "title": { "text": "Tools", "color": "gold" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 280,
+    "contents": { "text": "Slot 26 is this button in the editor. Use Edit slot 26 if the real menu needs that slot.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "columns": 1,
+  "exit_action": {
+    "label": { "text": "Back", "color": "gray" },
+    "width": 280,
+    "action": { "type": "run_command", "command": "function guikit:editor/ui/back" }
+  },
+  "actions": [
+    {
+      "label": { "text": "Previous page", "color": "white" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/page_prev" }
+    },
+    {
+      "label": { "text": "Next page", "color": "white" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/page_next" }
+    },
+    {
+      "label": { "text": "Rename menu…", "color": "gold" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:rename_menu" }
+    },
+    {
+      "label": { "text": "Container…", "color": "white" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:container" }
+    },
+    {
+      "label": { "text": "Timeout…", "color": "white" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:timer" }
+    },
+    {
+      "label": { "text": "Publish to players", "color": "green" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/publish_on" }
+    },
+    {
+      "label": { "text": "Hide from players", "color": "gray" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/publish_off" }
+    },
+    {
+      "label": { "text": "Preview", "color": "aqua" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/preview" }
+    },
+    {
+      "label": { "text": "Edit slot 26", "color": "white" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/edit_slot26" }
+    },
+    {
+      "label": { "text": "Delete menu…", "color": "red" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/delete_ask" }
+    },
+    {
+      "label": { "text": "Close editor", "color": "dark_red" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/close_editor" }
+    }
+  ]
+}

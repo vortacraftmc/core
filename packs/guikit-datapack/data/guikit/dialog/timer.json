@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "Timeout", "color": "white" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 260,
+    "contents": { "text": "How long the menu stays open, in seconds.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "inputs": [
+    {
+      "type": "minecraft:number_range",
+      "key": "seconds",
+      "label": { "text": "Seconds" },
+      "start": 15,
+      "end": 180,
+      "step": 15,
+      "initial": 45,
+      "width": 260
+    }
+  ],
+  "action": {
+    "label": { "text": "Save", "color": "green" },
+    "width": 260,
+    "action": {
+      "type": "dynamic/run_command",
+      "template": "function guikit:editor/ui/set_timer {seconds:$(seconds)}"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:multi_action",
+  "title": { "text": "Sound", "color": "white" },
+  "pause": false,
+  "can_close_with_escape": true,
+  "columns": 1,
+  "exit_action": {
+    "label": { "text": "Back", "color": "gray" },
+    "width": 240,
+    "action": { "type": "show_dialog", "dialog": "guikit:slot" }
+  },
+  "actions": [
+    { "label": "Click", "width": 240, "action": { "type": "run_command", "command": "function guikit:editor/ui/sound_click" } },
+    { "label": "Experience", "width": 240, "action": { "type": "run_command", "command": "function guikit:editor/ui/sound_orb" } },
+    { "label": "Pling", "width": 240, "action": { "type": "run_command", "command": "function guikit:editor/ui/sound_pling" } },
+    { "label": "Yes", "width": 240, "action": { "type": "run_command", "command": "function guikit:editor/ui/sound_yes" } },
+    { "label": "No", "width": 240, "action": { "type": "run_command", "command": "function guikit:editor/ui/sound_no" } },
+    { "label": "Level up", "width": 240, "action": { "type": "run_command", "command": "function guikit:editor/ui/sound_level" } }
+  ]
+}
