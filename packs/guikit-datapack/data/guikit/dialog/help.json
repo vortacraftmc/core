@@ -10,7 +10,7 @@
     {
       "type": "minecraft:plain_message",
       "width": 300,
-      "contents": { "text": "Players open the published list with /trigger guikit.open. Menus are stored in the world, so /reload does not wipe them.", "color": "gray" }
+      "contents": { "text": "Players open the published list with /trigger guikit.open. Menus are stored in the world, so /reload does not wipe them. Another player cannot open your chest. Click rules (confirm, cooldown, vip/member/staff tag) are on the slot dialog.", "color": "gray" }
     }
   ],
   "pause": false,

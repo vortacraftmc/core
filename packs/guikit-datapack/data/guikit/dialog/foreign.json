@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "Not your menu", "color": "red" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 280,
+    "contents": { "text": "That menu belongs to another player. Step back so they can open it.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "action": {
+    "label": { "text": "OK", "color": "gray" },
+    "width": 200,
+    "action": { "type": "run_command", "command": "trigger guikit.ack" }
+  }
+}
