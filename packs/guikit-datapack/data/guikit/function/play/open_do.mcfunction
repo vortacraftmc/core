@@ -13,3 +13,5 @@ $function guikit:play/pending_alias {id:"$(id)"}
 function guikit:api/open
 data remove storage guikit:ed pending
 execute unless score #ok guikit.const matches 1 run tellraw @s {"text":"[guikit] Could not open that menu.","color":"red"}
+# v5: remember it for /trigger guikit.last (pid is assigned by play/open_id before this runs)
+$execute if score #ok guikit.const matches 1 run function guikit:play/last_record {id:"$(id)"}
