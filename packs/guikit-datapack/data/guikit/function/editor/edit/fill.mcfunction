@@ -1,5 +1,7 @@
 # guikit :: editor/edit/fill     as player
+# No auto-refresh here: replacing the editor chest every second fights the click.
 function guikit:editor/load_state
+scoreboard players set @s guikit.rfiv 0
 function guikit:editor/read_menu
 function guikit:widget/pad
 scoreboard players set #limit guikit.tmp 27

@@ -1,0 +1,1 @@
+tellraw @s [{"text":"[guikit] ","color":"red"},{"text":"1 cycles, 2 oldest, 3 newest. ","color":"gray"},{"text":"/trigger guikit.sort","color":"aqua","click_event":{"action":"suggest_command","command":"/trigger guikit.sort"}}]

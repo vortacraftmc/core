@@ -1,0 +1,44 @@
+{
+  "type": "minecraft:multi_action",
+  "title": { "text": "More", "color": "white" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 280,
+    "contents": { "text": "Counter, sound, link, command, and clear. Rename icon is the second button on the previous screen.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "columns": 1,
+  "exit_action": {
+    "label": { "text": "Back", "color": "gray" },
+    "width": 280,
+    "action": { "type": "show_dialog", "dialog": "guikit:slot" }
+  },
+  "actions": [
+    {
+      "label": { "text": "Counter +1", "color": "aqua" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/add" }
+    },
+    {
+      "label": { "text": "Sound…", "color": "white" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:sound" }
+    },
+    {
+      "label": { "text": "Web link…", "color": "blue" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:link" }
+    },
+    {
+      "label": { "text": "Command…", "color": "red" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:cmd" }
+    },
+    {
+      "label": { "text": "Clear slot", "color": "dark_red" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/delete_slot" }
+    }
+  ]
+}
