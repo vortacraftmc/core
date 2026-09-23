@@ -1,7 +1,7 @@
 # RTWrapper API
 
 Namespace: `rtwrapper`
-Target: Java Edition 26.2 / pack format 104.
+Target: Java Edition 26.3 / pack format 104.
 
 ## Storage protocol
 
@@ -33,7 +33,7 @@ data modify storage rtwrapper:api request set value {cmd:"say",params:{message:"
 function rtwrapper:api/enqueue
 ```
 
-Parameter order is command-specific and recorded in `datapack/commands-26.2.json` under `command_params`. Examples:
+Parameter order is command-specific and recorded in `datapack/commands-26.3.json` under `command_params`. Examples:
 
 ```json
 {
