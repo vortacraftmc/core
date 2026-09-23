@@ -96,10 +96,100 @@ jobs:
           echo "Base lock file:"
           cat "$RUNNER_TEMP/base-datapack-lock.json"
 
-      - name: Enforce locked datapacks (block)
+      # --- v2 additions below: every step above this line is unchanged. ---
+      # These three steps only *collect data* (git log, PR label context,
+      # file content) -- check_lock.py itself still never calls git or the
+      # GitHub API. Each new check only activates if its corresponding
+      # check_lock.py flag is given real content; an empty commit list or
+      # an empty label list is a safe no-op for the ai_write_locked check,
+      # not a false failure.
+
+      - name: Collect commit actor metadata (for ai_write_locked)
+        if: steps.diff.outputs.count != '0'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          git log --no-merges \
+            --format='%H%x1f%an%x1f%ae%x1f%cn%x1f%ce%x1f%(trailers:only=true,unfold=true,separator=%x1e)%x1d' \
+            "origin/${BASE_REF}..HEAD" > "$RUNNER_TEMP/commit_log.raw"
+          python3 - "$RUNNER_TEMP/commit_log.raw" "$RUNNER_TEMP/commit_actors.json" <<'PY'
+          import json
+          import sys
+
+          raw = open(sys.argv[1], encoding="utf-8").read()
+          out = []
+          for rec in filter(None, raw.split("\x1d")):
+              # git inserts its own "\n" between each formatted commit's
+              # output and the next one; since that lands right after our
+              # own %x1d separator, it shows up as a leading newline on
+              # every record except the first. Strip it before splitting.
+              fields = rec.strip("\n").split("\x1f")
+              if len(fields) < 6:
+                  continue
+              sha, an, ae, cn, ce, trailers = fields[:6]
+              out.append(
+                  {
+                      "sha": sha,
+                      "author_name": an,
+                      "author_email": ae,
+                      "committer_name": cn,
+                      "committer_email": ce,
+                      "trailers": [t for t in trailers.split("\x1e") if t.strip()],
+                  }
+              )
+          with open(sys.argv[2], "w", encoding="utf-8") as f:
+              json.dump(out, f, indent=2)
+          PY
+
+      - name: Dump PR labels (for ai_write_locked)
+        if: steps.diff.outputs.count != '0'
+        env:
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: echo "$LABELS_JSON" > "$RUNNER_TEMP/pr_labels.json"
+
+      - name: Mirror changed pack file content (for injection scan)
         if: steps.diff.outputs.count != '0'
         run: |
           set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/content"
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            mkdir -p "$RUNNER_TEMP/content/$(dirname "$f")"
+            git show "HEAD:$f" > "$RUNNER_TEMP/content/$f" 2>/dev/null || true
+          done < "$RUNNER_TEMP/changed_pack_files.txt"
+
+      - name: Enforce locked datapacks + AI guardrails (block)
+        if: steps.diff.outputs.count != '0'
+        run: |
+          set -euo pipefail
+          mapfile -t pr_labels < <(python3 -c "
+          import json
+          print('\n'.join(json.load(open('$RUNNER_TEMP/pr_labels.json'))))
+          ")
+          label_args=()
+          for l in "${pr_labels[@]}"; do
+            [ -n "$l" ] && label_args+=(--pr-label "$l")
+          done
+
+          # .claudeignore / .cursorignore / .aiexclude are optional -- only
+          # pass the ones that actually exist in this repo, and skip the
+          # flag entirely (rather than passing it with zero paths, which
+          # argparse would reject) if none do.
+          ignore_paths=()
+          for f in .claudeignore .cursorignore .aiexclude; do
+            [ -f "$f" ] && ignore_paths+=("$f")
+          done
+          ignore_flag=()
+          if [ "${#ignore_paths[@]}" -gt 0 ]; then
+            ignore_flag=(--ai-ignore-files "${ignore_paths[@]}")
+          fi
+
           python3 "$RUNNER_TEMP/check_lock.py" \
             "$RUNNER_TEMP/base-datapack-lock.json" \
-            --from-file "$RUNNER_TEMP/changed_pack_files.txt"
+            --from-file "$RUNNER_TEMP/changed_pack_files.txt" \
+            --commit-actors-json "$RUNNER_TEMP/commit_actors.json" \
+            "${label_args[@]}" \
+            "${ignore_flag[@]}" \
+            --content-dir "$RUNNER_TEMP/content" \
+            --step-summary "$GITHUB_STEP_SUMMARY"
