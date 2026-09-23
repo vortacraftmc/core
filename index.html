@@ -187,6 +187,12 @@
     #ratelimit-banner button { background: transparent; color: var(--text); border: 1px solid var(--border); }
     #ratelimit-banner button:hover { border-color: var(--accent); color: var(--accent); }
 
+    #norelease-banner {
+      background: rgba(63, 185, 80, 0.08);
+      border: 1px solid var(--accent);
+    }
+    #norelease-banner strong { color: var(--accent); }
+
     #api-status {
       font-size: 12px;
       color: var(--muted);
@@ -211,6 +217,40 @@
     #api-status .refresh-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
     #api-status .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    #refresh-control {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    #refresh-control label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    #refresh-control input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      margin: 4px 0 16px;
+      flex-wrap: wrap;
+    }
+    .toolbar input[type="search"],
+    .toolbar select {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .toolbar input[type="search"] { flex: 1; min-width: 160px; }
+    .toolbar input[type="search"]:focus,
+    .toolbar select:focus { outline: 1px solid var(--accent); }
+
+    #release-meta-line a { color: var(--accent); }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -231,10 +271,15 @@
       word-break: break-word;
     }
     .card p {
-      margin: 0 0 12px;
+      margin: 0 0 8px;
       font-size: 13px;
       color: var(--muted);
       flex: 1;
+    }
+    .pack-meta {
+      font-size: 11px;
+      color: var(--muted);
+      margin: -4px 0 10px;
     }
     .card-actions {
       display: flex;
@@ -383,6 +428,10 @@
       Fabric mods, datapacks, and helper scripts, all in one place.
     </p>
     <p id="api-status"></p>
+    <div id="refresh-control">
+      <label><input type="checkbox" id="auto-refresh-toggle" checked> Auto-refresh</label>
+      <span id="refresh-meta"></span>
+    </div>
 
     <div id="banner-stack">
       <div id="error-banner" class="banner-box" role="alert">
@@ -391,6 +440,11 @@
         <div class="actions">
           <button type="button" id="error-retry">Retry</button>
         </div>
+      </div>
+
+      <div id="norelease-banner" class="banner-box" role="status">
+        <strong>No release published yet</strong>
+        <div class="detail" id="norelease-detail"></div>
       </div>
 
       <div id="warning-banner" class="banner-box" role="status">
@@ -411,20 +465,33 @@
       </div>
     </div>
 
-    <h2>Datapacks &amp; resource packs</h2>
+    <h2 id="packs-heading">Datapacks &amp; resource packs</h2>
     <p class="lead" style="font-size: 13px;">
       Packs are rebuilt on pushes to <code>main</code> and published to the
       <code>packs-latest</code> release when available. Downloads are verified
       against GitHub before starting (HEAD check). A static fallback list is
-      used if the API is unreachable.
+      used if the API is unreachable or no release has been published yet.
     </p>
+    <div id="release-meta-line" style="font-size: 12px; color: var(--muted); margin-bottom: 8px; display: none;"></div>
+    <div class="toolbar">
+      <input type="search" id="packs-search" placeholder="Search packs…" aria-label="Search packs">
+      <select id="packs-sort" aria-label="Sort packs">
+        <option value="name-asc">Name (A–Z)</option>
+        <option value="name-desc">Name (Z–A)</option>
+        <option value="newest">Newest</option>
+        <option value="downloads">Most downloaded</option>
+      </select>
+    </div>
     <div class="grid" id="packs-grid"></div>
 
-    <h2>Fabric mods</h2>
+    <h2 id="mods-heading">Fabric mods</h2>
     <p class="lead" style="font-size: 13px;">
       Projects under <code>mods/</code>. Source links come from the repository
       tree when the API is available.
     </p>
+    <div class="toolbar">
+      <input type="search" id="mods-search" placeholder="Search mods…" aria-label="Search mods">
+    </div>
     <div class="grid" id="mods-grid"></div>
 
     <footer>
@@ -453,6 +520,8 @@
     "https://github.com/" + OWNER + "/" + REPO + "/tree/main/mods/";
   const API_RELEASE =
     "https://api.github.com/repos/" + OWNER + "/" + REPO + "/releases/tags/" + RELEASE_TAG;
+  const API_RELEASES_LIST =
+    "https://api.github.com/repos/" + OWNER + "/" + REPO + "/releases?per_page=5";
   const API_CONTENTS_MODS =
     "https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/mods";
   const FETCH_TIMEOUT_MS = 12000;
@@ -460,6 +529,8 @@
   const OVERALL_TIMEOUT_MS = 20000;
   const CACHE_KEY = "vortacraftmc-core-site-cache-v1";
   const CACHE_MAX_AGE_MS = 15 * 60 * 1000; // 15 min — this content doesn't change minute to minute
+  const AUTO_REFRESH_MS = 5 * 60 * 1000; // re-check GitHub every 5 min while the tab is open
+  const VISIBILITY_REFRESH_THRESHOLD_MS = 2 * 60 * 1000; // re-check on tab refocus if stale
 
   // Kept in sync with packs/ (pack.mcmeta-bearing directories) and mods/
   // (Fabric mod subprojects, excluding the TEMPLATE-MOD scaffold, which
@@ -506,8 +577,18 @@
     ratelimitBanner: document.getElementById("ratelimit-banner"),
     ratelimitDetail: document.getElementById("ratelimit-detail"),
     ratelimitRetry: document.getElementById("ratelimit-retry"),
+    noreleaseBanner: document.getElementById("norelease-banner"),
+    noreleaseDetail: document.getElementById("norelease-detail"),
     apiStatus: document.getElementById("api-status"),
+    refreshMeta: document.getElementById("refresh-meta"),
+    autoRefreshToggle: document.getElementById("auto-refresh-toggle"),
+    releaseMetaLine: document.getElementById("release-meta-line"),
+    packsHeading: document.getElementById("packs-heading"),
+    packsSearch: document.getElementById("packs-search"),
+    packsSort: document.getElementById("packs-sort"),
     packsGrid: document.getElementById("packs-grid"),
+    modsHeading: document.getElementById("mods-heading"),
+    modsSearch: document.getElementById("mods-search"),
     modsGrid: document.getElementById("mods-grid"),
     toast: document.getElementById("dl-toast"),
     toastBody: document.getElementById("dl-toast-body"),
@@ -517,6 +598,21 @@
   let toastTimer = null;
   let overallTimeoutTimer = null;
   let loadGeneration = 0; // bumped on every loadAll() call so stale timeouts/retries no-op
+
+  // Data currently on screen, kept unfiltered so search/sort can be
+  // re-applied instantly without refetching anything.
+  let currentPacksRaw = [];
+  let currentModsRaw = [];
+  let currentPacksLabel = "offline list";
+  let currentModsLabel = "offline list";
+  let noReleasesYet = false;
+
+  // Auto-refresh bookkeeping.
+  let lastLoadedAt = null;
+  let autoRefreshEnabled = true;
+  let autoRefreshTimer = null;
+  let countdownTimer = null;
+  let nextRefreshAt = null;
 
   // ---------------------------------------------------------------------
   // Small helpers
@@ -598,7 +694,9 @@
     const m = Math.round(s / 60);
     if (m < 60) return m + "m ago";
     const h = Math.round(m / 60);
-    return h + "h ago";
+    if (h < 24) return h + "h ago";
+    const d = Math.round(h / 24);
+    return d + "d ago";
   }
 
   function formatResetTime(unixSeconds) {
@@ -608,6 +706,15 @@
     } catch (e) {
       return "shortly";
     }
+  }
+
+  function formatBytes(n) {
+    if (typeof n !== "number" || isNaN(n) || n <= 0) return "";
+    return n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.round(n / 1024) + " KB";
+  }
+
+  function namesKey(list) {
+    return list.map(function (x) { return x.name; }).sort().join("|");
   }
 
   // ---------------------------------------------------------------------
@@ -654,20 +761,18 @@
     try {
       let ok = false;
       let status = 0;
-      let sizeHint = "";
+      let sizeHint = pack.size ? formatBytes(pack.size) : "";
 
       try {
         const headRes = await fetchWithTimeout(url, { method: "HEAD", redirect: "follow" }, HEAD_TIMEOUT_MS);
         status = headRes.status;
         if (headRes.ok) {
           ok = true;
-          const len = headRes.headers.get("content-length");
-          if (len) {
-            const n = parseInt(len, 10);
-            if (!isNaN(n) && n > 0) {
-              sizeHint = n > 1048576
-                ? (n / 1048576).toFixed(1) + " MB"
-                : Math.round(n / 1024) + " KB";
+          if (!sizeHint) {
+            const len = headRes.headers.get("content-length");
+            if (len) {
+              const n = parseInt(len, 10);
+              if (!isNaN(n) && n > 0) sizeHint = formatBytes(n);
             }
           }
         } else if (status === 405 || status === 501) {
@@ -729,6 +834,32 @@
     document.body.removeChild(a);
   }
 
+  function copyPackLink(pack, statusEl) {
+    const url = pack.downloadUrl || (RELEASE_BASE + encodeURIComponent(pack.zip));
+    const done = function (ok) {
+      statusEl.className = ok ? "dl-status ok" : "dl-status err";
+      statusEl.textContent = ok ? "Link copied." : "Could not copy link.";
+      showToast(ok ? "Link copied: " + pack.name : "Could not copy link", ok ? "ok" : "err");
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () { done(true); }).catch(function () { done(false); });
+      return;
+    }
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      done(true);
+    } catch (e) {
+      done(false);
+    }
+  }
+
   // ---------------------------------------------------------------------
   // Rendering
   // ---------------------------------------------------------------------
@@ -753,7 +884,9 @@
     el.packsGrid.classList.remove("skeleton-grid");
     el.packsGrid.innerHTML = "";
     if (!packs || packs.length === 0) {
-      el.packsGrid.innerHTML = '<p class="empty-state">No packs available.</p>';
+      el.packsGrid.innerHTML = '<p class="empty-state">' +
+        (currentPacksRaw.length === 0 && noReleasesYet ? "No release has been published yet." : "No packs match your search.") +
+        "</p>";
       return;
     }
     packs.forEach(function (pack) {
@@ -768,6 +901,14 @@
         "Datapack / resource pack" +
         (sourceLabel ? " · " + sourceLabel : "");
 
+      const metaBits = [];
+      if (pack.size) metaBits.push(formatBytes(pack.size));
+      if (typeof pack.downloadCount === "number") metaBits.push(pack.downloadCount + " downloads");
+      if (pack.updatedAt) {
+        const t = new Date(pack.updatedAt).getTime();
+        if (!isNaN(t)) metaBits.push("updated " + formatRelativeTime(Date.now() - t));
+      }
+
       const actions = document.createElement("div");
       actions.className = "card-actions";
 
@@ -776,16 +917,32 @@
       btn.className = "btn";
       btn.textContent = "Download (.zip)";
 
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "btn secondary";
+      copyBtn.textContent = "Copy link";
+
       const statusEl = document.createElement("div");
       statusEl.className = "dl-status";
 
       btn.addEventListener("click", function () {
         startDownload(pack, btn, statusEl);
       });
+      copyBtn.addEventListener("click", function () {
+        copyPackLink(pack, statusEl);
+      });
 
       actions.appendChild(btn);
+      actions.appendChild(copyBtn);
+
       card.appendChild(title);
       card.appendChild(desc);
+      if (metaBits.length > 0) {
+        const meta = document.createElement("div");
+        meta.className = "pack-meta";
+        meta.textContent = metaBits.join(" · ");
+        card.appendChild(meta);
+      }
       card.appendChild(actions);
       card.appendChild(statusEl);
       el.packsGrid.appendChild(card);
@@ -796,7 +953,9 @@
     el.modsGrid.classList.remove("skeleton-grid");
     el.modsGrid.innerHTML = "";
     if (!mods || mods.length === 0) {
-      el.modsGrid.innerHTML = '<p class="empty-state">No mods listed yet.</p>';
+      el.modsGrid.innerHTML = '<p class="empty-state">' +
+        (currentModsRaw.length === 0 ? "No mods listed yet." : "No mods match your search.") +
+        "</p>";
       return;
     }
     mods.forEach(function (mod) {
@@ -815,6 +974,45 @@
     });
   }
 
+  // Re-applies the current search text + sort order on top of the last
+  // loaded dataset, with no network call — instant filtering/sorting.
+  function displayPacks() {
+    const q = (el.packsSearch.value || "").trim().toLowerCase();
+    let list = currentPacksRaw.slice();
+    if (q) list = list.filter(function (p) { return p.name.toLowerCase().indexOf(q) !== -1; });
+
+    const sortMode = el.packsSort.value;
+    if (sortMode === "name-desc") {
+      list.sort(function (a, b) { return b.name.localeCompare(a.name); });
+    } else if (sortMode === "newest") {
+      list.sort(function (a, b) {
+        const at = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const bt = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return bt - at;
+      });
+    } else if (sortMode === "downloads") {
+      list.sort(function (a, b) { return (b.downloadCount || 0) - (a.downloadCount || 0); });
+    } else {
+      list.sort(function (a, b) { return a.name.localeCompare(b.name); });
+    }
+
+    renderPacks(list, currentPacksLabel);
+    el.packsHeading.textContent = "Datapacks & resource packs (" + currentPacksRaw.length + ")";
+  }
+
+  function displayMods() {
+    const q = (el.modsSearch.value || "").trim().toLowerCase();
+    let list = currentModsRaw.slice();
+    if (q) list = list.filter(function (m) { return m.name.toLowerCase().indexOf(q) !== -1; });
+    list.sort(function (a, b) { return a.name.localeCompare(b.name); });
+    renderMods(list, currentModsLabel);
+    el.modsHeading.textContent = "Fabric mods (" + currentModsRaw.length + ")";
+  }
+
+  el.packsSearch.addEventListener("input", displayPacks);
+  el.packsSort.addEventListener("change", displayPacks);
+  el.modsSearch.addEventListener("input", displayMods);
+
   // ---------------------------------------------------------------------
   // GitHub API — data shaping
   // ---------------------------------------------------------------------
@@ -829,7 +1027,10 @@
         return {
           name: prettyNameFromZip(a.name),
           zip: a.name,
-          downloadUrl: a.browser_download_url || (RELEASE_BASE + encodeURIComponent(a.name))
+          downloadUrl: a.browser_download_url || (RELEASE_BASE + encodeURIComponent(a.name)),
+          size: typeof a.size === "number" ? a.size : null,
+          downloadCount: typeof a.download_count === "number" ? a.download_count : null,
+          updatedAt: a.updated_at || null
         };
       })
       .sort(function (a, b) {
@@ -936,6 +1137,7 @@
     hideBanner(el.errorBanner);
     hideBanner(el.warningBanner);
     hideBanner(el.ratelimitBanner);
+    hideBanner(el.noreleaseBanner);
     el.apiStatus.innerHTML = "";
     el.timeoutHint.classList.remove("visible");
 
@@ -954,6 +1156,8 @@
     let mods = null;
     let packsSource = "fallback";
     let modsSource = "fallback";
+    let packsReleaseMeta = null;
+    noReleasesYet = false;
     const errors = [];
     let rateLimited = null;
     const cache = readCache();
@@ -965,6 +1169,11 @@
       if (fromApi.length > 0) {
         packs = fromApi;
         packsSource = "GitHub API";
+        packsReleaseMeta = {
+          tag: result.data.tag_name || RELEASE_TAG,
+          publishedAt: result.data.published_at,
+          htmlUrl: result.data.html_url
+        };
       } else {
         errors.push("Release has no .zip assets. Using static pack list.");
       }
@@ -974,7 +1183,34 @@
         rateLimited = err.rateLimit || rateLimited;
         errors.push(err.message + " Using static pack list.");
       } else if (err.kind === "notfound") {
-        errors.push('Release "' + RELEASE_TAG + '" not found (404). Using static pack list.');
+        // The packs-latest tag doesn't exist. Check whether the repo has
+        // ANY release at all before giving up — if it does, use the
+        // newest one instead of a stale static list.
+        try {
+          const listResult = await fetchGithubApi(API_RELEASES_LIST, "Releases list");
+          const releaseList = Array.isArray(listResult.data) ? listResult.data : [];
+          if (releaseList.length === 0) {
+            noReleasesYet = true;
+            errors.push("No release has been published yet. Using static pack list.");
+          } else {
+            const latest = releaseList[0];
+            const fromApi = packsFromReleaseAssets(latest.assets);
+            if (fromApi.length > 0) {
+              packs = fromApi;
+              packsSource = "GitHub API";
+              packsReleaseMeta = {
+                tag: latest.tag_name,
+                publishedAt: latest.published_at,
+                htmlUrl: latest.html_url
+              };
+              errors.push('Tag "' + RELEASE_TAG + '" not found — showing the latest release ("' + latest.tag_name + '") instead.');
+            } else {
+              errors.push('Latest release ("' + latest.tag_name + '") has no .zip assets. Using static pack list.');
+            }
+          }
+        } catch (err2) {
+          errors.push('Release "' + RELEASE_TAG + '" not found (404), and the releases list could not be checked. Using static pack list.');
+        }
       } else {
         const msg = err.name === "AbortError" ? "timed out" : (err.message || String(err));
         errors.push("Release API failed (" + msg + "). Using static pack list.");
@@ -1027,9 +1263,6 @@
     if (!packs) packs = FALLBACK_PACKS.slice();
     if (!mods) mods = FALLBACK_MODS.slice();
 
-    renderPacks(packs, packsSource === "GitHub API" ? "live" : (packsSource === "cache" ? "cached" : "offline list"));
-    renderMods(mods, modsSource === "GitHub API" ? "live" : (modsSource === "cache" ? "cached" : "offline list"));
-
     // Cache successful API results for next visit / next retry.
     if (packsSource === "GitHub API" || modsSource === "GitHub API") {
       writeCache({
@@ -1041,7 +1274,54 @@
     const packOk = packsSource === "GitHub API";
     const modOk = modsSource === "GitHub API";
 
-    renderApiStatus(packOk, modOk, usedCache, cache);
+    // Detect changes vs. what was already on screen so a background
+    // auto-refresh can tell the user something actually changed.
+    const hadPreviousLoad = lastLoadedAt !== null;
+    const prevPacksKey = hadPreviousLoad ? namesKey(currentPacksRaw) : null;
+    const prevModsKey = hadPreviousLoad ? namesKey(currentModsRaw) : null;
+
+    currentPacksRaw = packs;
+    currentModsRaw = mods;
+    currentPacksLabel = packOk ? "live" : (packsSource === "cache" ? "cached" : (noReleasesYet ? "no release yet" : "offline list"));
+    currentModsLabel = modOk ? "live" : (modsSource === "cache" ? "cached" : "offline list");
+
+    if (packsReleaseMeta) {
+      const bits = ['Release: <strong>' + escapeHtml(packsReleaseMeta.tag) + '</strong>'];
+      if (packsReleaseMeta.publishedAt) {
+        const t = new Date(packsReleaseMeta.publishedAt).getTime();
+        if (!isNaN(t)) bits.push("published " + formatRelativeTime(Date.now() - t));
+      }
+      if (packsReleaseMeta.htmlUrl) {
+        bits.push('<a href="' + escapeAttr(packsReleaseMeta.htmlUrl) + '" target="_blank" rel="noopener noreferrer">release notes</a>');
+      }
+      el.releaseMetaLine.innerHTML = bits.join(" · ");
+      el.releaseMetaLine.style.display = "";
+    } else {
+      el.releaseMetaLine.innerHTML = "";
+      el.releaseMetaLine.style.display = "none";
+    }
+
+    displayPacks();
+    displayMods();
+
+    if (hadPreviousLoad && namesKey(currentPacksRaw) !== prevPacksKey) {
+      showToast("Pack list updated.", "ok");
+    }
+    if (hadPreviousLoad && namesKey(currentModsRaw) !== prevModsKey) {
+      showToast("Mod list updated.", "ok");
+    }
+
+    renderApiStatus(packOk, modOk, usedCache, cache, noReleasesYet);
+
+    if (noReleasesYet) {
+      showBanner(
+        el.noreleaseBanner,
+        el.noreleaseDetail,
+        "No GitHub Release (tagged <code>" + escapeHtml(RELEASE_TAG) + "</code> or otherwise) has been published for this repo yet. " +
+        "The packs list below is the static fallback and its download links may not resolve to real files. " +
+        "This page checks automatically and will switch to live data as soon as a release is published."
+      );
+    }
 
     if (rateLimited) {
       const resetText = rateLimited.reset ? formatResetTime(rateLimited.reset) : "shortly";
@@ -1054,45 +1334,104 @@
         ". Resets around <strong>" + escapeHtml(resetText) + "</strong>. " +
         "Offline lists are shown in the meantime" + (usedCache ? " (falling back to a recent cached copy where available)" : "") + "."
       );
-    } else if (errors.length > 0 && (!packOk || !modOk)) {
+    } else if (!noReleasesYet && errors.length > 0 && (!packOk || !modOk)) {
       showBanner(
         el.warningBanner,
         el.warningDetail,
-        "<ul>" + errors.map(function (e) { return "<li>" + escapeHtml(e) + "</li>"; }).join("") + "</ul>"
+        "<ul>" + errors.map(function (e) { return "<li>" + e + "</li>"; }).join("") + "</ul>"
       );
     }
+
+    lastLoadedAt = Date.now();
+    scheduleAutoRefresh();
 
     setProgress(100, "Done", "");
     setTimeout(hideLoading, 200);
   }
 
-  function renderApiStatus(packOk, modOk, usedCache, cache) {
-    let html = "";
+  function renderApiStatus(packOk, modOk, usedCache, cache, noReleasesYetFlag) {
+    function labelFor(ok, cached) {
+      if (ok) return "live";
+      if (cached) return "cached";
+      return noReleasesYetFlag ? "no release yet" : "static";
+    }
+    const packsCached = usedCache && cache && cache.packs && !packOk;
+    const modsCached = usedCache && cache && cache.mods && !modOk;
+
+    let html;
     if (packOk && modOk) {
       html = '<span class="ok">● Live data from GitHub API</span>';
     } else if (!packOk && !modOk) {
-      html = (usedCache && cache)
-        ? '<span class="warn">● Cached data (' + escapeHtml(formatRelativeTime(Date.now() - cache.savedAt)) + ')</span>'
-        : '<span class="warn">● Offline fallback lists (API unavailable)</span>';
+      html = '<span class="warn">● Packs: ' + labelFor(packOk, packsCached) + ' · Mods: ' + labelFor(modOk, modsCached) + '</span>';
     } else {
       html =
-        '<span class="warn">● Partial: packs ' +
-        (packOk ? "live" : (usedCache && cache && cache.packs ? "cached" : "fallback")) +
-        ", mods " +
-        (modOk ? "live" : (usedCache && cache && cache.mods ? "cached" : "fallback")) +
-        "</span>";
+        '<span class="warn">● Partial: packs ' + labelFor(packOk, packsCached) +
+        ", mods " + labelFor(modOk, modsCached) + "</span>";
     }
-    html += ' · <button type="button" class="refresh-btn" id="api-refresh-btn">Refresh</button>';
+    html += ' · <button type="button" class="refresh-btn" id="api-refresh-btn">Check now</button>';
     el.apiStatus.innerHTML = html;
     const refreshBtn = document.getElementById("api-refresh-btn");
     if (refreshBtn) {
       refreshBtn.addEventListener("click", function () {
         refreshBtn.disabled = true;
-        refreshBtn.textContent = "Refreshing…";
+        refreshBtn.textContent = "Checking…";
         loadAll();
       });
     }
   }
+
+  // ---------------------------------------------------------------------
+  // Auto-refresh
+  // ---------------------------------------------------------------------
+
+  function clearAutoRefreshTimers() {
+    if (autoRefreshTimer) { clearTimeout(autoRefreshTimer); autoRefreshTimer = null; }
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  }
+
+  function updateRefreshMeta() {
+    const parts = [];
+    if (lastLoadedAt) parts.push("Last checked: " + formatRelativeTime(Date.now() - lastLoadedAt) + " ago");
+    if (autoRefreshEnabled && nextRefreshAt) {
+      const remain = Math.max(0, Math.round((nextRefreshAt - Date.now()) / 1000));
+      parts.push("next check in " + remain + "s");
+    } else if (!autoRefreshEnabled) {
+      parts.push("auto-refresh paused");
+    }
+    el.refreshMeta.textContent = parts.join(" · ");
+  }
+
+  function scheduleAutoRefresh() {
+    clearAutoRefreshTimers();
+    if (!autoRefreshEnabled) {
+      updateRefreshMeta();
+      return;
+    }
+    nextRefreshAt = Date.now() + AUTO_REFRESH_MS;
+    autoRefreshTimer = setTimeout(function autoRefreshTick() {
+      if (document.visibilityState === "visible") {
+        loadAll();
+      } else {
+        // Tab is backgrounded — don't fetch while hidden, just try again
+        // shortly; visibilitychange will also trigger a check on refocus.
+        nextRefreshAt = Date.now() + AUTO_REFRESH_MS;
+        autoRefreshTimer = setTimeout(autoRefreshTick, AUTO_REFRESH_MS);
+      }
+    }, AUTO_REFRESH_MS);
+    countdownTimer = setInterval(updateRefreshMeta, 1000);
+    updateRefreshMeta();
+  }
+
+  el.autoRefreshToggle.addEventListener("change", function () {
+    autoRefreshEnabled = el.autoRefreshToggle.checked;
+    scheduleAutoRefresh();
+  });
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && lastLoadedAt && (Date.now() - lastLoadedAt) > VISIBILITY_REFRESH_THRESHOLD_MS) {
+      loadAll();
+    }
+  });
 
   // ---------------------------------------------------------------------
   // Banner + loading-overlay controls
@@ -1123,13 +1462,20 @@
     // fetches become no-ops on resolve, then render fallback data now.
     loadGeneration++;
     hideLoading();
-    renderPacks(FALLBACK_PACKS, "offline list");
-    renderMods(FALLBACK_MODS, "offline list");
-    renderApiStatus(false, false, false, null);
+    currentPacksRaw = FALLBACK_PACKS.slice();
+    currentModsRaw = FALLBACK_MODS.slice();
+    currentPacksLabel = "offline list";
+    currentModsLabel = "offline list";
+    el.releaseMetaLine.style.display = "none";
+    displayPacks();
+    displayMods();
+    renderApiStatus(false, false, false, null, false);
+    lastLoadedAt = Date.now();
+    scheduleAutoRefresh();
     showBanner(
       el.warningBanner,
       el.warningDetail,
-      "Loading was taking a while, so offline lists are shown. Use Refresh above to try live data again."
+      "Loading was taking a while, so offline lists are shown. Use Check now above to try live data again."
     );
   });
 
@@ -1148,9 +1494,16 @@
   loadAll().catch(function (err) {
     setProgress(100, "Failed", "");
     hideLoading();
-    renderPacks(FALLBACK_PACKS, "offline list");
-    renderMods(FALLBACK_MODS, "offline list");
-    renderApiStatus(false, false, false, null);
+    currentPacksRaw = FALLBACK_PACKS.slice();
+    currentModsRaw = FALLBACK_MODS.slice();
+    currentPacksLabel = "offline list";
+    currentModsLabel = "offline list";
+    el.releaseMetaLine.style.display = "none";
+    displayPacks();
+    displayMods();
+    renderApiStatus(false, false, false, null, false);
+    lastLoadedAt = Date.now();
+    scheduleAutoRefresh();
     showBanner(
       el.errorBanner,
       el.errorDetail,
