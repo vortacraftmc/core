@@ -1,14 +1,16 @@
 function guikit:widget/pad
-data modify storage guikit:work list set from storage guikit:lib order
-scoreboard players set #slot guikit.tmp 0
+scoreboard players set @s guikit.rfiv 20
+scoreboard players set #vcount guikit.tmp 0
+function guikit:browse/build_view
+execute store result score #vcount guikit.tmp run data get storage guikit:work view
+data modify storage guikit:work list set from storage guikit:work view
+execute store result score #skip guikit.tmp run scoreboard players get @s guikit.bpage
+scoreboard players set #18 guikit.tmp 18
+scoreboard players operation #skip guikit.tmp *= #18 guikit.tmp
 scoreboard players set #drawn guikit.tmp 0
+scoreboard players set #slot guikit.tmp 0
+function guikit:editor/home/skip
 function guikit:browse/draw_loop
-function guikit:internal/clear/w
-data modify storage guikit:w slot set value 26
-data modify storage guikit:w item set value "minecraft:barrier"
-data modify storage guikit:w id set value "bclose"
-data modify storage guikit:w type set value "tool"
-data modify storage guikit:w name set value {text:"Close",color:"red",italic:false}
-data modify storage guikit:w lore set value []
-function guikit:widget/draw
+execute if score #drawn guikit.tmp matches 0 if score @s guikit.bpage matches 1.. run return run function guikit:browse/step_back
+function guikit:browse/toolbar
 execute if score #drawn guikit.tmp matches 0 run function guikit:browse/empty

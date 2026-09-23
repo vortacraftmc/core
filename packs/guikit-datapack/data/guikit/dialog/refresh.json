@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "Auto refresh", "color": "aqua" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 280,
+    "contents": { "text": "Redraws this menu while a player has it open, so cooldowns and counters update without another click. Off leaves it still until something else redraws it.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "inputs": [
+    {
+      "type": "minecraft:single_option",
+      "key": "rate",
+      "label": { "text": "Interval" },
+      "width": 260,
+      "options": [
+        { "id": "s1", "display": "Every 1 second", "initial": true },
+        { "id": "s3", "display": "Every 3 seconds" },
+        { "id": "s5", "display": "Every 5 seconds" },
+        { "id": "off", "display": "Off" }
+      ]
+    }
+  ],
+  "action": {
+    "label": { "text": "Save", "color": "green" },
+    "width": 260,
+    "action": {
+      "type": "dynamic/run_command",
+      "template": "function guikit:editor/ui/set_refresh {rate:$(rate)}"
+    }
+  }
+}

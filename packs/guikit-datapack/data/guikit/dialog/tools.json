@@ -4,7 +4,7 @@
   "body": {
     "type": "minecraft:plain_message",
     "width": 280,
-    "contents": { "text": "Slot 26 is this button in the editor. Use Edit slot 26 if the real menu needs that slot.", "color": "gray" }
+    "contents": { "text": "Auto refresh redraws the menu while it is open. Slot 26, delete, and close are under More.", "color": "gray" }
   },
   "pause": false,
   "can_close_with_escape": true,
@@ -29,6 +29,11 @@
       "label": { "text": "Rename menu…", "color": "gold" },
       "width": 280,
       "action": { "type": "show_dialog", "dialog": "guikit:rename_menu" }
+    },
+    {
+      "label": { "text": "Auto refresh…", "color": "aqua" },
+      "width": 280,
+      "action": { "type": "show_dialog", "dialog": "guikit:refresh" }
     },
     {
       "label": { "text": "Container…", "color": "white" },
@@ -56,19 +61,9 @@
       "action": { "type": "run_command", "command": "function guikit:editor/ui/preview" }
     },
     {
-      "label": { "text": "Edit slot 26", "color": "white" },
+      "label": { "text": "More…", "color": "white" },
       "width": 280,
-      "action": { "type": "run_command", "command": "function guikit:editor/ui/edit_slot26" }
-    },
-    {
-      "label": { "text": "Delete menu…", "color": "red" },
-      "width": 280,
-      "action": { "type": "run_command", "command": "function guikit:editor/ui/delete_ask" }
-    },
-    {
-      "label": { "text": "Close editor", "color": "dark_red" },
-      "width": 280,
-      "action": { "type": "run_command", "command": "function guikit:editor/ui/close_editor" }
+      "action": { "type": "show_dialog", "dialog": "guikit:tools_more" }
     }
   ]
 }

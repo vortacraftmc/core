@@ -14,12 +14,20 @@ scoreboard objectives add guikit.drop minecraft.custom:minecraft.drop
 scoreboard objectives add guikit.pid dummy
 scoreboard objectives add guikit.var dummy
 scoreboard objectives add guikit.open trigger
+scoreboard objectives add guikit.goto trigger
+scoreboard objectives add guikit.sort trigger
+scoreboard objectives add guikit.filter trigger
 scoreboard objectives add guikit.arm dummy
 scoreboard objectives add guikit.armt dummy
 scoreboard objectives add guikit.gmsg dummy
 scoreboard objectives add guikit.ack trigger
+scoreboard objectives add guikit.bpage dummy
+scoreboard objectives add guikit.bsort dummy
+scoreboard objectives add guikit.bfilt dummy
+scoreboard objectives add guikit.rf dummy
+scoreboard objectives add guikit.rfiv dummy
 
-scoreboard players set #version guikit.const 3
+scoreboard players set #version guikit.const 5
 # uid counter is only initialised once so uids stay unique across reloads
 execute unless score #next_uid guikit.const matches 0.. run scoreboard players set #next_uid guikit.const 1
 execute unless score #next_pid guikit.const matches 1.. run scoreboard players set #next_pid guikit.const 1

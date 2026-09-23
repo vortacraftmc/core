@@ -1,0 +1,45 @@
+{
+  "type": "minecraft:notice",
+  "title": { "text": "Rename icon", "color": "gold" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 280,
+    "contents": { "text": "No quotes or backslashes. Held name uses an anvil name on the item in your hand. Leave lore blank to keep the old lore.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "inputs": [
+    {
+      "type": "minecraft:single_option",
+      "key": "src",
+      "label": { "text": "Name from" },
+      "width": 260,
+      "options": [
+        { "id": "typed", "display": "The name below", "initial": true },
+        { "id": "held", "display": "Held item's anvil name" }
+      ]
+    },
+    {
+      "type": "minecraft:text",
+      "key": "name",
+      "label": { "text": "Name" },
+      "max_length": 32,
+      "width": 260
+    },
+    {
+      "type": "minecraft:text",
+      "key": "lore",
+      "label": { "text": "Lore (optional)" },
+      "max_length": 48,
+      "width": 260
+    }
+  ],
+  "action": {
+    "label": { "text": "Save", "color": "green" },
+    "width": 260,
+    "action": {
+      "type": "dynamic/run_command",
+      "template": "function guikit:editor/ui/rename_icon {src:$(src),name:\"$(name)\",lore:\"$(lore)\"}"
+    }
+  }
+}
