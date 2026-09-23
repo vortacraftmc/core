@@ -15,8 +15,11 @@
 //       findMissingWatermarks provenance-guard helper (shared by
 //       zipPacks and checkOriginWatermarks)
 //   4. zipPacks - packages every pack under packs/ into build/packs-dist/
-//   5. checkPacks / printPackList / printModList - pack.mcmeta validation and listing
+//   5. Shared datapack-validation helpers + checkPacks / printPackList /
+//      printModList - pack.mcmeta + JSON + reference validation and listing
 //   6. mergeDatapacks - merges packs/merge-manifest.json into one datapack
+//      with a gated load/tick system, kill-switch, toggleable debug, and
+//      load-error checking (+ .zip output)
 //   7. clean task extension - also wipes build/packs-dist and packs-remap
 //
 // Logging convention: every task prefixes its own output with "[taskName]"
@@ -463,45 +466,279 @@ tasks.register('zipPacks') {
 tasks.named('buildAll') { dependsOn 'zipPacks' }
 
 // -----------------------------------------------------------------------
-// 5. checkPacks / printPackList
+// 5. Shared datapack-validation helpers + checkPacks / printPackList /
+//    printModList
+//
+// The vc* helpers below are shared by checkPacks (this section) and
+// mergeDatapacks (section 6) so "what counts as a valid pack / format /
+// resolvable function reference" is defined exactly once:
+//   - vcIsValidNamespace - [a-z0-9_.-]+ resource-location namespace rule
+//   - vcNormalizeFormatValue / vcCompareFormats - int or [major, minor]
+//     pack-format handling (minor versions exist for new formats, e.g.
+//     "min_format": [121, 1])
+//   - vcSanitizePackId - safe [a-z0-9_] id derived from a pack dir name,
+//     used for storage paths, wrapper function paths and scoreboard names
+//   - vcParseFunctionRef / vcResolveFunctionRef - 'ns:path' / '#ns:tag'
+//     parsing plus an existence check against a pack's data/ root (both
+//     the modern singular function/ layout and the legacy plural
+//     functions/ layout are accepted)
+//   - vcJsonEscape - minimal JSON string escaper for generated tellraws
+//   - vcReadTagValues - lenient "values" reader for function-tag files
 // -----------------------------------------------------------------------
+def vcIsValidNamespace = { String ns ->
+    ns != null && (ns ==~ /[a-z0-9_.-]+/)
+}
+
+def vcNormalizeFormatValue = { v ->
+    if (v instanceof Number) return [v.intValue(), 0]
+    if (v instanceof List && (v.size() == 1 || v.size() == 2) && v.every { it instanceof Number }) {
+        return [v[0].intValue(), (v.size() == 2 ? v[1].intValue() : 0)]
+    }
+    return null
+}
+
+def vcCompareFormats = { List a, List b ->
+    (a[0] != b[0]) ? (a[0] <=> b[0]) : (a[1] <=> b[1])
+}
+
+def vcSanitizePackId = { String name ->
+    def id = (name ?: 'pack').toLowerCase().replaceAll('[^a-z0-9_]+', '_').replaceAll('^_+|_+$', '')
+    if (!id) id = 'pack'
+    if (id.length() > 30) id = id.substring(0, 30).replaceAll('_+$', '')
+    if (!id) id = 'pack'
+    id
+}
+
+def vcParseFunctionRef = { String ref ->
+    if (ref == null) return null
+    def m = (ref =~ /^(#)?([a-z0-9_.-]+):([a-z0-9_.\/-]+)$/)
+    if (!m.matches()) return null
+    [isTag: m.group(1) == '#', namespace: m.group(2), path: m.group(3)]
+}
+
+def vcResolveFunctionRef = { File dataRoot, Map ref ->
+    if (ref.isTag) {
+        return new File(dataRoot, "${ref.namespace}/tags/function/${ref.path}.json").exists() ||
+            new File(dataRoot, "${ref.namespace}/tags/functions/${ref.path}.json").exists()
+    }
+    return new File(dataRoot, "${ref.namespace}/function/${ref.path}.mcfunction").exists() ||
+        new File(dataRoot, "${ref.namespace}/functions/${ref.path}.mcfunction").exists()
+}
+
+def vcJsonEscape = { String s ->
+    (s ?: '').replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+}
+
+def vcReadTagValues = { groovy.json.JsonSlurper slurper, File tagFile ->
+    if (tagFile == null || !tagFile.exists()) return null
+    try {
+        def parsed = slurper.parse(tagFile)
+        return (parsed instanceof Map && parsed.values instanceof List) ? parsed.values : null
+    } catch (Exception ignored) {
+        return null
+    }
+}
+
 tasks.register('checkPacks') {
     group = 'verification'
-    description = 'Validates that every pack.mcmeta under packs/ is valid JSON and declares a format (pack_format, or min_format/max_format for 1.21.9+).'
+    description = 'Validates every pack under packs/: pack.mcmeta (format range, description, overlays, filter), every JSON under data/, namespace rules, and load/tick + function reference resolution. Warnings fail the build only with -PcheckPacksStrict=true; -PcheckPacksJson=mcmeta checks pack.mcmeta files only.'
     def packsRoot = rootProject.file('packs')
+    // Captured at configuration time - see the 'lint' task above for why
+    // 'project.findProperty' can't be called from inside doLast itself.
+    def jsonScopeProp = project.findProperty('checkPacksJson')
+    def strictProp = project.findProperty('checkPacksStrict')
     doLast {
+        def jsonScope = (jsonScopeProp ?: 'all').toString().toLowerCase()
+        def strict = (strictProp?.toString()?.toLowerCase() == 'true')
         if (!packsRoot.exists()) {
             println "[checkPacks] no packs/ directory found, skipping."
             return
         }
+        println "[checkPacks] scope: json=${jsonScope}, strict=${strict}."
         def slurper = new groovy.json.JsonSlurper()
+        def packDirs = findPackDirs(packsRoot)
         def errors = []
-        def checked = 0
-        packsRoot.eachFileRecurse { f ->
-            if (f.name == 'pack.mcmeta' && !f.path.contains("${File.separator}build${File.separator}")) {
-                checked++
-                try {
-                    def parsed = slurper.parse(f)
-                    def pack = parsed?.pack
-                    // 1.21.9+ pack.mcmeta uses min_format/max_format instead of
-                    // pack_format (see minecraft-versions notes). Since 26.x is
-                    // the target, either form must be accepted, otherwise
-                    // current v26.x macroEngine packs get flagged as false
-                    // positives.
-                    def hasLegacyFormat = pack?.pack_format != null
-                    def hasNewFormat = pack?.min_format != null && pack?.max_format != null
-                    if (!hasLegacyFormat && !hasNewFormat) {
-                        errors << "${f}: neither 'pack.pack_format' nor 'pack.min_format'+'max_format' present"
+        def warnings = []
+        def jsonChecked = 0
+        def funcChecked = 0
+
+        packDirs.sort { it.path }.each { dir ->
+            def packLabel = packsRoot.toPath().relativize(dir.toPath()).toString()
+            def metaFile = new File(dir, 'pack.mcmeta')
+            def meta = null
+            try {
+                meta = slurper.parse(metaFile)
+            } catch (Exception e) {
+                errors << "${packLabel}/pack.mcmeta: invalid JSON - ${e.message}"
+                return
+            }
+            def pack = (meta instanceof Map) ? meta.pack : null
+            if (!(pack instanceof Map)) {
+                errors << "${packLabel}/pack.mcmeta: missing 'pack' object"
+                return
+            }
+            // --- format declarations (legacy pack_format and/or 1.21.9+ min/max) ---
+            def legacyFmt = vcNormalizeFormatValue(pack.pack_format)
+            def minFmt = vcNormalizeFormatValue(pack.min_format)
+            def maxFmt = vcNormalizeFormatValue(pack.max_format)
+            if (pack.pack_format != null && legacyFmt == null) {
+                errors << "${packLabel}/pack.mcmeta: 'pack.pack_format' must be an int or [major, minor] pair, got: ${pack.pack_format}"
+            }
+            if ((pack.min_format != null || pack.max_format != null) && (minFmt == null || maxFmt == null)) {
+                errors << "${packLabel}/pack.mcmeta: 'pack.min_format'/'pack.max_format' must each be an int or [major, minor] pair"
+            } else if (minFmt != null && maxFmt != null && vcCompareFormats(minFmt, maxFmt) > 0) {
+                errors << "${packLabel}/pack.mcmeta: min_format ${pack.min_format} is newer than max_format ${pack.max_format}"
+            }
+            if (pack.pack_format == null && (minFmt == null || maxFmt == null)) {
+                errors << "${packLabel}/pack.mcmeta: neither 'pack.pack_format' nor 'pack.min_format'+'max_format' present"
+            }
+            if (pack.supported_formats != null && !(pack.supported_formats instanceof List) && !(pack.supported_formats instanceof Map)) {
+                warnings << "${packLabel}/pack.mcmeta: 'pack.supported_formats' should be a list or {min_inclusive,max_inclusive} object"
+            }
+            // --- description (string, single component, or component list) ---
+            def desc = pack.description
+            if (desc == null) {
+                warnings << "${packLabel}/pack.mcmeta: missing 'pack.description'"
+            } else if (!(desc instanceof String) && !(desc instanceof Map) && !(desc instanceof List)) {
+                errors << "${packLabel}/pack.mcmeta: 'pack.description' must be a string, text component, or list of components"
+            } else if (desc instanceof List && !desc.every { it instanceof String || it instanceof Map }) {
+                errors << "${packLabel}/pack.mcmeta: 'pack.description' list entries must be strings or text components"
+            }
+            // --- overlays: {entries: [{formats, directory}]} + dir must exist ---
+            if (pack.overlays != null) {
+                def entries = (pack.overlays instanceof Map) ? pack.overlays.entries : null
+                if (!(entries instanceof List)) {
+                    warnings << "${packLabel}/pack.mcmeta: 'pack.overlays' should be {\"entries\": [...]}"
+                } else {
+                    entries.eachWithIndex { entry, idx ->
+                        if (!(entry instanceof Map) || entry.directory == null || entry.formats == null) {
+                            warnings << "${packLabel}/pack.mcmeta: overlays.entries[${idx}] needs 'formats' + 'directory'"
+                        } else if (!new File(dir, "overlays/${entry.directory}").exists()) {
+                            warnings << "${packLabel}/pack.mcmeta: overlays.entries[${idx}] directory 'overlays/${entry.directory}' does not exist"
+                        }
                     }
-                } catch (Exception e) {
-                    errors << "${f}: invalid JSON - ${e.message}"
                 }
             }
+            // --- filter.block[]: each entry needs namespace + path ---
+            if (meta.filter != null) {
+                def blocks = (meta.filter instanceof Map) ? meta.filter.block : null
+                if (blocks != null) {
+                    if (!(blocks instanceof List)) {
+                        warnings << "${packLabel}/pack.mcmeta: 'filter.block' should be a list"
+                    } else {
+                        blocks.eachWithIndex { b, idx ->
+                            if (!(b instanceof Map) || b.namespace == null || b.path == null) {
+                                warnings << "${packLabel}/pack.mcmeta: filter.block[${idx}] needs 'namespace' + 'path'"
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (jsonScope == 'mcmeta') return
+
+            def dataRoot = new File(dir, 'data')
+            if (!dataRoot.exists()) {
+                if (!new File(dir, 'assets').exists()) {
+                    warnings << "${packLabel}: pack has neither data/ nor assets/ - nothing to load"
+                }
+                return
+            }
+            // --- namespace rules (vanilla requires lowercase [a-z0-9_.-]) ---
+            dataRoot.eachFile { nsDir ->
+                if (nsDir.isDirectory() && !vcIsValidNamespace(nsDir.name)) {
+                    warnings << "${packLabel}: invalid namespace '${nsDir.name}' (must match [a-z0-9_.-]+, lowercase)"
+                }
+            }
+            // --- every JSON under data/ must parse; tags need "values" ---
+            def jsonFiles = []
+            dataRoot.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+                if (f.name.endsWith('.json')) jsonFiles << f
+            }
+            jsonFiles.sort { it.path }.each { jf ->
+                jsonChecked++
+                def rel = dir.toPath().relativize(jf.toPath()).toString().replace(File.separator, '/')
+                def parsed = null
+                try {
+                    parsed = slurper.parse(jf)
+                } catch (Exception e) {
+                    errors << "${packLabel}/${rel}: invalid JSON - ${e.message}"
+                    return
+                }
+                if (rel.contains('/tags/')) {
+                    if (!(parsed instanceof Map) || !(parsed.values instanceof List)) {
+                        warnings << "${packLabel}/${rel}: tag file should be an object with a \"values\" array"
+                    }
+                } else if (!(parsed instanceof Map)) {
+                    def actual = (parsed == null) ? 'null' : parsed.getClass().simpleName
+                    warnings << "${packLabel}/${rel}: data JSON should be an object (top-level ${actual})"
+                }
+            }
+            // --- minecraft load/tick references: resolvable or external ---
+            ['load', 'tick'].each { hook ->
+                ['function', 'functions'].each { tagsDir ->
+                    def tagFile = new File(dataRoot, "minecraft/tags/${tagsDir}/${hook}.json")
+                    def values = vcReadTagValues(slurper, tagFile)
+                    if (values == null) return
+                    values.each { v ->
+                        if (!(v instanceof String)) {
+                            warnings << "${packLabel}/data/minecraft/tags/${tagsDir}/${hook}.json: non-string tag value: ${v}"
+                            return
+                        }
+                        def ref = vcParseFunctionRef(v.toString())
+                        if (ref == null) {
+                            warnings << "${packLabel}/data/minecraft/tags/${tagsDir}/${hook}.json: malformed reference '${v}'"
+                        } else if (!vcResolveFunctionRef(dataRoot, ref)) {
+                            warnings << "${packLabel}/data/minecraft/tags/${tagsDir}/${hook}.json: '${v}' not found in this pack (external pack or typo)"
+                        }
+                    }
+                }
+            }
+            // --- 'function <ref>' lines inside .mcfunction files ---
+            def packFuncWarnings = 0
+            def funcFiles = []
+            dataRoot.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+                if (f.name.endsWith('.mcfunction')) funcFiles << f
+            }
+            funcFiles.sort { it.path }.each { ff ->
+                funcChecked++
+                if (packFuncWarnings > 25) return
+                def rel = dir.toPath().relativize(ff.toPath()).toString().replace(File.separator, '/')
+                def lineNo = 0
+                ff.eachLine { line ->
+                    lineNo++
+                    if (packFuncWarnings > 25) return
+                    def trimmed = line.trim()
+                    if (!trimmed || trimmed.startsWith('#')) return
+                    if (trimmed.contains('$(')) return // macro line - cannot resolve statically
+                    def m = (trimmed =~ /\bfunction\s+(#?[A-Za-z0-9_.\/-]+:[A-Za-z0-9_.\/-]+)/)
+                    while (m.find()) {
+                        def refText = m.group(1)
+                        if (refText.contains('$')) continue
+                        def ref = vcParseFunctionRef(refText)
+                        if (ref == null) {
+                            warnings << "${packLabel}/${rel}:${lineNo}: suspicious function reference '${refText}'"
+                            packFuncWarnings++
+                        } else if (!vcResolveFunctionRef(dataRoot, ref)) {
+                            warnings << "${packLabel}/${rel}:${lineNo}: unresolved 'function ${refText}' (external pack or typo)"
+                            packFuncWarnings++
+                        }
+                    }
+                }
+            }
+            if (packFuncWarnings > 25) {
+                warnings << "${packLabel}: ... (function-reference warnings truncated at 25 for this pack)"
+            }
         }
-        println "[checkPacks] validated ${checked} pack.mcmeta file(s)."
+
+        println "[checkPacks] checked ${packDirs.size()} pack(s), ${jsonChecked} JSON file(s), ${funcChecked} function file(s): ${errors.size()} error(s), ${warnings.size()} warning(s)."
+        warnings.each { println "[checkPacks] WARN: ${it}" }
         if (errors) {
             errors.each { println "[checkPacks] ERROR: ${it}" }
-            throw new GradleException("[checkPacks] failed: ${errors.size()} problematic pack.mcmeta file(s) found.")
+            throw new GradleException("[checkPacks] failed: ${errors.size()} error(s) in ${packDirs.size()} pack(s).")
+        }
+        if (strict && warnings) {
+            throw new GradleException("[checkPacks] failed strict mode: ${warnings.size()} warning(s) treated as errors (-PcheckPacksStrict=true).")
         }
         println "[checkPacks] OK: all pack.mcmeta files are valid."
     }
@@ -566,15 +803,14 @@ tasks.register('printModList') {
 // 6. mergeDatapacks
 //
 // Reads packs/merge-manifest.json and merges the listed pack folders under
-// packs/ into a single output datapack at build/merged-datapack/. Non-JSON
-// files are copied straight through. Colliding files are handled
-// explicitly, never silently overwritten:
-//   - data/minecraft/tags/function(s)/{load,tick}.json (and any other
-//     tags/function(s)/*.json) are merged by unioning their "values"
-//     arrays, since every pack's load/tick hook lives there and a plain
-//     copy would let the last pack processed clobber every other pack's
-//     hook (verified collision: 6 of 7 packs in this repo write to
-//     minecraft:load/minecraft:tick).
+// packs/ into a single output datapack at build/merged-datapack/ (plus a
+// distributable .zip next to it). Non-JSON files are copied straight
+// through. Colliding files are handled explicitly, never silently
+// overwritten:
+//   - data/.../tags/function(s)/*.json (except the minecraft load/tick
+//     tags in gated mode) are merged by unioning their "values" arrays,
+//     since every pack's load/tick hook lives there and a plain copy
+//     would let the last pack processed clobber every other pack's hook.
 //   - any other file path that appears in more than one included pack
 //     fails the build loudly, since there's no generically safe way to
 //     merge two different function/loot_table/etc. files.
@@ -582,13 +818,46 @@ tasks.register('printModList') {
 // the manifest sets "allowMismatchedFormats": true, because packs in this
 // repo span pack_format 10-101 (roughly MC 1.16-1.21.9+) and silently
 // merging across that range produces a broken pack.
+//
+// Manifest options (only "output" + "include" are required):
+//   output:  { description, pack_format? | min_format+max_format, name? }
+//   include: ["packA", "nested/dir/packB"], exclude: [...]
+//   allowMismatchedFormats: false  (default) - fail on format mismatch
+//   gatedLoad: true  (default) - route every pack's minecraft:load/tick
+//     hooks through a generated <namespace>:load / <namespace>:tick
+//     gatekeeper so packs can be toggled without editing tags. false
+//     restores the legacy plain union-merge of the load/tick tags.
+//   namespace: "vcm_core"  (default) - namespace for generated files
+//   debugDefault: false  (default) - initial debug-message state
+//   killSwitch: true  (default, needs gatedLoad) - generate the global
+//     enable_all/disable_all kill-switch on top of the per-pack toggles
+//   loadErrorHandling: true  (default) - build-time load/tick reference
+//     validation plus the runtime error log (api/report_error, errors,
+//     errors_clear) and per-pack load markers read by status
+//   strictLoadRefs: true  (default) - missing load/tick targets fail the
+//     build; false downgrades them to warnings
+//   zip: true  (default) - also write build/<output.name>.zip
+//
+// Gated-mode runtime API (all under data/<namespace>/function/):
+//   load / tick                - minecraft:load/tick entry points
+//   packs/<id>/load|tick       - per-pack wrappers calling original hooks
+//   packs/<id>/enable|disable  - per-pack toggle (disable calls the pack's
+//                                <ns>:unload hook when one exists)
+//   enable_all / disable_all   - global kill-switch (disable_all runs every
+//                                known unload hook, then halts tick dispatch)
+//   debug/on|off|toggle        - toggleable debug tellraws
+//                                (storage <namespace>:config {debug:1b/0b})
+//   status                     - global + per-pack load report
+//   api/report_error {pack,msg}- macro: alert + append to the error log
+//   errors / errors_clear      - view / clear the runtime error log
 // -----------------------------------------------------------------------
 tasks.register('mergeDatapacks') {
     group = 'build'
-    description = 'Merges the packs listed in packs/merge-manifest.json into build/merged-datapack/.'
+    description = 'Merges packs/merge-manifest.json into build/merged-datapack/ (+ .zip) with a gated load/tick system, kill-switch, toggleable debug, and load-error checking.'
     def packsRoot = rootProject.file('packs')
     def manifestFile = file('packs/merge-manifest.json')
     def outDir = file('build/merged-datapack')
+    def buildDir = file('build')
     doLast {
         if (!manifestFile.exists()) {
             throw new GradleException("[mergeDatapacks] failed: packs/merge-manifest.json not found. Create it with { \"output\": {...}, \"include\": [...] }.")
@@ -605,9 +874,33 @@ tasks.register('mergeDatapacks') {
         def exclude = (manifest.exclude ?: []) as Set
         def output = manifest.output ?: [:]
         def allowMismatchedFormats = manifest.allowMismatchedFormats == true
+        def gatedLoad = manifest.gatedLoad != false
+        def coreNs = (manifest.namespace ?: 'vcm_core').toString()
+        def debugDefault = manifest.debugDefault == true
+        def killSwitch = manifest.killSwitch != false
+        def loadErrorHandling = manifest.loadErrorHandling != false
+        def strictLoadRefs = manifest.strictLoadRefs != false
+        def zipEnabled = manifest.zip != false
+
+        if (!vcIsValidNamespace(coreNs)) {
+            throw new GradleException("[mergeDatapacks] failed: manifest 'namespace' \"${coreNs}\" is invalid (must match [a-z0-9_.-]+, lowercase).")
+        }
+        if (coreNs == 'minecraft') {
+            throw new GradleException("[mergeDatapacks] failed: manifest 'namespace' must not be 'minecraft' (generated files would collide with vanilla tags).")
+        }
+        if ((coreNs + '.load').length() > 16) {
+            throw new GradleException("[mergeDatapacks] failed: manifest 'namespace' \"${coreNs}\" is too long - scoreboard objectives ('${coreNs}.load') are limited to 16 characters.")
+        }
+        if (!gatedLoad && killSwitch) {
+            println "[mergeDatapacks] note: 'killSwitch' needs gatedLoad; skipping kill-switch generation (legacy merge)."
+            killSwitch = false
+        }
 
         println "[mergeDatapacks] manifest: ${include.size()} pack(s) listed in 'include', " +
-                "${exclude.size()} in 'exclude', allowMismatchedFormats=${allowMismatchedFormats}."
+                "${exclude.size()} in 'exclude', allowMismatchedFormats=${allowMismatchedFormats}, " +
+                "gatedLoad=${gatedLoad}, namespace=${coreNs}, debugDefault=${debugDefault}, " +
+                "killSwitch=${killSwitch}, loadErrorHandling=${loadErrorHandling}, " +
+                "strictLoadRefs=${strictLoadRefs}, zip=${zipEnabled}."
 
         if (include.isEmpty()) {
             throw new GradleException("[mergeDatapacks] failed: manifest 'include' list is empty. Nothing to merge.")
@@ -645,8 +938,10 @@ tasks.register('mergeDatapacks') {
         }
         def formats = [:]
         def normFormats = [:]
+        def metaCache = [:]
         packDirs.each { packName, dir ->
             def meta = slurper.parse(new File(dir, 'pack.mcmeta'))
+            metaCache[packName] = meta
             def pack = meta?.pack
             def fmt = pack?.pack_format != null ? "pack_format=${pack.pack_format}" : "min=${pack?.min_format} max=${pack?.max_format}"
             formats[packName] = fmt
@@ -666,6 +961,14 @@ tasks.register('mergeDatapacks') {
                 "Set \"allowMismatchedFormats\": true in the manifest to merge anyway (not recommended)."
             )
         }
+        // Overlays are version-sliced file trees (overlays/<dir>/) that this
+        // merge does not understand - warn loudly instead of silently
+        // shipping only the base data/.
+        metaCache.each { packName, meta ->
+            if (meta?.pack?.overlays != null) {
+                println "[mergeDatapacks] WARNING: ${packName} declares pack.overlays, which are NOT merged - only the base data/ tree is merged. Copy overlays/<dir>/ manually if you need them."
+            }
+        }
 
         if (outDir.exists()) {
             println "[mergeDatapacks] clearing stale output at ${outDir}"
@@ -674,8 +977,21 @@ tasks.register('mergeDatapacks') {
         outDir.mkdirs()
 
         // Collect every relative file path across all included packs so we
-        // can detect collisions before writing anything.
+        // can detect collisions before writing anything. minecraft load/tick
+        // tag values are additionally captured per-pack (for the gated
+        // dispatcher, and for load-reference validation in both modes).
+        def isFunctionTagFile = { String rel ->
+            (rel ==~ /data\/[^\/]+\/tags\/function\/.+\.json/) ||
+            (rel ==~ /data\/[^\/]+\/tags\/functions\/.+\.json/)
+        }
+        def isMinecraftHookTag = { String rel ->
+            (rel ==~ /data\/minecraft\/tags\/functions?\/(load|tick)\.json/)
+        }
         def relPathToSources = [:]
+        def packLoadHooks = [:].withDefault { [] }
+        def packTickHooks = [:].withDefault { [] }
+        def packReplaceFlags = [:].withDefault { false }
+        def skippedSensitive = 0
         packDirs.each { packName, dir ->
             dir.eachFileRecurse { f ->
                 if (f.isFile()) {
@@ -685,18 +1001,56 @@ tasks.register('mergeDatapacks') {
                     if (!rel.contains('/')) {
                         return
                     }
+                    // Same sensitive-file denylist as zipPacks: a stray .git/
+                    // or credential file must never end up in merged output.
+                    if (isSensitivePathEntry(dir, f)) {
+                        skippedSensitive++
+                        return
+                    }
+                    if (isMinecraftHookTag(rel)) {
+                        def kind = rel.endsWith('load.json') ? 'load' : 'tick'
+                        def parsed
+                        try {
+                            parsed = slurper.parse(f)
+                        } catch (Exception e) {
+                            throw new GradleException("[mergeDatapacks] failed: ${packName}/${rel} is not valid JSON - ${e.message}")
+                        }
+                        def vals = (parsed instanceof Map && parsed.values instanceof List) ? parsed.values : []
+                        vals.each { v -> ((kind == 'load') ? packLoadHooks : packTickHooks)[packName] << v.toString() }
+                        if (parsed instanceof Map && parsed.replace == true) packReplaceFlags[packName] = true
+                        if (gatedLoad) return // regenerated as the gated dispatcher below
+                    }
                     relPathToSources.computeIfAbsent(rel) { [] } << [pack: packName, file: f]
                 }
             }
         }
-        println "[mergeDatapacks] collected ${relPathToSources.size()} distinct relative file path(s) across all included packs."
-
-        // Paths where a tags/function(s)/*.json union-merge applies.
-        def isFunctionTagFile = { String rel ->
-            (rel ==~ /data\/[^\/]+\/tags\/function\/.+\.json/) ||
-            (rel ==~ /data\/[^\/]+\/tags\/functions\/.+\.json/)
+        println "[mergeDatapacks] collected ${relPathToSources.size()} distinct relative file path(s) across all included packs" +
+                (skippedSensitive ? " (skipped ${skippedSensitive} sensitive/denylisted file(s))" : ".")
+        if (gatedLoad) {
+            packDirs.keySet().each { pn ->
+                println "[mergeDatapacks] hooks for ${pn}: load=${packLoadHooks[pn].size()} ${packLoadHooks[pn] ? packLoadHooks[pn].join(', ') : '(none)'} | tick=${packTickHooks[pn].size()} ${packTickHooks[pn] ? packTickHooks[pn].join(', ') : '(none)'}"
+            }
+            def replaced = packReplaceFlags.findAll { it.value }.collect { it.key }
+            if (replaced) {
+                println "[mergeDatapacks] note: ${replaced.join(', ')} set \"replace\": true on minecraft load/tick tags - ignored in gated mode (generated tags are authoritative)."
+            }
         }
 
+        // Generated gatekeeper files live under data/<namespace>/ - refuse
+        // to silently overwrite a pack that already ships that namespace.
+        if (gatedLoad) {
+            def coreCollisions = relPathToSources.keySet().findAll { it.startsWith("data/${coreNs}/") }
+            if (coreCollisions) {
+                def details = coreCollisions.sort().take(10).collect { "  - ${it}" }.join('\n')
+                throw new GradleException(
+                    "[mergeDatapacks] failed: included pack(s) already ship files under data/${coreNs}/, which collides " +
+                    "with the generated gatekeeper:\n${details}\n" +
+                    "Set a different manifest 'namespace' (e.g. \"vcm_merge\") and re-run."
+                )
+            }
+        }
+
+        // Paths where a tags/function(s)/*.json union-merge applies.
         def hardCollisions = []
         relPathToSources.each { rel, sources ->
             if (sources.size() > 1 && !isFunctionTagFile(rel)) {
@@ -738,11 +1092,360 @@ tasks.register('mergeDatapacks') {
             }
         }
 
+        // ---- load-error handling, part 1 (build time): every load/tick
+        // reference must resolve to a function/tag file in the merged
+        // output, otherwise the hook silently does nothing in game. ----
+        if (loadErrorHandling) {
+            def funcsAvailable = [] as Set
+            def tagsAvailable = [] as Set
+            relPathToSources.keySet().each { rel ->
+                def fm = (rel =~ /^data\/([^\/]+)\/functions?\/(.+)\.mcfunction$/)
+                if (fm.matches()) funcsAvailable << "${fm.group(1)}:${fm.group(2)}".toString()
+                def tm = (rel =~ /^data\/([^\/]+)\/tags\/functions?\/(.+)\.json$/)
+                if (tm.matches()) tagsAvailable << "#${tm.group(1)}:${tm.group(2)}".toString()
+            }
+            def missingRefs = []
+            def checkedTagFiles = [] as Set
+            def checkRef
+            checkRef = { String where, String refText, int depth ->
+                if (refText.startsWith('#')) {
+                    if (!tagsAvailable.contains(refText)) {
+                        missingRefs << "${where}: tag '${refText}' has no tag file in the merged output"
+                        return
+                    }
+                    // Depth-1: the referenced tag's own values must resolve too.
+                    if (depth <= 0 || !checkedTagFiles.add(refText)) return
+                    def inner = refText.substring(1).split(':', 2)
+                    def tagRel = ["data/${inner[0]}/tags/function/${inner[1]}.json",
+                                  "data/${inner[0]}/tags/functions/${inner[1]}.json"].find { relPathToSources.containsKey(it) }
+                    if (tagRel) {
+                        try {
+                            def parsed = slurper.parse(relPathToSources[tagRel][0].file)
+                            (parsed.values ?: []).each { v -> checkRef("${where} -> ${refText}", v.toString(), depth - 1) }
+                        } catch (Exception ignored) { }
+                    }
+                } else if (!funcsAvailable.contains(refText)) {
+                    missingRefs << "${where}: function '${refText}' has no .mcfunction file in the merged output"
+                }
+            }
+            packDirs.keySet().each { pn ->
+                packLoadHooks[pn].each { checkRef("${pn} [load]", it, 1) }
+                packTickHooks[pn].each { checkRef("${pn} [tick]", it, 1) }
+            }
+            if (missingRefs) {
+                def details = missingRefs.collect { "  - ${it}" }.join('\n')
+                if (strictLoadRefs) {
+                    throw new GradleException(
+                        "[mergeDatapacks] failed: ${missingRefs.size()} load/tick reference(s) resolve to nothing in the merged output " +
+                        "(these hooks would silently do nothing in game):\n${details}\n" +
+                        "Fix the reference, include the pack that provides it, or set \"strictLoadRefs\": false to warn only."
+                    )
+                }
+                missingRefs.each { println "[mergeDatapacks] WARNING: ${it}" }
+            } else {
+                println "[mergeDatapacks] load-reference check: all load/tick hooks resolve."
+            }
+        }
+
+        // ---- gated load/tick gatekeeper generation ----
+        // Per-pack URL-safe ids (storage paths, function paths, scoreboards).
+        def packIds = [:]
+        def usedIds = [] as Set
+        packDirs.keySet().each { packName ->
+            def base = vcSanitizePackId(packName)
+            def id = base
+            def n = 2
+            while (usedIds.contains(id)) { id = "${base}_${n}".toString(); n++ }
+            usedIds << id
+            packIds[packName] = id
+        }
+        // Per-pack unload hooks (<ns>:unload when the pack ships one).
+        def packUnloadHooks = [:]
+        packDirs.each { packName, dir ->
+            def dataRoot = new File(dir, 'data')
+            def found = null
+            if (dataRoot.exists()) {
+                dataRoot.eachFile { nsDir ->
+                    if (found != null || !nsDir.isDirectory()) return
+                    ['function', 'functions'].each { fnDir ->
+                        if (found == null && new File(nsDir, "${fnDir}/unload.mcfunction").exists()) {
+                            found = "${nsDir.name}:unload"
+                        }
+                    }
+                }
+            }
+            if (found != null) {
+                packUnloadHooks[packName] = found
+                println "[mergeDatapacks] unload hook for ${packName}: ${found}"
+            }
+        }
+
+        def genStats = [count: 0]
+        def writeGenerated = { String rel, String content ->
+            def f = new File(outDir, rel)
+            f.parentFile.mkdirs()
+            f.text = content
+            genStats.count++
+        }
+        // Templates use @TOKEN@ placeholders (NOT GStrings) so the literal
+        // '$' macro prefix in api/report_error needs no escaping.
+        def renderTemplate = { String template, Map bindings ->
+            def out = template
+            bindings.keySet().sort { -it.length() }.each { k ->
+                out = out.replace("@${k}@", bindings[k].toString())
+            }
+            out
+        }
+
+        if (gatedLoad) {
+            def cfgObj = "${coreNs}.cfg"
+            def loadObj = "${coreNs}.load"
+            def tag = coreNs.toUpperCase()
+            def headerFor = { String rel -> "# ${rel} - generated by vortacraftmc/core mergeDatapacks (gatedLoad). Do not edit by hand; re-run ./gradlew mergeDatapacks." }
+            def fakeOf = { String id -> ("${coreNs}_${id}").take(40) }
+            def packDefaults = packDirs.keySet().collect { pn ->
+                "execute unless data storage ${coreNs}:config packs.${packIds[pn]}.enabled run data modify storage ${coreNs}:config packs.${packIds[pn]}.enabled set value 1b"
+            }.join('\n')
+            def dispatch = packDirs.keySet().collect { pn ->
+                "execute if data storage ${coreNs}:config {enabled:1b} if data storage ${coreNs}:config {packs:{${packIds[pn]}:{enabled:1b}}} run function ${coreNs}:packs/${packIds[pn]}/load"
+            }.join('\n')
+            def tickDispatch = packDirs.keySet().collect { pn ->
+                "execute if data storage ${coreNs}:config {enabled:1b} if data storage ${coreNs}:config {packs:{${packIds[pn]}:{enabled:1b}}} run function ${coreNs}:packs/${packIds[pn]}/tick"
+            }.join('\n')
+            def packListEscaped = vcJsonEscape(packDirs.keySet().join(', '))
+            def baseBindings = [CORE: coreNs, TAG: tag, CFG: cfgObj, LOAD: loadObj,
+                                DEBUG: (debugDefault ? '1b' : '0b')]
+
+            writeGenerated("data/${coreNs}/function/load.mcfunction", renderTemplate('''@HEADER@
+#
+# Master load dispatcher: calls every merged pack's original minecraft:load
+# hook(s) through per-pack gates (storage @CORE@:config -> packs.<id>.enabled)
+# plus one global gate ({enabled:1b}). Toggles survive /reload because
+# defaults below are only written when missing.
+#
+#   Global kill-switch : function @CORE@:disable_all / @CORE@:enable_all
+#   Per-pack toggle    : function @CORE@:packs/<id>/disable|enable
+#   Debug messages     : function @CORE@:debug/on|off|toggle
+#   Health report      : function @CORE@:status
+
+scoreboard objectives add @CFG@ dummy
+scoreboard objectives add @LOAD@ dummy
+
+execute unless data storage @CORE@:config enabled run data modify storage @CORE@:config enabled set value 1b
+execute unless data storage @CORE@:config debug run data modify storage @CORE@:config debug set value @DEBUG@
+execute unless data storage @CORE@:errors log run data modify storage @CORE@:errors log set value []
+@PACK_DEFAULTS@
+
+@DISPATCH@
+
+execute if data storage @CORE@:config {debug:1b} run tellraw @a ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"load complete: @NPACKS@ pack(s) gated (@PACKS@)","color":"gray"}]
+''', baseBindings + [HEADER: headerFor("data/${coreNs}/function/load.mcfunction"),
+                      PACK_DEFAULTS: packDefaults, DISPATCH: dispatch,
+                      NPACKS: packDirs.size().toString(), PACKS: packListEscaped]))
+
+            writeGenerated("data/${coreNs}/function/tick.mcfunction", renderTemplate('''@HEADER@
+#
+# Master tick dispatcher: calls every merged pack's original minecraft:tick
+# hook(s) through the same per-pack + global gates as load. When the global
+# gate is off (function @CORE@:disable_all) every line below no-ops, so all
+# merged packs effectively stop ticking.
+@TICK_DISPATCH@
+''', baseBindings + [HEADER: headerFor("data/${coreNs}/function/tick.mcfunction"),
+                      TICK_DISPATCH: tickDispatch]))
+
+            packDirs.keySet().each { pn ->
+                def id = packIds[pn]
+                def esc = vcJsonEscape(pn)
+                def loadCalls = packLoadHooks[pn].collect { "function ${it}" }.join('\n')
+                if (!loadCalls) loadCalls = "# (${pn} declares no minecraft:load hooks)"
+                def tickCalls = packTickHooks[pn].collect { "function ${it}" }.join('\n')
+                if (!tickCalls) tickCalls = "# (${pn} declares no minecraft:tick hooks)"
+                def unloadCall = packUnloadHooks[pn] ? "function ${packUnloadHooks[pn]}" : "# (${pn} declares no <ns>:unload hook)"
+                def packBindings = baseBindings + [ID: id, PACK: esc, FAKE: fakeOf(id)]
+
+                writeGenerated("data/${coreNs}/function/packs/${id}/load.mcfunction", renderTemplate('''@HEADER@
+#
+# Gated load wrapper for "@PACK@" (original minecraft:load hooks).
+# The @LOAD@ marker reads 0 while the hooks run and 1 once they return;
+# function @CORE@:status reports it per pack.
+scoreboard players set @FAKE@ @LOAD@ 0
+@CALLS@
+scoreboard players set @FAKE@ @LOAD@ 1
+execute if data storage @CORE@:config {debug:1b} run tellraw @a ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"loaded @PACK@","color":"green"}]
+''', packBindings + [HEADER: headerFor("data/${coreNs}/function/packs/${id}/load.mcfunction"), CALLS: loadCalls]))
+
+                writeGenerated("data/${coreNs}/function/packs/${id}/tick.mcfunction", renderTemplate('''@HEADER@
+#
+# Gated tick wrapper for "@PACK@" (original minecraft:tick hooks).
+@CALLS@
+''', packBindings + [HEADER: headerFor("data/${coreNs}/function/packs/${id}/tick.mcfunction"), CALLS: tickCalls]))
+
+                writeGenerated("data/${coreNs}/function/packs/${id}/enable.mcfunction", renderTemplate('''@HEADER@
+#
+# Enables "@PACK@" (re-runs its load wrapper so it re-initialises).
+data modify storage @CORE@:config packs.@ID@.enabled set value 1b
+tellraw @s ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"@PACK@ enabled","color":"green"}]
+execute if data storage @CORE@:config {enabled:1b} run function @CORE@:packs/@ID@/load
+''', packBindings + [HEADER: headerFor("data/${coreNs}/function/packs/${id}/enable.mcfunction")]))
+
+                writeGenerated("data/${coreNs}/function/packs/${id}/disable.mcfunction", renderTemplate('''@HEADER@
+#
+# Disables "@PACK@" (its load/tick wrappers stop being dispatched).
+@UNLOAD_CALL@
+tellraw @s ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"@PACK@ disabled","color":"yellow"}]
+''', packBindings + [HEADER: headerFor("data/${coreNs}/function/packs/${id}/disable.mcfunction"), UNLOAD_CALL: unloadCall]))
+            }
+
+            if (killSwitch) {
+                def unloadCalls = packDirs.keySet().collect { pn ->
+                    packUnloadHooks[pn] ? "function ${packUnloadHooks[pn]}" : "# (${pn}: no <ns>:unload hook)"
+                }.join('\n')
+                writeGenerated("data/${coreNs}/function/enable_all.mcfunction", renderTemplate('''@HEADER@
+#
+# GLOBAL KILL-SWITCH (on): re-enables every merged pack and re-runs load.
+data modify storage @CORE@:config enabled set value 1b
+tellraw @a ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"all merged packs enabled","color":"green"}]
+function @CORE@:load
+''', baseBindings + [HEADER: headerFor("data/${coreNs}/function/enable_all.mcfunction")]))
+                writeGenerated("data/${coreNs}/function/disable_all.mcfunction", renderTemplate('''@HEADER@
+#
+# GLOBAL KILL-SWITCH (off): stops every merged pack. Tick dispatch halts
+# immediately; each known <ns>:unload hook runs once. Re-enable with:
+#   function @CORE@:enable_all
+data modify storage @CORE@:config enabled set value 0b
+@UNLOAD_CALLS@
+tellraw @a ["", {"text":"[@TAG@] ","color":"dark_red"}, {"text":"ALL merged packs disabled. Re-enable with /function @CORE@:enable_all","color":"red"}]
+''', baseBindings + [HEADER: headerFor("data/${coreNs}/function/disable_all.mcfunction"), UNLOAD_CALLS: unloadCalls]))
+            }
+
+            writeGenerated("data/${coreNs}/function/debug/on.mcfunction", renderTemplate('''@HEADER@
+#
+# Enables @TAG@ debug tellraws (storage @CORE@:config {debug:1b}).
+data modify storage @CORE@:config debug set value 1b
+tellraw @s ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"debug messages ON","color":"aqua"}]
+''', baseBindings + [HEADER: headerFor("data/${coreNs}/function/debug/on.mcfunction")]))
+            writeGenerated("data/${coreNs}/function/debug/off.mcfunction", renderTemplate('''@HEADER@
+#
+# Disables @TAG@ debug tellraws (storage @CORE@:config {debug:0b}).
+data modify storage @CORE@:config debug set value 0b
+tellraw @s ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"debug messages OFF","color":"gray"}]
+''', baseBindings + [HEADER: headerFor("data/${coreNs}/function/debug/off.mcfunction")]))
+            writeGenerated("data/${coreNs}/function/debug/toggle.mcfunction", renderTemplate('''@HEADER@
+#
+# Flips the @TAG@ debug flag (reads the old value into a score first so the
+# two conditional writes below cannot fight each other).
+execute unless data storage @CORE@:config debug run data modify storage @CORE@:config debug set value 0b
+execute store result score #@CORE@_dbg @CFG@ run data get storage @CORE@:config debug
+execute if score #@CORE@_dbg @CFG@ matches 1 run data modify storage @CORE@:config debug set value 0b
+execute if score #@CORE@_dbg @CFG@ matches 0 run data modify storage @CORE@:config debug set value 1b
+execute if data storage @CORE@:config {debug:1b} run tellraw @s ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"debug messages ON","color":"aqua"}]
+execute unless data storage @CORE@:config {debug:1b} run tellraw @s ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"debug messages OFF","color":"gray"}]
+''', baseBindings + [HEADER: headerFor("data/${coreNs}/function/debug/toggle.mcfunction")]))
+
+            def packStatus = packDirs.keySet().collect { pn ->
+                def esc = vcJsonEscape(pn)
+                def fake = fakeOf(packIds[pn])
+                "execute if score ${fake} ${loadObj} matches 1 run tellraw @s [\"\", {\"text\":\"[OK] \",\"color\":\"green\"}, {\"text\":\"${esc}\",\"color\":\"white\"}]\n" +
+                "execute if score ${fake} ${loadObj} matches 0 run tellraw @s [\"\", {\"text\":\"[..] \",\"color\":\"yellow\"}, {\"text\":\"${esc} (load started, not finished)\",\"color\":\"white\"}]\n" +
+                "execute unless score ${fake} ${loadObj} matches 0..1 run tellraw @s [\"\", {\"text\":\"[--] \",\"color\":\"gray\"}, {\"text\":\"${esc} (not loaded)\",\"color\":\"gray\"}]"
+            }.join('\n')
+            def errorsHint = loadErrorHandling ? "\ntellraw @s [\"\", {\"text\":\"Errors: \",\"color\":\"gray\"}, {\"text\":\"run /function ${coreNs}:errors\",\"color\":\"yellow\"}]" : ''
+            writeGenerated("data/${coreNs}/function/status.mcfunction", renderTemplate('''@HEADER@
+#
+# Health report: global gate, debug flag, and per-pack load markers.
+tellraw @s ["", {"text":"=== @TAG@ status ===","color":"gold"}]
+execute if data storage @CORE@:config {enabled:1b} run tellraw @s ["", {"text":"global: ","color":"gray"}, {"text":"ENABLED","color":"green"}]
+execute unless data storage @CORE@:config {enabled:1b} run tellraw @s ["", {"text":"global: ","color":"gray"}, {"text":"DISABLED","color":"red"}]
+execute if data storage @CORE@:config {debug:1b} run tellraw @s ["", {"text":"debug: ","color":"gray"}, {"text":"ON","color":"aqua"}]
+execute unless data storage @CORE@:config {debug:1b} run tellraw @s ["", {"text":"debug: ","color":"gray"}, {"text":"OFF","color":"gray"}]
+@PACK_STATUS@@ERRORS_HINT@
+''', baseBindings + [HEADER: headerFor("data/${coreNs}/function/status.mcfunction"),
+                      PACK_STATUS: packStatus, ERRORS_HINT: errorsHint]))
+
+            // ---- load-error handling, part 2 (runtime): error log API ----
+            if (loadErrorHandling) {
+                writeGenerated("data/${coreNs}/function/api/report_error.mcfunction", renderTemplate('''@HEADER@
+#
+# Runtime error API (macro - needs MC 1.20.2+ to CALL; older games simply
+# cannot run this one file, the rest of the pack is unaffected).
+# Usage: function @CORE@:api/report_error {pack:"<id>",msg:"<what broke>"}
+# Alerts every player and appends {pack,msg} to storage @CORE@:errors -> log.
+$tellraw @a ["", {"text":"[@TAG@ ERROR] ","color":"red"}, {"text":"$(pack): ","color":"yellow"}, {"text":"$(msg)","color":"white"}]
+$data modify storage @CORE@:errors log append value {pack:"$(pack)",msg:"$(msg)"}
+''', baseBindings + [HEADER: headerFor("data/${coreNs}/function/api/report_error.mcfunction")]))
+                writeGenerated("data/${coreNs}/function/errors.mcfunction", renderTemplate('''@HEADER@
+#
+# Prints the runtime error log (storage @CORE@:errors -> log).
+tellraw @s ["", {"text":"=== @TAG@ error log ===","color":"gold"}]
+tellraw @s ["", {"nbt":"log","storage":"@CORE@:errors","color":"white"}]
+tellraw @s ["", {"text":"Clear with /function @CORE@:errors_clear","color":"gray"}]
+''', baseBindings + [HEADER: headerFor("data/${coreNs}/function/errors.mcfunction")]))
+                writeGenerated("data/${coreNs}/function/errors_clear.mcfunction", renderTemplate('''@HEADER@
+#
+# Clears the runtime error log.
+data modify storage @CORE@:errors log set value []
+tellraw @s ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"error log cleared","color":"gray"}]
+''', baseBindings + [HEADER: headerFor("data/${coreNs}/function/errors_clear.mcfunction")]))
+            }
+
+            // Generated minecraft entry-point tags (authoritative in gated mode).
+            writeGenerated('data/minecraft/tags/function/load.json',
+                groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([values: ["${coreNs}:load"]])))
+            writeGenerated('data/minecraft/tags/function/tick.json',
+                groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([values: ["${coreNs}:tick"]])))
+
+            // Human-readable API cheat-sheet + machine-readable provenance.
+            def readmeLines = []
+            readmeLines << "Merged datapack - gated load/tick system (${coreNs})"
+            readmeLines << 'Generated by vortacraftmc/core mergeDatapacks. Do not edit the generated files by hand;'
+            readmeLines << 'change packs/merge-manifest.json (or the source packs) and re-run ./gradlew mergeDatapacks.'
+            readmeLines << ''
+            readmeLines << "Merged packs (${packDirs.size()}):"
+            packDirs.keySet().each { pn -> readmeLines << "  - ${pn}  (id: ${packIds[pn]})" }
+            readmeLines << ''
+            readmeLines << 'Functions (run with /function <name>, cheats/op required):'
+            readmeLines << "  ${coreNs}:load / ${coreNs}:tick      - entry points (called automatically)"
+            readmeLines << "  ${coreNs}:status                    - global + per-pack load report"
+            readmeLines << "  ${coreNs}:debug/on|off|toggle       - toggleable debug tellraws"
+            if (loadErrorHandling) {
+                readmeLines << "  ${coreNs}:api/report_error {pack,msg} - log a runtime error (MC 1.20.2+)"
+                readmeLines << "  ${coreNs}:errors|errors_clear         - view / clear the error log"
+            }
+            readmeLines << "  ${coreNs}:packs/<id>/enable|disable - per-pack toggle (ids: ${packIds.values().join(', ')})"
+            if (killSwitch) {
+                readmeLines << "  ${coreNs}:enable_all|disable_all     - GLOBAL kill-switch"
+            }
+            readmeLines << ''
+            readmeLines << "Storage: ${coreNs}:config {enabled:1b, debug:1b/0b, packs:{<id>:{enabled:1b}}}"
+            readmeLines << "         ${coreNs}:errors {log:[{pack,msg}, ...]}"
+            readmeLines << "Scoreboards: ${cfgObj} (debug scratch), ${loadObj} (per-pack load markers 0/1)"
+            writeGenerated("${coreNs.toUpperCase()}_README.txt", readmeLines.join('\n') + '\n')
+
+            def provenance = [
+                generator  : 'vortacraftmc/core mergeDatapacks',
+                generatedAt: new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone('UTC')),
+                options    : [gatedLoad: gatedLoad, namespace: coreNs, debugDefault: debugDefault,
+                               killSwitch: killSwitch, loadErrorHandling: loadErrorHandling,
+                               strictLoadRefs: strictLoadRefs, allowMismatchedFormats: allowMismatchedFormats],
+                packs      : packDirs.keySet().collect { pn ->
+                    [name: pn, id: packIds[pn], format: formats[pn],
+                     load: packLoadHooks[pn], tick: packTickHooks[pn],
+                     unload: packUnloadHooks[pn]]
+                }
+            ]
+            writeGenerated("${coreNs}_manifest.json",
+                groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(provenance)))
+
+            println "[mergeDatapacks] gated mode: generated ${genStats.count} ${coreNs} file(s) (load/tick dispatch, per-pack wrappers, debug, status" +
+                    (killSwitch ? ', kill-switch' : '') + (loadErrorHandling ? ', error log API' : '') + ")."
+        }
+
         // Write the merged pack.mcmeta from the manifest's "output" block.
         // pack_format is optional as of 25w31a (data pack format 82+ /
         // resource pack 65+); min_format+max_format are the required pair
         // for that range. Support whichever the manifest provides; fail if
-        // neither is given.
+        // neither is given. features.enabled is unioned across included
+        // packs so experimental flags no pack can live without survive.
         def outPack = [description: output.description ?: "Merged datapack (${packDirs.keySet().join(', ')})"]
         if (output.pack_format != null) {
             outPack.pack_format = output.pack_format
@@ -758,13 +1461,30 @@ tasks.register('mergeDatapacks') {
             )
         }
         def outMeta = [pack: outPack]
+        def featuresEnabled = [] as LinkedHashSet
+        metaCache.each { packName, meta ->
+            (meta?.features?.enabled ?: []).each { featuresEnabled << it.toString() }
+        }
+        if (!featuresEnabled.isEmpty()) {
+            outMeta.features = [enabled: featuresEnabled.toList()]
+            println "[mergeDatapacks] unioned features.enabled: ${featuresEnabled.join(', ')}"
+        }
         new File(outDir, 'pack.mcmeta').text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(outMeta))
 
-        println "[mergeDatapacks] OK: merged ${packDirs.size()} pack(s) -> ${outDir}"
+        // Distributable zip next to the exploded directory.
+        if (zipEnabled) {
+            def zipBase = (output.name ?: 'merged-datapack').toString().replaceAll('[^A-Za-z0-9_.-]+', '-').replaceAll('^-+|-+$', '')
+            if (!zipBase) zipBase = 'merged-datapack'
+            def zipFile = new File(buildDir, "${zipBase}.zip")
+            println "[mergeDatapacks] writing ${zipFile}"
+            zipDirectory(outDir, zipFile)
+            println "[mergeDatapacks] OK: merged ${packDirs.size()} pack(s) -> ${outDir} + ${zipFile.name}"
+        } else {
+            println "[mergeDatapacks] OK: merged ${packDirs.size()} pack(s) -> ${outDir}"
+        }
         println "[mergeDatapacks] included: ${packDirs.keySet().join(', ')}"
     }
 }
-
 // -----------------------------------------------------------------------
 // 7. clean task extension
 //
@@ -779,6 +1499,8 @@ tasks.matching { it.name == 'clean' }.configureEach {
     // doLast itself.
     def packsDistDir = file('build/packs-dist')
     def packsRemapDir = file('build/packs-remap')
+    def mergedDir = file('build/merged-datapack')
+    def mergedZip = file('build/merged-datapack.zip')
     doLast {
         if (packsDistDir.exists()) {
             packsDistDir.deleteDir()
@@ -787,6 +1509,14 @@ tasks.matching { it.name == 'clean' }.configureEach {
         if (packsRemapDir.exists()) {
             packsRemapDir.deleteDir()
             println "[clean] removed build/packs-remap/"
+        }
+        if (mergedDir.exists()) {
+            mergedDir.deleteDir()
+            println "[clean] removed build/merged-datapack/"
+        }
+        if (mergedZip.exists()) {
+            mergedZip.delete()
+            println "[clean] removed build/merged-datapack.zip"
         }
     }
 }
