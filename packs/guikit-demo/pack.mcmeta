@@ -1,10 +1,6 @@
 {
   "pack": {
     "description": "guikit-demo - example menus for guikit: state widgets, command buttons, radio, meter, themed containers (requires the guikit core datapack)",
-    "supported_formats": {
-      "min_inclusive": 121,
-      "max_inclusive": 121
-    },
     "min_format": 121,
     "max_format": 121
   },
