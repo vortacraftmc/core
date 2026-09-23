@@ -6,11 +6,14 @@ execute store result storage guikit:w slot int 1 run scoreboard players get #slo
 data modify storage guikit:w item set value "minecraft:book"
 data modify storage guikit:w type set value "menu"
 $data modify storage guikit:w id set value "hm$(id)"
-data modify storage guikit:w name set value {text:"Menu",italic:false,color:"white"}
+data modify storage guikit:w name set value {text:"Menu",italic:false,color:"green"}
 data modify storage guikit:w name.text set from storage guikit:work menu.name
-data modify storage guikit:w lore set value [{text:"Click to edit",color:"gray",italic:false}]
-execute if data storage guikit:work menu{published:0b} run data modify storage guikit:w lore set value [{text:"Hidden from players",color:"red",italic:false}]
+data modify storage guikit:w lore set value [{text:"Published",color:"green",italic:false},{text:"Click to edit",color:"gray",italic:false}]
+execute if data storage guikit:work menu{published:0b} run data modify storage guikit:w name.color set value "gray"
+execute if data storage guikit:work menu{published:0b} run data modify storage guikit:w lore set value [{text:"Hidden from players",color:"red",italic:false},{text:"Click to edit",color:"gray",italic:false}]
 execute if data storage guikit:sess cur{mode:"pick"} run data modify storage guikit:w lore set value [{text:"Click to link",color:"aqua",italic:false}]
+function guikit:internal/container_lore
+$function guikit:browse/id_lore {id:"$(id)"}
 function guikit:widget/draw
 scoreboard players add #slot guikit.tmp 1
 scoreboard players add #drawn guikit.tmp 1
