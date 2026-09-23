@@ -22,6 +22,8 @@ scoreboard players enable @a guikit.open
 scoreboard players enable @a guikit.goto
 scoreboard players enable @a guikit.sort
 scoreboard players enable @a guikit.filter
+scoreboard players enable @a guikit.last
+scoreboard players enable @a guikit.close
 execute as @a[scores={guikit.open=1..}] at @s run function guikit:play/from_trigger
 execute as @a[scores={guikit.goto=1..}] at @s run function guikit:browse/trig_page
 execute as @a[scores={guikit.goto=..-1}] at @s run function guikit:browse/trig_page
@@ -29,4 +31,6 @@ execute as @a[scores={guikit.sort=1..}] at @s run function guikit:browse/trig_so
 execute as @a[scores={guikit.sort=..-1}] at @s run function guikit:browse/trig_sort
 execute as @a[scores={guikit.filter=1..}] at @s run function guikit:browse/trig_filter
 execute as @a[scores={guikit.filter=..-1}] at @s run function guikit:browse/trig_filter
+execute as @a[scores={guikit.last=1..}] at @s run function guikit:play/last_trigger
+execute as @a[scores={guikit.close=1..}] run function guikit:play/close_trigger
 execute as @a[tag=!guikit.welcomed] at @s run function guikit:runtime/welcome
