@@ -1,4 +1,5 @@
 function guikit:runtime/ensure_pid
+execute unless score #keep guikit.tmp matches 1 run scoreboard players set @s guikit.bpage 0
 data remove storage guikit:ed pending
 data modify storage guikit:ed pending set value {mode:"browse",menu:"-",alias:"browse"}
 function guikit:internal/clear/in

@@ -10,7 +10,7 @@
     {
       "type": "minecraft:plain_message",
       "width": 300,
-      "contents": { "text": "Players open the published list with /trigger guikit.open. Menus are stored in the world, so /reload does not wipe them. Another player cannot open your chest. Click rules (confirm, cooldown, vip/member/staff tag) are on the slot dialog.", "color": "gray" }
+      "contents": { "text": "Players: /trigger guikit.open. List: /trigger guikit.goto set 2, guikit.sort (2 oldest, 3 newest), guikit.filter (2 all, 3 chest, 4 hopper, 5 barrel, 6 ender, 7 trapped, 8 shulker, 9 copper).", "color": "gray" }
     }
   ],
   "pause": false,

@@ -16,6 +16,8 @@ scoreboard players reset @s guikit.slots
 scoreboard players reset @s guikit.click
 scoreboard players reset @s guikit.arm
 scoreboard players reset @s guikit.armt
+scoreboard players reset @s guikit.rf
+scoreboard players reset @s guikit.rfiv
 function #guikit:clear_tags
 function guikit:internal/clear/player
 

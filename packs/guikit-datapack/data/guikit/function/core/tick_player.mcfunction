@@ -31,6 +31,12 @@ execute if score @s guikit.dirty matches 1 run function guikit:core/redraw
 execute if score @s guikit.dirty matches 1 run scoreboard players set @s guikit.dirty 0
 scoreboard players reset @s guikit.click
 
+# auto-refresh. Interval is guikit.rfiv (ticks), set by fill. 0 means off.
+# Armed after this tick's redraw so a click and a refresh do not draw twice.
+execute if score @s guikit.rfiv matches 1.. run scoreboard players add @s guikit.rf 1
+execute if score @s guikit.rfiv matches 1.. if score @s guikit.rf >= @s guikit.rfiv run scoreboard players set @s guikit.dirty 1
+execute if score @s guikit.rfiv matches 1.. if score @s guikit.rf >= @s guikit.rfiv run scoreboard players set @s guikit.rf 0
+
 # confirm window (2 seconds). Decrement after clicks so the last tick still counts.
 execute if score @s guikit.armt matches 1.. run scoreboard players remove @s guikit.armt 1
 execute if score @s guikit.armt matches 0 run scoreboard players reset @s guikit.arm

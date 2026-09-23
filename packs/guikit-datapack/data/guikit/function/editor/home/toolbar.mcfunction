@@ -14,6 +14,7 @@ data modify storage guikit:w type set value "tool"
 data modify storage guikit:w name set value {text:"Next page",italic:false}
 data modify storage guikit:w lore set value []
 function guikit:widget/draw
+function guikit:editor/home/page_label
 execute if data storage guikit:sess cur{mode:"pick"} run function guikit:editor/pick/cancel_button
 execute unless data storage guikit:sess cur{mode:"pick"} run function guikit:editor/home/new_button
 function guikit:internal/clear/w

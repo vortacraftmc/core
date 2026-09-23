@@ -1,0 +1,34 @@
+{
+  "type": "minecraft:multi_action",
+  "title": { "text": "More tools", "color": "white" },
+  "body": {
+    "type": "minecraft:plain_message",
+    "width": 280,
+    "contents": { "text": "Slot 26, delete, and close. Auto refresh is on the previous screen.", "color": "gray" }
+  },
+  "pause": false,
+  "can_close_with_escape": true,
+  "columns": 1,
+  "exit_action": {
+    "label": { "text": "Back", "color": "gray" },
+    "width": 280,
+    "action": { "type": "show_dialog", "dialog": "guikit:tools" }
+  },
+  "actions": [
+    {
+      "label": { "text": "Edit slot 26", "color": "white" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/edit_slot26" }
+    },
+    {
+      "label": { "text": "Delete menu…", "color": "red" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/delete_ask" }
+    },
+    {
+      "label": { "text": "Close editor", "color": "dark_red" },
+      "width": 280,
+      "action": { "type": "run_command", "command": "function guikit:editor/ui/close_editor" }
+    }
+  ]
+}
