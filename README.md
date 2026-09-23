@@ -21,6 +21,8 @@ Datapacks under `packs/` are now in maintenance mode. Concretely, that means:
 
 This status applies to `packs/` only; it does not affect `mods/`, `scripts/`, or any other top-level directory.
 
+**Every existing top-level directory under `packs/` is additionally locked** in `packs/.datapack-lock.json` (`locked: true`), and CI (`.github/workflows/datapack-immutability.yml`) blocks any PR that touches a file under a locked pack — including the in-scope bug fixes and security hardening described above. To make such a change: open a PR that flips the pack's entry to `locked: false` and get it merged first, then open your actual fix as a separate PR, then open a third PR that sets it back to `locked: true`. See the `$comment` in `packs/.datapack-lock.json` for the exact mechanism.
+
 ## Fabric vs. datapacks — FAQ
 
 This repo hosts both Fabric mods (`mods/`) and datapacks (`packs/`). To clear up some misconceptions that circulate between the two:

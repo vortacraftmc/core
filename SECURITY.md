@@ -33,7 +33,7 @@ This repo consolidates multiple projects with different security postures:
 | `packs/` | Datapacks. Some actively maintained, some archived and frozen (see below). |
 | `scripts/` | Helper tooling. Treat as lower trust; review before running. |
 | `examples/` | Templates and sample code. Not intended for production use. |
-| `archived/` | No longer maintained. Kept for reference only — do not deploy on a live server without review. |
+| `archived/` | Reserved for no-longer-maintained projects, kept for reference only — do not deploy on a live server without review. Not currently populated; nothing has been moved here yet. |
 
 Datapacks and Fabric mods carry different security postures by nature; where
 practical, security-sensitive logic lives in a Fabric mod rather than a

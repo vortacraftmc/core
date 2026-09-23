@@ -38,6 +38,13 @@ def top_level_pack_name(changed_path: str, packs_prefix: str = "packs/") -> str 
         # lock file itself or other dotfiles under packs/ — not a pack
         return None
     parts = rest.split("/", 1)
+    if len(parts) < 2:
+        # A file directly under packs/ (no subdirectory), e.g.
+        # packs/merge-manifest.json — packs are always directories, so a
+        # bare top-level file is repo tooling/config, not a pack, and must
+        # not be treated as an unlocked "new pack" that skips the lock
+        # check entirely.
+        return None
     name = parts[0]
     return name if name else None
 
@@ -101,6 +108,27 @@ def main(argv: list[str] | None = None) -> int:
     if not changed_files:
         print("OK: no pack files in the diff.")
         return 0
+
+    packs_prefix = "packs/"
+    bare_files = sorted(
+        f.replace("\\", "/")[len(packs_prefix):]
+        for f in changed_files
+        if f.replace("\\", "/").startswith(packs_prefix)
+        and top_level_pack_name(f) is None
+        and not f.replace("\\", "/")[len(packs_prefix):].startswith(".")
+    )
+    if bare_files:
+        # Files directly under packs/ (not inside any pack directory, and
+        # not a dotfile like .datapack-lock.json) are not covered by any
+        # lock entry and are NOT blocked by this check, no matter what they
+        # do — e.g. packs/merge-manifest.json controls which locked packs'
+        # content ends up in the merged output. Flag them loudly so a
+        # reviewer notices instead of this passing silently.
+        print(
+            "NOTE: this PR touches file(s) directly under packs/ that are outside "
+            "any pack directory and outside this lock check's scope entirely "
+            f"(review manually): {bare_files}"
+        )
 
     touched_by_pack: dict[str, list[str]] = defaultdict(list)
     for changed_file in changed_files:

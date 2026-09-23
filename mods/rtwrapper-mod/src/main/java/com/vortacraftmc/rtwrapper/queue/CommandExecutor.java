@@ -34,7 +34,11 @@ public class CommandExecutor {
      * the ServerCommandSource of whoever triggered it. A single failing step
      * does not stop the chain (consistent with the original RTWrapper
      * behavior, where every variant silently handled its own failure via
-     * `return fail`), but a failure is still recorded in the audit log.
+     * `return fail`). The audit log's ALLOW/DENY marker reflects the
+     * permission gate, not step outcome, so a run with one or more failing
+     * steps is still logged as ALLOW (the caller was permitted to run it) -
+     * check the "N/M steps attempted" detail text for actual step failures,
+     * not the ALLOW/DENY marker.
      */
     public void runQueue(ServerCommandSource source, String executorName, RegisteredCommand cmd) {
         MinecraftServer server = source.getServer();
