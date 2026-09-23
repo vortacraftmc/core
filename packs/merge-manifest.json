@@ -1,4 +1,5 @@
 {
+  "_comment": "EXAMPLE merge-manifest for the vortacraftmc/core mergeDatapacks task. Copy to packs/merge-manifest.json and edit. Only 'output' + 'include' are required; everything else below shows its default.",
   "output": {
     "name": "merged-datapack",
     "description": "Merged vortacraftmc datapack",
@@ -10,5 +11,20 @@
     "guikit-datapack",
     "macroEngine-Datapack-v26.3"
   ],
-  "exclude": []
+  "exclude": [],
+  "allowMismatchedFormats": false,
+  "_gatedLoad": "true (default): route every pack's minecraft:load/tick hooks through a generated <namespace>:load/:tick gatekeeper with per-pack toggles, debug and status. false = legacy plain union-merge of the load/tick tags.",
+  "gatedLoad": true,
+  "_namespace": "Namespace for generated gatekeeper files (default vcm_core). Must be lowercase [a-z0-9_.-]+ and not 'minecraft'.",
+  "namespace": "vcm_core",
+  "_debugDefault": "Initial debug-message state (default false). Players toggle at runtime with /function vcm_core:debug/on|off|toggle.",
+  "debugDefault": false,
+  "_killSwitch": "true (default, needs gatedLoad): also generate the global /function vcm_core:enable_all|disable_all kill-switch.",
+  "killSwitch": true,
+  "_loadErrorHandling": "true (default): build-time load/tick reference validation + runtime error log (api/report_error, errors, errors_clear) + per-pack load markers for status.",
+  "loadErrorHandling": true,
+  "_strictLoadRefs": "true (default): load/tick hooks that resolve to nothing fail the build; false = warn only.",
+  "strictLoadRefs": true,
+  "_zip": "true (default): also write build/<output.name>.zip next to build/merged-datapack/.",
+  "zip": true
 }
