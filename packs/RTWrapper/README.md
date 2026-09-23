@@ -2,13 +2,13 @@
 
 > ⚠️ **Archived.** This pack is archived and no longer maintained. The `vortacraftmc/core` datapacks are being superseded by [Fabric](https://fabricmc.net/) mods. Existing worlds using this pack will continue to work, but no new features or fixes are planned.
 
-RTWrapper is a datapack for Java Edition 26.2.
+RTWrapper is a datapack for Java Edition 26.3.
 
 ## Layout
 
 ```text
 datapack/RTWrapper-Datapack/      Standalone datapack root
-datapack/commands-26.2.json       Command wrapper manifest + command parameter names
+datapack/commands-26.3.json       Command wrapper manifest + command parameter names
 docs/API.md                       API/storage protocol
 ```
 
@@ -16,7 +16,7 @@ docs/API.md                       API/storage protocol
 
 Generated command wrappers use meaningful command-specific parameter names. There is no generated catch-all or generic numeric parameter API.
 
-Provide the named parameters in the order listed for that command in `datapack/commands-26.2.json`. The dispatcher calls the exact `<command>_<N>` variant and does not append unused params.
+Provide the named parameters in the order listed for that command in `datapack/commands-26.3.json`. The dispatcher calls the exact `<command>_<N>` variant and does not append unused params.
 
 ```mcfunction
 # /tp @s 0 80 0 via queued handler
@@ -28,7 +28,7 @@ data modify storage rtwrapper:api params set value {target:"@s",item:"minecraft:
 function rtwrapper:api/commands/give
 ```
 
-> **Note:** The previous `scoreboard` example in this section used the objective `rtw.test`, which was tied to an external integration and was not sandboxed. That example has been removed and will not work if you try to reuse it as-is — build your own `scoreboard` payload from `datapack/commands-26.2.json` instead.
+> **Note:** The previous `scoreboard` example in this section used the objective `rtw.test`, which was tied to an external integration and was not sandboxed. That example has been removed and will not work if you try to reuse it as-is — build your own `scoreboard` payload from `datapack/commands-26.3.json` instead.
 
 Named convenience wrapper example:
 

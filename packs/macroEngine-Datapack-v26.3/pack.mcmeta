@@ -1,7 +1,6 @@
 {
   "pack": {
-    "description": "macroEngine | 26.3-rc-1",
-    "pack_format": 121,
+    "description": "macroEngine | 26.3",
     "min_format": [
       121,
       0

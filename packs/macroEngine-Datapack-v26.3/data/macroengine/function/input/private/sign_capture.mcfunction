@@ -1,6 +1,6 @@
 # ======================================================================================
 # macroengine:input/private/sign_capture  [INTERNAL]
-# MC 26.3-pre-3
+# MC 26.3
 # Strategy: copy block entity → extract from storage (more reliable than direct paths).
 # messages[i] may be: plain string | {text:"..."} | JSON-string component
 # ======================================================================================

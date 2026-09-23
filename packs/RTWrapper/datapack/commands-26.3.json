@@ -1,7 +1,7 @@
 {
   "name": "RTWrapper",
   "id": "rtwrapper",
-  "target": "Java Edition 26.2",
+  "target": "Java Edition 26.3",
   "pack_format": 107,
   "namespace": "rtwrapper",
   "links": ["https://github.com/vortacraftmc/core"],

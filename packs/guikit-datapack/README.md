@@ -6,6 +6,14 @@ A chest minecart is the screen. Left-click is the click. Definitions live in
 
 Target: Minecraft Java **26.3** (`min_format` / `max_format` **121**).
 
+**New in v5:**
+
+- `/trigger guikit.last` — reopens the most recent menu you opened (survives `/reload`; cleared
+  automatically if that menu gets deleted).
+- `/trigger guikit.close` — closes your own open menu immediately (no operator, no waiting for the
+  timeout). For map makers there is also `function guikit:api/close_all` to close every open menu at once.
+- Two new `guikit:cond` button conditions: `dimension` and `weather` (see below).
+
 The cart / click / redraw engine underneath is the old guikit runtime. Authoring
 moved off the `#guikit:fill` / `#guikit:probe` framework and into an editor.
 
@@ -23,7 +31,16 @@ Anyone (no operator permission):
 ```
 
 That opens the list of **published** menus. A one-time chat line suggests the same command.
-Joining players are told once.
+Joining players are told once. Two more player triggers:
+
+```
+/trigger guikit.last    # reopen the most recent menu you opened
+/trigger guikit.close   # close your own open menu right now
+```
+
+`guikit.last` remembers the last menu opened through the list, a "go to another menu" button,
+or a preview. If that menu is deleted in the editor, the pointer is cleaned up and the trigger
+says so instead of opening nothing.
 
 ## Edit (operators)
 
@@ -60,6 +77,26 @@ Preview is the real menu. Chat suggests `/function guikit:editor/resume` to come
 | Click rules | Confirm (second click within 2 seconds), per-player cooldown (3 / 10 / 30 seconds), or a required tag (`vip`, `member`, `staff`) |
 
 Click rules are on the slot dialog, after the action is placed. **Keep** leaves a rule as it is. Tags are not typed: an operator grants them with `/tag <player> add vip` (or `member` / `staff`). A button can have more than one rule. While a cooldown is running the icon is a barrier.
+
+## Button conditions (`guikit:cond`)
+
+Hand-written button packs (`storage guikit:btn defs`) can gate a button on a condition.
+`function guikit:cond/check` reads `storage guikit:cond` and sets `#cond guikit.tmp`:
+
+| Type | Keys | Passes when |
+| --- | --- | --- |
+| `score` | `obj`, `[min]`, `[max]` | the player's score is in range (unset = fail) |
+| `item_count` | `item`, `[min]` | the player carries at least `min` of the item (default 1) |
+| `tag` | `tag` | the player has the tag |
+| `gamemode` | `mode` | survival / creative / adventure / spectator |
+| `advancement` | `adv` | the advancement is done |
+| `predicate` | `pred` | the datapack predicate matches |
+| `level` | `[min]`, `[max]` | XP level is in range |
+| `dimension` | `dim` | the player is in that dimension (any dimension id, e.g. `minecraft:the_nether`) |
+| `weather` | `weather` | `clear`, `rain` or `thunder` in the player's dimension |
+| `all` / `any` | `of:[...]` | every / at least one element passes (leaf types only) |
+
+`not:1b` inverts any of them. Unknown types fail closed. `dimension` and `weather` are new in v5.
 
 ## Other players
 
@@ -101,6 +138,9 @@ storage guikit:lib
 `guikit:reg` is still rebuilt every `/reload` (that is the engine). Saved menus are
 registered again from `guikit:lib` by `guikit:runtime/register`. Do not `data remove storage guikit:lib`.
 
+`storage guikit:mem` holds small per-player memories (world save): `last.m<pid>` is the menu id
+`/trigger guikit.last` reopens. Deleting a menu in the editor sweeps the stale pointers.
+
 Per-player editor state is `storage guikit:ed p<pid>` and is not wiped on close, so a dialog can resume the editor.
 
 ## Opening a menu from a command block
@@ -110,6 +150,12 @@ function guikit:play/open_id {menu:"m1"}
 ```
 
 `m1` is the generated id (`/data get storage guikit:lib order`).
+
+Closing everything at once (map reset, minigame round end):
+
+```
+function guikit:api/close_all
+```
 
 ## Engine notes (advanced)
 

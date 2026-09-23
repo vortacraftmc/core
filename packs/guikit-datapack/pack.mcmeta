@@ -1,7 +1,6 @@
 {
   "pack": {
-    "description": "guikit v3 - in-game GUI editor (chest_minecart + left-click)",
-    "pack_format": 121,
+    "description": "guikit v5 - in-game GUI editor (chest_minecart + left-click)",
     "min_format": 121,
     "max_format": 121
   },
