@@ -26,8 +26,10 @@ scoreboard objectives add guikit.bsort dummy
 scoreboard objectives add guikit.bfilt dummy
 scoreboard objectives add guikit.rf dummy
 scoreboard objectives add guikit.rfiv dummy
+scoreboard objectives add guikit.last trigger
+scoreboard objectives add guikit.close trigger
 
-scoreboard players set #version guikit.const 4
+scoreboard players set #version guikit.const 5
 # uid counter is only initialised once so uids stay unique across reloads
 execute unless score #next_uid guikit.const matches 0.. run scoreboard players set #next_uid guikit.const 1
 execute unless score #next_pid guikit.const matches 1.. run scoreboard players set #next_pid guikit.const 1

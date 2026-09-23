@@ -9,6 +9,8 @@
 #   advancement  {adv:"minecraft:story/root"}
 #   predicate    {pred:"ns:name"}
 #   level        {[min:N], [max:N]}                    XP level (not a scoreboard); both optional
+#   dimension    {dim:"minecraft:the_nether"}          any dimension id (overworld / the_nether / the_end / ...)
+#   weather      {weather:"clear"}                     clear | rain | thunder, in the player's dimension
 #   all / any    {of:[{type:..}, {type:..}]}           every / at least one element passes. Elements must be
 #                                                      leaf types above (a nested all/any counts as failed)
 # `not:1b` inverts the result. Unknown type / missing key = fails (closed).
@@ -29,5 +31,7 @@ execute if data storage guikit:cond {type:"gamemode"} if data storage guikit:con
 execute if data storage guikit:cond {type:"advancement"} if data storage guikit:cond adv run function guikit:cond/t_advancement with storage guikit:cond
 execute if data storage guikit:cond {type:"predicate"} if data storage guikit:cond pred run function guikit:cond/t_predicate with storage guikit:cond
 execute if data storage guikit:cond {type:"level"} run function guikit:cond/t_level
+execute if data storage guikit:cond {type:"dimension"} if data storage guikit:cond dim run function guikit:cond/t_dimension with storage guikit:cond
+execute if data storage guikit:cond {type:"weather"} if data storage guikit:cond weather run function guikit:cond/t_weather with storage guikit:cond
 execute if data storage guikit:cond {not:1b} run function guikit:cond/negate
 return run scoreboard players get #cond guikit.tmp
