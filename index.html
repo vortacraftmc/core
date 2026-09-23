@@ -86,7 +86,16 @@
       color: var(--muted);
       font-size: 14px;
       text-align: center;
-      max-width: 320px;
+      max-width: 340px;
+    }
+    #loading-substatus {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      max-width: 340px;
+      opacity: 0.75;
+      min-height: 1.4em;
     }
     #loading-progress {
       margin-top: 12px;
@@ -102,29 +111,51 @@
       background: var(--accent);
       transition: width 0.25s ease;
     }
-
-    #error-banner {
+    #loading-timeout-hint {
+      margin-top: 18px;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      max-width: 320px;
       display: none;
-      background: rgba(248, 81, 73, 0.12);
-      border: 1px solid var(--danger);
+    }
+    #loading-timeout-hint.visible { display: block; }
+    #loading-timeout-hint button {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    #loading-timeout-hint button:hover { border-color: var(--accent); color: var(--accent); }
+
+    #banner-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 24px;
+    }
+    .banner-box {
+      display: none;
       border-radius: 8px;
       padding: 14px 16px;
-      margin: 24px 0 0;
-      color: var(--text);
       font-size: 14px;
     }
-    #error-banner.visible { display: block; }
-    #error-banner strong { color: var(--danger); }
-    #error-banner .error-detail {
+    .banner-box.visible { display: block; }
+    .banner-box strong { display: block; margin-bottom: 2px; }
+    .banner-box .detail {
       margin-top: 6px;
       color: var(--muted);
       font-size: 13px;
       word-break: break-word;
     }
-    #error-banner button {
-      margin-top: 10px;
-      background: var(--danger);
-      color: #fff;
+    .banner-box .detail ul { margin: 6px 0 0; padding-left: 18px; }
+    .banner-box .detail li { margin-bottom: 2px; }
+    .banner-box .actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .banner-box button {
       border: none;
       border-radius: 6px;
       padding: 6px 12px;
@@ -132,16 +163,53 @@
       font-weight: 600;
       cursor: pointer;
     }
+    #error-banner {
+      background: rgba(248, 81, 73, 0.12);
+      border: 1px solid var(--danger);
+    }
+    #error-banner strong { color: var(--danger); }
+    #error-banner button { background: var(--danger); color: #fff; }
     #error-banner button:hover { opacity: 0.9; }
+
+    #warning-banner {
+      background: rgba(210, 153, 34, 0.12);
+      border: 1px solid var(--warning);
+    }
+    #warning-banner strong { color: var(--warning); }
+    #warning-banner button { background: transparent; color: var(--warning); border: 1px solid var(--warning); }
+    #warning-banner button:hover { opacity: 0.85; }
+
+    #ratelimit-banner {
+      background: rgba(139, 148, 158, 0.10);
+      border: 1px solid var(--border);
+    }
+    #ratelimit-banner strong { color: var(--text); }
+    #ratelimit-banner button { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    #ratelimit-banner button:hover { border-color: var(--accent); color: var(--accent); }
 
     #api-status {
       font-size: 12px;
       color: var(--muted);
       margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
     }
     #api-status .ok { color: var(--accent); }
     #api-status .warn { color: var(--warning); }
     #api-status .err { color: var(--danger); }
+    #api-status .refresh-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 5px;
+      padding: 2px 8px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    #api-status .refresh-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    #api-status .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .grid {
       display: grid;
@@ -218,6 +286,26 @@
       font-size: 13px;
       grid-column: 1 / -1;
     }
+    .skeleton-grid .card {
+      min-height: 118px;
+      position: relative;
+      overflow: hidden;
+    }
+    .skeleton-line {
+      background: linear-gradient(90deg, var(--border) 25%, #21262d 37%, var(--border) 63%);
+      background-size: 400% 100%;
+      animation: shimmer 1.4s ease infinite;
+      border-radius: 4px;
+      height: 12px;
+    }
+    .skeleton-line.title { width: 60%; height: 15px; margin-bottom: 10px; }
+    .skeleton-line.body { width: 90%; margin-bottom: 6px; }
+    .skeleton-line.body.short { width: 40%; margin-bottom: 14px; }
+    .skeleton-line.btn { width: 44%; height: 26px; border-radius: 6px; }
+    @keyframes shimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
     footer {
       text-align: center;
       color: var(--muted);
@@ -263,13 +351,23 @@
       line-height: 1;
       padding: 0;
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner, .skeleton-line { animation: none; }
+    }
   </style>
 </head>
 <body>
   <div id="loading-overlay" role="status" aria-live="polite" aria-busy="true">
     <div class="spinner" aria-hidden="true"></div>
     <div id="loading-status">Connecting to GitHub…</div>
+    <div id="loading-substatus"></div>
     <div id="loading-progress"><div id="loading-progress-bar"></div></div>
+    <div id="loading-timeout-hint">
+      This is taking longer than expected — GitHub may be slow to respond, or your
+      connection may have dropped.
+      <div><button type="button" id="loading-skip">Continue with offline lists</button></div>
+    </div>
   </div>
 
   <div id="dl-toast" role="status" aria-live="polite">
@@ -286,10 +384,31 @@
     </p>
     <p id="api-status"></p>
 
-    <div id="error-banner" role="alert">
-      <strong>Something went wrong</strong>
-      <div class="error-detail" id="error-detail"></div>
-      <button type="button" id="error-retry">Retry</button>
+    <div id="banner-stack">
+      <div id="error-banner" class="banner-box" role="alert">
+        <strong>Something went wrong</strong>
+        <div class="detail" id="error-detail"></div>
+        <div class="actions">
+          <button type="button" id="error-retry">Retry</button>
+        </div>
+      </div>
+
+      <div id="warning-banner" class="banner-box" role="status">
+        <strong>Showing offline data for some sections</strong>
+        <div class="detail" id="warning-detail"></div>
+        <div class="actions">
+          <button type="button" id="warning-retry">Retry live data</button>
+          <button type="button" id="warning-dismiss">Dismiss</button>
+        </div>
+      </div>
+
+      <div id="ratelimit-banner" class="banner-box" role="status">
+        <strong>GitHub API rate limit reached</strong>
+        <div class="detail" id="ratelimit-detail"></div>
+        <div class="actions">
+          <button type="button" id="ratelimit-retry">Try again</button>
+        </div>
+      </div>
     </div>
 
     <h2>Datapacks &amp; resource packs</h2>
@@ -338,35 +457,55 @@
     "https://api.github.com/repos/" + OWNER + "/" + REPO + "/contents/mods";
   const FETCH_TIMEOUT_MS = 12000;
   const HEAD_TIMEOUT_MS = 8000;
+  const OVERALL_TIMEOUT_MS = 20000;
+  const CACHE_KEY = "vortacraftmc-core-site-cache-v1";
+  const CACHE_MAX_AGE_MS = 15 * 60 * 1000; // 15 min — this content doesn't change minute to minute
 
+  // Kept in sync with packs/ (pack.mcmeta-bearing directories) and mods/
+  // (Fabric mod subprojects, excluding the TEMPLATE-MOD scaffold, which
+  // modsFromContents() also excludes when the live API is available).
+  // zip names follow the zipPacks Gradle task's naming: the pack's path
+  // under packs/, with path separators replaced by "-".
   const FALLBACK_PACKS = [
-    { name: "InteractionClickDetection", zip: "InteractionClickDetection.zip" },
-    { name: "LeftClickDetection", zip: "LeftClickDetection.zip" },
-    { name: "RTWrapper (1.21.1)", zip: "RTWrapper-1.21.1.zip" },
-    { name: "RTWrapper (v1.0.1)", zip: "RTWrapper-v1.0.1.zip" },
-    { name: "RTWrapper Datapack", zip: "RTWrapper-datapack-RTWrapper-Datapack.zip" },
-    { name: "TunnelScript", zip: "TunnelScript.zip" },
+    { name: "BorderPing", zip: "BorderPing.zip" },
     { name: "cmdTunnel-datapack", zip: "cmdTunnel-datapack.zip" },
+    { name: "DailyBonus", zip: "DailyBonus.zip" },
+    { name: "guikit-datapack", zip: "guikit-datapack.zip" },
+    { name: "guikit-demo", zip: "guikit-demo.zip" },
+    { name: "InteractionClickDetection", zip: "InteractionClickDetection.zip" },
     { name: "inv_gui", zip: "inv_gui.zip" },
-    { name: "inv_gui (Example)", zip: "inv_gui-Example.zip" },
+    { name: "LeftClickDetection", zip: "LeftClickDetection.zip" },
     { name: "macroEngine (Datapack, v26.3)", zip: "macroEngine-Datapack-v26.3.zip" },
     { name: "macroEngine (Resource pack, v26.3)", zip: "macroEngine-Resourcepack-v26.3.zip" },
-    { name: "DailyBonus", zip: "DailyBonus.zip" },
-    { name: "BorderPing", zip: "BorderPing.zip" },
-    { name: "QuickShare", zip: "QuickShare.zip" }
+    { name: "QuickShare", zip: "QuickShare.zip" },
+    { name: "RTWrapper (1.21.1)", zip: "RTWrapper-1.21.1.zip" },
+    { name: "RTWrapper (v1.0.1)", zip: "RTWrapper-v1.0.1.zip" },
+    { name: "RTWrapper (archived, original)", zip: "RTWrapper-datapack-RTWrapper-Datapack.zip" },
+    { name: "TunnelScript", zip: "TunnelScript.zip" }
   ];
   const FALLBACK_MODS = [
-    { name: "datapack-fixer", dir: "datapack-fixer" },
-    { name: "rtwrapper-mod", dir: "rtwrapper-mod" }
+    { name: "Datapack Blocker", dir: "datapack-blocker" },
+    { name: "Datapack Fixer", dir: "datapack-fixer" },
+    { name: "RTWrapper", dir: "rtwrapper-mod" }
   ];
 
   const el = {
     overlay: document.getElementById("loading-overlay"),
     status: document.getElementById("loading-status"),
+    substatus: document.getElementById("loading-substatus"),
     bar: document.getElementById("loading-progress-bar"),
+    timeoutHint: document.getElementById("loading-timeout-hint"),
+    loadingSkip: document.getElementById("loading-skip"),
     errorBanner: document.getElementById("error-banner"),
     errorDetail: document.getElementById("error-detail"),
     errorRetry: document.getElementById("error-retry"),
+    warningBanner: document.getElementById("warning-banner"),
+    warningDetail: document.getElementById("warning-detail"),
+    warningRetry: document.getElementById("warning-retry"),
+    warningDismiss: document.getElementById("warning-dismiss"),
+    ratelimitBanner: document.getElementById("ratelimit-banner"),
+    ratelimitDetail: document.getElementById("ratelimit-detail"),
+    ratelimitRetry: document.getElementById("ratelimit-retry"),
     apiStatus: document.getElementById("api-status"),
     packsGrid: document.getElementById("packs-grid"),
     modsGrid: document.getElementById("mods-grid"),
@@ -376,25 +515,35 @@
   };
 
   let toastTimer = null;
+  let overallTimeoutTimer = null;
+  let loadGeneration = 0; // bumped on every loadAll() call so stale timeouts/retries no-op
 
-  function setProgress(pct, message) {
+  // ---------------------------------------------------------------------
+  // Small helpers
+  // ---------------------------------------------------------------------
+
+  function setProgress(pct, message, sub) {
     el.bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
     if (message) el.status.textContent = message;
+    el.substatus.textContent = sub || "";
   }
 
   function hideLoading() {
     el.overlay.classList.add("hidden");
     el.overlay.setAttribute("aria-busy", "false");
+    el.timeoutHint.classList.remove("visible");
+    if (overallTimeoutTimer) {
+      clearTimeout(overallTimeoutTimer);
+      overallTimeoutTimer = null;
+    }
   }
 
-  function showError(summary, detail) {
-    el.errorDetail.textContent = detail || summary;
-    el.errorBanner.classList.add("visible");
+  function showBanner(box, detailEl, detailHtml) {
+    if (detailEl) detailEl.innerHTML = detailHtml || "";
+    box.classList.add("visible");
   }
-
-  function clearError() {
-    el.errorBanner.classList.remove("visible");
-    el.errorDetail.textContent = "";
+  function hideBanner(box) {
+    box.classList.remove("visible");
   }
 
   function showToast(message, kind) {
@@ -443,13 +592,55 @@
     return escapeHtml(s).replace(/'/g, "&#39;");
   }
 
-  /**
-   * Download system:
-   * 1) Disable button + show spinner
-   * 2) HEAD (or GET range) the URL to confirm the asset exists
-   * 3) On success, trigger browser download via temporary <a download>
-   * 4) On failure, show inline error + toast
-   */
+  function formatRelativeTime(ms) {
+    const s = Math.round(ms / 1000);
+    if (s < 60) return s + "s ago";
+    const m = Math.round(s / 60);
+    if (m < 60) return m + "m ago";
+    const h = Math.round(m / 60);
+    return h + "h ago";
+  }
+
+  function formatResetTime(unixSeconds) {
+    try {
+      const d = new Date(unixSeconds * 1000);
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch (e) {
+      return "shortly";
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Local cache (best-effort; page still works with it fully disabled)
+  // ---------------------------------------------------------------------
+
+  function readCache() {
+    try {
+      const raw = window.localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed.savedAt !== "number") return null;
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeCache(data) {
+    try {
+      window.localStorage.setItem(CACHE_KEY, JSON.stringify(Object.assign({}, data, {
+        savedAt: Date.now()
+      })));
+    } catch (e) {
+      // Storage unavailable (private mode, quota, disabled) — cache is
+      // best-effort only, so just skip it silently.
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Download flow
+  // ---------------------------------------------------------------------
+
   async function startDownload(pack, btn, statusEl) {
     const url = pack.downloadUrl || (RELEASE_BASE + encodeURIComponent(pack.zip));
     const filename = pack.zip || (pack.name + ".zip");
@@ -461,7 +652,6 @@
     statusEl.textContent = "Verifying file on GitHub…";
 
     try {
-      // Prefer HEAD; some CDNs only allow GET — fall back carefully
       let ok = false;
       let status = 0;
       let sizeHint = "";
@@ -481,7 +671,6 @@
             }
           }
         } else if (status === 405 || status === 501) {
-          // HEAD not allowed — try a range GET
           const rangeRes = await fetchWithTimeout(url, {
             method: "GET",
             headers: { Range: "bytes=0-0" },
@@ -489,16 +678,12 @@
           }, HEAD_TIMEOUT_MS);
           status = rangeRes.status;
           ok = rangeRes.ok || status === 206;
-          // Abort body consumption
           if (rangeRes.body && rangeRes.body.cancel) rangeRes.body.cancel();
         }
       } catch (netErr) {
-        // CORS may block HEAD from pages on github.io for release CDN —
-        // in that case we still offer a direct navigation download.
         if (netErr.name === "AbortError") {
           throw new Error("Verification timed out");
         }
-        // Opaque / CORS failure: proceed with best-effort download
         statusEl.textContent = "Could not pre-check (CORS). Starting download…";
         triggerBrowserDownload(url, filename);
         statusEl.className = "dl-status ok";
@@ -544,7 +729,28 @@
     document.body.removeChild(a);
   }
 
+  // ---------------------------------------------------------------------
+  // Rendering
+  // ---------------------------------------------------------------------
+
+  function renderSkeleton(grid, count) {
+    grid.innerHTML = "";
+    grid.classList.add("skeleton-grid");
+    for (let i = 0; i < count; i++) {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.setAttribute("aria-hidden", "true");
+      card.innerHTML =
+        '<div class="skeleton-line title"></div>' +
+        '<div class="skeleton-line body"></div>' +
+        '<div class="skeleton-line body short"></div>' +
+        '<div class="skeleton-line btn"></div>';
+      grid.appendChild(card);
+    }
+  }
+
   function renderPacks(packs, sourceLabel) {
+    el.packsGrid.classList.remove("skeleton-grid");
     el.packsGrid.innerHTML = "";
     if (!packs || packs.length === 0) {
       el.packsGrid.innerHTML = '<p class="empty-state">No packs available.</p>';
@@ -587,6 +793,7 @@
   }
 
   function renderMods(mods, sourceLabel) {
+    el.modsGrid.classList.remove("skeleton-grid");
     el.modsGrid.innerHTML = "";
     if (!mods || mods.length === 0) {
       el.modsGrid.innerHTML = '<p class="empty-state">No mods listed yet.</p>';
@@ -607,6 +814,10 @@
       el.modsGrid.appendChild(card);
     });
   }
+
+  // ---------------------------------------------------------------------
+  // GitHub API — data shaping
+  // ---------------------------------------------------------------------
 
   function packsFromReleaseAssets(assets) {
     if (!Array.isArray(assets)) return [];
@@ -640,114 +851,311 @@
       });
   }
 
+  // Reads GitHub's standard rate-limit response headers off any API
+  // response (present on both successful and 403/429 responses).
+  function readRateLimitHeaders(res) {
+    const remaining = res.headers.get("x-ratelimit-remaining");
+    const limit = res.headers.get("x-ratelimit-limit");
+    const reset = res.headers.get("x-ratelimit-reset");
+    const retryAfter = res.headers.get("retry-after");
+    return {
+      remaining: remaining !== null ? parseInt(remaining, 10) : null,
+      limit: limit !== null ? parseInt(limit, 10) : null,
+      reset: reset !== null ? parseInt(reset, 10) : null,
+      retryAfter: retryAfter !== null ? parseInt(retryAfter, 10) : null
+    };
+  }
+
+  // Fetches one GitHub API endpoint with: timeout handling, one retry on
+  // transient network failure, and explicit classification of rate-limit
+  // vs. not-found vs. other HTTP errors so the caller can show a precise
+  // message instead of a generic "failed".
+  async function fetchGithubApi(url, label) {
+    const attempt = async function (isRetry) {
+      const res = await fetchWithTimeout(url, {
+        headers: { Accept: "application/vnd.github+json" }
+      });
+      const rl = readRateLimitHeaders(res);
+
+      if (res.status === 403 && rl.remaining === 0) {
+        const resetText = rl.reset ? formatResetTime(rl.reset) : "shortly";
+        const err = new Error(
+          label + ": GitHub API rate limit reached. Resets around " + resetText + "."
+        );
+        err.kind = "ratelimit";
+        err.rateLimit = rl;
+        throw err;
+      }
+      if (res.status === 403) {
+        const err = new Error(label + ": forbidden (403) — the request may be blocked or the resource private.");
+        err.kind = "forbidden";
+        throw err;
+      }
+      if (res.status === 404) {
+        const err = new Error(label + ": not found (404).");
+        err.kind = "notfound";
+        throw err;
+      }
+      if (res.status === 429) {
+        const err = new Error(
+          label + ": too many requests (429)." + (rl.retryAfter ? " Retry after ~" + rl.retryAfter + "s." : "")
+        );
+        err.kind = "ratelimit";
+        err.rateLimit = rl;
+        throw err;
+      }
+      if (!res.ok) {
+        const err = new Error(label + ": HTTP " + res.status + ".");
+        err.kind = "http";
+        throw err;
+      }
+      const data = await res.json();
+      return { data: data, rateLimit: rl };
+    };
+
+    try {
+      return await attempt(false);
+    } catch (err) {
+      // Only retry on network-level failures (timeout/abort/offline), not
+      // on classified HTTP errors above — retrying a 404 or rate limit
+      // immediately just wastes the timeout budget.
+      const isNetworkFailure = !err.kind && (err.name === "AbortError" || err instanceof TypeError);
+      if (!isNetworkFailure) throw err;
+      await new Promise(function (r) { setTimeout(r, 600); });
+      return await attempt(true);
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Orchestration
+  // ---------------------------------------------------------------------
+
   async function loadAll() {
-    clearError();
-    setProgress(5, "Connecting to GitHub…");
+    const myGeneration = ++loadGeneration;
+
+    hideBanner(el.errorBanner);
+    hideBanner(el.warningBanner);
+    hideBanner(el.ratelimitBanner);
     el.apiStatus.innerHTML = "";
+    el.timeoutHint.classList.remove("visible");
+
+    renderSkeleton(el.packsGrid, 6);
+    renderSkeleton(el.modsGrid, 3);
+
+    setProgress(5, "Connecting to GitHub…", "");
+
+    if (overallTimeoutTimer) clearTimeout(overallTimeoutTimer);
+    overallTimeoutTimer = setTimeout(function () {
+      if (myGeneration !== loadGeneration) return;
+      el.timeoutHint.classList.add("visible");
+    }, OVERALL_TIMEOUT_MS);
 
     let packs = null;
     let mods = null;
     let packsSource = "fallback";
     let modsSource = "fallback";
     const errors = [];
+    let rateLimited = null;
+    const cache = readCache();
 
-    setProgress(20, "Fetching packs-latest release…");
+    setProgress(20, "Fetching packs-latest release…", "GET /releases/tags/" + RELEASE_TAG);
     try {
-      const res = await fetchWithTimeout(API_RELEASE, {
-        headers: { Accept: "application/vnd.github+json" }
-      });
-      if (res.status === 404) {
-        errors.push("Release “packs-latest” not found (404). Using static pack list.");
-      } else if (res.status === 403) {
-        errors.push("GitHub API rate limit or forbidden (403) for releases. Using static pack list.");
-      } else if (!res.ok) {
-        errors.push("Release API HTTP " + res.status + ". Using static pack list.");
+      const result = await fetchGithubApi(API_RELEASE, "Release " + RELEASE_TAG);
+      const fromApi = packsFromReleaseAssets(result.data.assets);
+      if (fromApi.length > 0) {
+        packs = fromApi;
+        packsSource = "GitHub API";
       } else {
-        const data = await res.json();
-        const fromApi = packsFromReleaseAssets(data.assets);
-        if (fromApi.length > 0) {
-          packs = fromApi;
-          packsSource = "GitHub API";
-        } else {
-          errors.push("Release has no .zip assets. Using static pack list.");
-        }
+        errors.push("Release has no .zip assets. Using static pack list.");
       }
     } catch (err) {
-      const msg = err.name === "AbortError" ? "timed out" : (err.message || String(err));
-      errors.push("Release API failed (" + msg + "). Using static pack list.");
+      if (myGeneration !== loadGeneration) return;
+      if (err.kind === "ratelimit") {
+        rateLimited = err.rateLimit || rateLimited;
+        errors.push(err.message + " Using static pack list.");
+      } else if (err.kind === "notfound") {
+        errors.push('Release "' + RELEASE_TAG + '" not found (404). Using static pack list.');
+      } else {
+        const msg = err.name === "AbortError" ? "timed out" : (err.message || String(err));
+        errors.push("Release API failed (" + msg + "). Using static pack list.");
+      }
     }
 
-    setProgress(55, "Fetching mods directory…");
+    if (myGeneration !== loadGeneration) return;
+    setProgress(55, "Fetching mods directory…", "GET /contents/mods");
     try {
-      const res = await fetchWithTimeout(API_CONTENTS_MODS, {
-        headers: { Accept: "application/vnd.github+json" }
-      });
-      if (res.status === 404) {
+      const result = await fetchGithubApi(API_CONTENTS_MODS, "Mods listing");
+      const fromApi = modsFromContents(result.data);
+      if (fromApi.length > 0) {
+        mods = fromApi;
+        modsSource = "GitHub API";
+      } else {
+        errors.push("No mod directories returned. Using static mod list.");
+      }
+    } catch (err) {
+      if (myGeneration !== loadGeneration) return;
+      if (err.kind === "ratelimit") {
+        rateLimited = err.rateLimit || rateLimited;
+        errors.push(err.message + " Using static mod list.");
+      } else if (err.kind === "notfound") {
         errors.push("mods/ path not found (404). Using static mod list.");
-      } else if (res.status === 403) {
-        errors.push("GitHub API rate limit or forbidden (403) for contents. Using static mod list.");
-      } else if (!res.ok) {
-        errors.push("Contents API HTTP " + res.status + ". Using static mod list.");
       } else {
-        const data = await res.json();
-        const fromApi = modsFromContents(data);
-        if (fromApi.length > 0) {
-          mods = fromApi;
-          modsSource = "GitHub API";
-        } else {
-          errors.push("No mod directories returned. Using static mod list.");
-        }
+        const msg = err.name === "AbortError" ? "timed out" : (err.message || String(err));
+        errors.push("Contents API failed (" + msg + "). Using static mod list.");
       }
-    } catch (err) {
-      const msg = err.name === "AbortError" ? "timed out" : (err.message || String(err));
-      errors.push("Contents API failed (" + msg + "). Using static mod list.");
     }
 
-    setProgress(85, "Rendering…");
+    if (myGeneration !== loadGeneration) return;
+    setProgress(85, "Rendering…", "");
+
+    // Prefer, in order: live API result -> cached result from a previous
+    // successful load -> hardcoded fallback list. Cache is only used when
+    // fresh enough (CACHE_MAX_AGE_MS) so a long-closed tab doesn't show
+    // very stale data without saying so.
+    let usedCache = false;
+    if (!packs && cache && Array.isArray(cache.packs) && (Date.now() - cache.savedAt) < CACHE_MAX_AGE_MS) {
+      packs = cache.packs;
+      packsSource = "cache";
+      usedCache = true;
+    }
+    if (!mods && cache && Array.isArray(cache.mods) && (Date.now() - cache.savedAt) < CACHE_MAX_AGE_MS) {
+      mods = cache.mods;
+      modsSource = "cache";
+      usedCache = true;
+    }
 
     if (!packs) packs = FALLBACK_PACKS.slice();
     if (!mods) mods = FALLBACK_MODS.slice();
 
-    renderPacks(packs, packsSource === "GitHub API" ? "live" : "offline list");
-    renderMods(mods, modsSource === "GitHub API" ? "live" : "offline list");
+    renderPacks(packs, packsSource === "GitHub API" ? "live" : (packsSource === "cache" ? "cached" : "offline list"));
+    renderMods(mods, modsSource === "GitHub API" ? "live" : (modsSource === "cache" ? "cached" : "offline list"));
+
+    // Cache successful API results for next visit / next retry.
+    if (packsSource === "GitHub API" || modsSource === "GitHub API") {
+      writeCache({
+        packs: packsSource === "GitHub API" ? packs : (cache && cache.packs) || null,
+        mods: modsSource === "GitHub API" ? mods : (cache && cache.mods) || null
+      });
+    }
 
     const packOk = packsSource === "GitHub API";
     const modOk = modsSource === "GitHub API";
-    if (packOk && modOk) {
-      el.apiStatus.innerHTML = '<span class="ok">● Live data from GitHub API</span>';
-    } else if (!packOk && !modOk) {
-      el.apiStatus.innerHTML = '<span class="warn">● Offline fallback lists (API unavailable)</span>';
-    } else {
-      el.apiStatus.innerHTML =
-        '<span class="warn">● Partial: packs ' +
-        (packOk ? "live" : "fallback") +
-        ", mods " +
-        (modOk ? "live" : "fallback") +
-        "</span>";
+
+    renderApiStatus(packOk, modOk, usedCache, cache);
+
+    if (rateLimited) {
+      const resetText = rateLimited.reset ? formatResetTime(rateLimited.reset) : "shortly";
+      showBanner(
+        el.ratelimitBanner,
+        el.ratelimitDetail,
+        "The GitHub API allows a limited number of anonymous requests per hour from this browser. " +
+        "Remaining: " + (rateLimited.remaining != null ? rateLimited.remaining : "0") +
+        (rateLimited.limit != null ? " / " + rateLimited.limit : "") +
+        ". Resets around <strong>" + escapeHtml(resetText) + "</strong>. " +
+        "Offline lists are shown in the meantime" + (usedCache ? " (falling back to a recent cached copy where available)" : "") + "."
+      );
+    } else if (errors.length > 0 && (!packOk || !modOk)) {
+      showBanner(
+        el.warningBanner,
+        el.warningDetail,
+        "<ul>" + errors.map(function (e) { return "<li>" + escapeHtml(e) + "</li>"; }).join("") + "</ul>"
+      );
     }
 
-    if (errors.length > 0) {
-      showError("Some data could not be loaded from GitHub.", errors.join(" "));
-    }
-
-    setProgress(100, "Done");
+    setProgress(100, "Done", "");
     setTimeout(hideLoading, 200);
   }
+
+  function renderApiStatus(packOk, modOk, usedCache, cache) {
+    let html = "";
+    if (packOk && modOk) {
+      html = '<span class="ok">● Live data from GitHub API</span>';
+    } else if (!packOk && !modOk) {
+      html = (usedCache && cache)
+        ? '<span class="warn">● Cached data (' + escapeHtml(formatRelativeTime(Date.now() - cache.savedAt)) + ')</span>'
+        : '<span class="warn">● Offline fallback lists (API unavailable)</span>';
+    } else {
+      html =
+        '<span class="warn">● Partial: packs ' +
+        (packOk ? "live" : (usedCache && cache && cache.packs ? "cached" : "fallback")) +
+        ", mods " +
+        (modOk ? "live" : (usedCache && cache && cache.mods ? "cached" : "fallback")) +
+        "</span>";
+    }
+    html += ' · <button type="button" class="refresh-btn" id="api-refresh-btn">Refresh</button>';
+    el.apiStatus.innerHTML = html;
+    const refreshBtn = document.getElementById("api-refresh-btn");
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", function () {
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = "Refreshing…";
+        loadAll();
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Banner + loading-overlay controls
+  // ---------------------------------------------------------------------
 
   el.errorRetry.addEventListener("click", function () {
     el.overlay.classList.remove("hidden");
     el.overlay.setAttribute("aria-busy", "true");
-    setProgress(0, "Retrying…");
+    setProgress(0, "Retrying…", "");
+    loadAll();
+  });
+
+  el.warningRetry.addEventListener("click", function () {
+    hideBanner(el.warningBanner);
+    loadAll();
+  });
+  el.warningDismiss.addEventListener("click", function () {
+    hideBanner(el.warningBanner);
+  });
+
+  el.ratelimitRetry.addEventListener("click", function () {
+    hideBanner(el.ratelimitBanner);
+    loadAll();
+  });
+
+  el.loadingSkip.addEventListener("click", function () {
+    // User asked to stop waiting: bump the generation so any in-flight
+    // fetches become no-ops on resolve, then render fallback data now.
+    loadGeneration++;
+    hideLoading();
+    renderPacks(FALLBACK_PACKS, "offline list");
+    renderMods(FALLBACK_MODS, "offline list");
+    renderApiStatus(false, false, false, null);
+    showBanner(
+      el.warningBanner,
+      el.warningDetail,
+      "Loading was taking a while, so offline lists are shown. Use Refresh above to try live data again."
+    );
+  });
+
+  window.addEventListener("offline", function () {
+    showBanner(
+      el.warningBanner,
+      el.warningDetail,
+      "Your browser reports no network connection. Showing the last known data until connectivity returns."
+    );
+  });
+  window.addEventListener("online", function () {
+    hideBanner(el.warningBanner);
     loadAll();
   });
 
   loadAll().catch(function (err) {
-    setProgress(100, "Failed");
+    setProgress(100, "Failed", "");
     hideLoading();
     renderPacks(FALLBACK_PACKS, "offline list");
     renderMods(FALLBACK_MODS, "offline list");
-    el.apiStatus.innerHTML = '<span class="err">● Load failed — showing fallback lists</span>';
-    showError("Page load failed", err && err.message ? err.message : String(err));
+    renderApiStatus(false, false, false, null);
+    showBanner(
+      el.errorBanner,
+      el.errorDetail,
+      escapeHtml(err && err.message ? err.message : String(err))
+    );
   });
 })();
   </script>
