@@ -1,6 +1,6 @@
 # Datapack Fixer
 
-A **Fabric 1.21.4 server-safe diagnostic mod** for datapack syntax migration. It deliberately does not rewrite pack files, intercept datapack loading, patch network packets, or change gameplay. It only reads unpacked datapacks when the integrated or dedicated server starts and emits diagnostics to the server log.
+A **Fabric 1.21.4 server-safe diagnostic mod** for datapack syntax migration. It deliberately does not intercept datapack loading, patch network packets, or change gameplay. On startup it only reads unpacked datapacks and emits diagnostics to the server log; the only file writes it performs are the explicit, operator-triggered `/datapackfixer fix` repair (see "Repairs and backups" below), which always backs up first.
 
 ## Scope
 
@@ -17,7 +17,7 @@ A diagnostic is a suggestion, not an automatic migration. The mod does not claim
 
 ## Multiplayer safety
 
-Install it on a dedicated server or an integrated server. Clients do not need it. It has no mixins, packets, commands, registries, file writes, reload hooks, or client-only entrypoints. Scanning occurs after server startup and is bounded to files smaller than 2 MB.
+Install it on a dedicated server or an integrated server. Clients do not need it. It has no mixins, packets, reload hooks, or client-only entrypoints. It registers one op-only (`/datapackfixer`) command with `scan` and `fix` subcommands (see "Repairs and backups"); outside of an explicit `fix` call, it performs no file writes. Scanning occurs after server startup and is bounded to files smaller than 2 MB.
 
 Only directory datapacks are inspected. ZIP datapacks are intentionally skipped to avoid archive extraction and mutation risks.
 

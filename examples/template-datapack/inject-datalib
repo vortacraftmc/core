@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # inject-datalib.sh
 # Usage: ./inject-datalib.sh <path-to-target-datapack> <target-namespace> [dataLib-full.zip]
+#
+# BROKEN as of this commit if you let it auto-clone: the fallback below
+# clones vortacraftmc/core (this repo) and runs `./gradlew zipFull`, but no
+# `dataLib` pack exists in this monorepo's packs/, and the real packaging
+# task here is `zipPacks` (which zips existing packs/<name>/ dirs — it
+# cannot produce a dataLib-full.zip because there is no dataLib pack to
+# zip). Pass an existing dataLib-full.zip as the third argument, built from
+# wherever dataLib-dp actually lives, instead of relying on the auto-clone
+# path below.
 set -euo pipefail
 
 TARGET_DIR="${1:?target datapack path required}"

@@ -6,7 +6,7 @@
 
 > Maintainer: [vortacraftmc](https://github.com/vortacraftmc)  
 > Version: **1.0.0**  
-> Minecraft: **1.20.2 – 1.20.4** (`pack_format 26`)  
+> Minecraft: **1.20.3 – 1.20.4** (`pack_format 26`)  
 > License: CC0-1.0  
 > Note: **1.21+ support will be added via overlay system in future commits.**
 
@@ -25,12 +25,11 @@
 
 ## Dependencies
 
-The following datapacks must be loaded alongside inv_gui:data
+`close_detector` ships bundled with inv_gui (see `data/close_detector`) — no separate install needed. The following datapacks must still be loaded alongside inv_gui:
 
 | Datapack | License | Link |
 |---|---|---|
 | Oh! My Dat! | MIT | [Ai-Akaishi/OhMyDat](https://github.com/Ai-Akaishi/OhMyDat) |
-| Close Detector | MIT | [Ai-Akaishi/CloseDetector](https://github.com/Ai-Akaishi/CloseDetector) |
 | Player Item Tuner | MIT | [Ai-Akaishi/PlayerItemTuner](https://github.com/Ai-Akaishi/PlayerItemTuner) |
 
 ---
@@ -41,7 +40,7 @@ The following datapacks must be loaded alongside inv_gui:data
 execute in minecraft:overworld run function inv_gui:api/setup
 ```
 
-> Run once per dimension. See [docs/installation.md](docs/installation.md) for details.
+> Run once per dimension. See [docs/guide.md](docs/guide.md) for details.
 
 ---
 
