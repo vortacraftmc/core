@@ -21,6 +21,8 @@
 //      with a gated load/tick system, kill-switch, toggleable debug, and
 //      load-error checking (+ .zip output)
 //   7. clean task extension - also wipes build/packs-dist and packs-remap
+//   8. Root 'build'/'check' lifecycle tasks - 'build' runs mergeDatapacks
+//      and copies its output into build/dist/
 //
 // Logging convention: every task prefixes its own output with "[taskName]"
 // so `gradle buildAll` (which runs several of these back to back) never
@@ -837,12 +839,20 @@ tasks.register('printModList') {
 //   strictLoadRefs: true  (default) - missing load/tick targets fail the
 //     build; false downgrades them to warnings
 //   zip: true  (default) - also write build/<output.name>.zip
+//   prefixConflicts: false  (default) - when a non-tag file path collides
+//     across included packs, fail the build (default) or, if true, ship
+//     every colliding version side by side under
+//     data/<pack-id>__conflict/... instead of failing.
+//   priority: []  (default) - ordered list of pack names from 'include'
+//     used to pick a "winning" pack for collision logging/provenance.
+//     Override for a single run with -PmergePriority=packA,packB.
 //
 // Gated-mode runtime API (all under data/<namespace>/function/):
 //   load / tick                - minecraft:load/tick entry points
 //   packs/<id>/load|tick       - per-pack wrappers calling original hooks
 //   packs/<id>/enable|disable  - per-pack toggle (disable calls the pack's
 //                                <ns>:unload hook when one exists)
+//   packs/<id>/reload          - disable then re-enable a single pack
 //   enable_all / disable_all   - global kill-switch (disable_all runs every
 //                                known unload hook, then halts tick dispatch)
 //   debug/on|off|toggle        - toggleable debug tellraws
@@ -850,6 +860,10 @@ tasks.register('printModList') {
 //   status                     - global + per-pack load report
 //   api/report_error {pack,msg}- macro: alert + append to the error log
 //   errors / errors_clear      - view / clear the runtime error log
+//
+// Other options:
+//   -PmergeDryRun=true - run every validation/collision/format check and
+//     print the merge plan without writing anything to build/.
 // -----------------------------------------------------------------------
 tasks.register('mergeDatapacks') {
     group = 'build'
@@ -858,7 +872,15 @@ tasks.register('mergeDatapacks') {
     def manifestFile = file('packs/merge-manifest.json')
     def outDir = file('build/merged-datapack')
     def buildDir = file('build')
+    // Captured at configuration time - see the 'lint' task above for why
+    // 'project.findProperty' can't be called from inside doLast itself.
+    def dryRunProp = project.findProperty('mergeDryRun')
+    def priorityProp = project.findProperty('mergePriority')
     doLast {
+        def dryRun = (dryRunProp?.toString()?.toLowerCase() == 'true')
+        if (dryRun) {
+            println "[mergeDatapacks] -PmergeDryRun=true: validation-only run, no files will be written under ${outDir} or ${buildDir}."
+        }
         if (!manifestFile.exists()) {
             throw new GradleException("[mergeDatapacks] failed: packs/merge-manifest.json not found. Create it with { \"output\": {...}, \"include\": [...] }.")
         }
@@ -881,6 +903,31 @@ tasks.register('mergeDatapacks') {
         def loadErrorHandling = manifest.loadErrorHandling != false
         def strictLoadRefs = manifest.strictLoadRefs != false
         def zipEnabled = manifest.zip != false
+        // prefixConflicts: instead of hard-failing when the same relative
+        // path appears in more than one included pack (and isn't a
+        // union-mergeable tags/function(s) file), namespace-prefix every
+        // colliding pack's copy under a per-pack subfolder so all versions
+        // ship side by side. Off by default - a silent rename is a bigger
+        // surprise than a loud failure, so this stays opt-in.
+        def prefixConflicts = manifest.prefixConflicts == true
+        // priority: explicit include-order override for collision handling.
+        // Only meaningful today for logging/provenance (which pack "wins"
+        // conceptually) since hard collisions still fail the build unless
+        // prefixConflicts is also set; recorded in the manifest json either
+        // way so downstream tooling/humans can see the intended order.
+        // -PmergePriority=packA,packB on the command line overrides the
+        // manifest's own "priority" list for a one-off run.
+        def manifestPriority = (manifest.priority instanceof List) ? manifest.priority.collect { it.toString() } : []
+        def priority = priorityProp != null
+            ? priorityProp.toString().split(',').collect { it.trim() }.findAll { it }
+            : manifestPriority
+        if (priority) {
+            def unknown = priority.findAll { !include.contains(it) }
+            if (unknown) {
+                println "[mergeDatapacks] WARNING: priority list references pack(s) not in 'include': ${unknown.join(', ')} (ignored)."
+            }
+            println "[mergeDatapacks] priority order: ${priority.findAll { include.contains(it) }.join(' > ') ?: '(none applicable)'}"
+        }
 
         if (!vcIsValidNamespace(coreNs)) {
             throw new GradleException("[mergeDatapacks] failed: manifest 'namespace' \"${coreNs}\" is invalid (must match [a-z0-9_.-]+, lowercase).")
@@ -1051,23 +1098,59 @@ tasks.register('mergeDatapacks') {
         }
 
         // Paths where a tags/function(s)/*.json union-merge applies.
+        def priorityIndex = priority.findAll { include.contains(it) }.withIndex().collectEntries { p, i -> [(p): i] }
+        def hardCollisionRels = [] as Set
         def hardCollisions = []
         relPathToSources.each { rel, sources ->
             if (sources.size() > 1 && !isFunctionTagFile(rel)) {
-                hardCollisions << "${rel} (in: ${sources.collect { it.pack }.join(', ')})"
+                hardCollisionRels << rel
+                def winner = sources.max { priorityIndex.containsKey(it.pack) ? -priorityIndex[it.pack] : -999999 }
+                def note = prefixConflicts
+                    ? "prefixed per-pack" + (priorityIndex ? "; ${winner.pack} is highest-priority" : "")
+                    : "unresolved"
+                hardCollisions << "${rel} (in: ${sources.collect { it.pack }.join(', ')}) [${note}]"
             }
         }
-        if (hardCollisions) {
+        if (hardCollisions && !prefixConflicts) {
             throw new GradleException(
                 "[mergeDatapacks] failed: the following files exist in more than one included pack " +
                 "and cannot be safely merged automatically:\n" +
                 hardCollisions.collect { "  - ${it}" }.join('\n') +
-                "\nResolve the conflict manually (rename/remove in one pack) and re-run."
+                "\nResolve the conflict manually (rename/remove in one pack), set a 'priority' list, " +
+                "or set \"prefixConflicts\": true in the manifest to ship every colliding version side by side."
             )
+        }
+        if (hardCollisions) {
+            println "[mergeDatapacks] prefixConflicts=true: ${hardCollisions.size()} colliding path(s) will be namespaced per-pack instead of failing:"
+            hardCollisions.each { println "[mergeDatapacks]   - ${it}" }
+        }
+
+        if (dryRun) {
+            println "[mergeDatapacks] dry run OK: would merge ${packDirs.size()} pack(s) -> ${outDir}" +
+                    (zipEnabled ? " + zip" : "") + ". ${relPathToSources.size()} file path(s), " +
+                    "${hardCollisionRels.size()} collision(s) (${prefixConflicts ? 'prefixed' : 'none/blocking'}). No files written."
+            return
         }
 
         // Write everything out.
         relPathToSources.each { rel, sources ->
+            if (hardCollisionRels.contains(rel)) {
+                // prefixConflicts mode: write each colliding pack's copy
+                // under its own subfolder (data/<pack-id>__conflict/<rest>)
+                // so nothing overwrites anything else. This deliberately
+                // changes the file's effective path/namespace - conflicting
+                // resource-location-bearing files (e.g. loot tables another
+                // file points at by name) will need manual reference fixes;
+                // this is a "ship it, don't silently drop it" escape hatch,
+                // not a semantic merge.
+                sources.each { src ->
+                    def prefixedRel = "${vcSanitizePackId(src.pack)}__conflict/${rel}"
+                    def outFile = new File(outDir, prefixedRel)
+                    outFile.parentFile.mkdirs()
+                    outFile.bytes = src.file.bytes
+                }
+                return
+            }
             def outFile = new File(outDir, rel)
             outFile.parentFile.mkdirs()
             if (sources.size() == 1) {
@@ -1294,6 +1377,17 @@ execute if data storage @CORE@:config {enabled:1b} run function @CORE@:packs/@ID
 @UNLOAD_CALL@
 tellraw @s ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"@PACK@ disabled","color":"yellow"}]
 ''', packBindings + [HEADER: headerFor("data/${coreNs}/function/packs/${id}/disable.mcfunction"), UNLOAD_CALL: unloadCall]))
+
+                writeGenerated("data/${coreNs}/function/packs/${id}/reload.mcfunction", renderTemplate('''@HEADER@
+#
+# Full reload cycle for "@PACK@": disable (runs its <ns>:unload hook if any)
+# then immediately re-enable (re-runs its load wrapper). Equivalent to
+# /function @CORE@:packs/@ID@/disable followed by /function @CORE@:packs/@ID@/enable,
+# provided as one call for convenience when iterating on a single pack.
+tellraw @s ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"reloading @PACK@...","color":"yellow"}]
+function @CORE@:packs/@ID@/disable
+function @CORE@:packs/@ID@/enable
+''', packBindings + [HEADER: headerFor("data/${coreNs}/function/packs/${id}/reload.mcfunction")]))
             }
 
             if (killSwitch) {
@@ -1411,7 +1505,7 @@ tellraw @s ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"error log clea
                 readmeLines << "  ${coreNs}:api/report_error {pack,msg} - log a runtime error (MC 1.20.2+)"
                 readmeLines << "  ${coreNs}:errors|errors_clear         - view / clear the error log"
             }
-            readmeLines << "  ${coreNs}:packs/<id>/enable|disable - per-pack toggle (ids: ${packIds.values().join(', ')})"
+            readmeLines << "  ${coreNs}:packs/<id>/enable|disable|reload - per-pack toggle (ids: ${packIds.values().join(', ')})"
             if (killSwitch) {
                 readmeLines << "  ${coreNs}:enable_all|disable_all     - GLOBAL kill-switch"
             }
@@ -1426,7 +1520,8 @@ tellraw @s ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"error log clea
                 generatedAt: new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone('UTC')),
                 options    : [gatedLoad: gatedLoad, namespace: coreNs, debugDefault: debugDefault,
                                killSwitch: killSwitch, loadErrorHandling: loadErrorHandling,
-                               strictLoadRefs: strictLoadRefs, allowMismatchedFormats: allowMismatchedFormats],
+                               strictLoadRefs: strictLoadRefs, allowMismatchedFormats: allowMismatchedFormats,
+                               prefixConflicts: prefixConflicts, priority: priority.findAll { include.contains(it) }],
                 packs      : packDirs.keySet().collect { pn ->
                     [name: pn, id: packIds[pn], format: formats[pn],
                      load: packLoadHooks[pn], tick: packTickHooks[pn],
@@ -1501,6 +1596,7 @@ tasks.matching { it.name == 'clean' }.configureEach {
     def packsRemapDir = file('build/packs-remap')
     def mergedDir = file('build/merged-datapack')
     def mergedZip = file('build/merged-datapack.zip')
+    def distDir = file('build/dist')
     doLast {
         if (packsDistDir.exists()) {
             packsDistDir.deleteDir()
@@ -1517,6 +1613,10 @@ tasks.matching { it.name == 'clean' }.configureEach {
         if (mergedZip.exists()) {
             mergedZip.delete()
             println "[clean] removed build/merged-datapack.zip"
+        }
+        if (distDir.exists()) {
+            distDir.deleteDir()
+            println "[clean] removed build/dist/"
         }
     }
 }
@@ -1877,4 +1977,72 @@ tasks.maybeCreate('check').configure {
     group = 'verification'
     description = 'Runs suite-level verification tasks (including verifyMod).'
     dependsOn 'verifyMod'
+}
+
+// -----------------------------------------------------------------------
+// 8. Root 'build' lifecycle task
+//
+// The root project also has no Java/base plugin applied, so - same as
+// 'check' above - there is no 'build' task here unless we create one:
+// './gradlew build' from the repo root would otherwise either fail with
+// "task 'build' not found" or (if Gradle's own base lifecycle plugin is
+// implicitly present) run as a no-op that never touches mergeDatapacks.
+//
+// This wires 'build' to run mergeDatapacks, then copies the merged
+// datapack (the exploded build/merged-datapack/ dir, and its .zip if
+// mergeDatapacks produced one) out of the transient build/ folder into
+// build/dist/, so the result of 'gradle clean build' survives a future
+// 'gradle clean' and is easy to find in one place. Subproject 'build'
+// tasks (mods/, packs/, examples/) are untouched - Gradle's normal
+// lifecycle wiring still makes ':subproject:build' run when you build
+// the whole multi-project tree; this task only adds root-level behavior.
+// -----------------------------------------------------------------------
+tasks.maybeCreate('build').configure {
+    group = 'build'
+    description = "Runs mergeDatapacks and copies its output into build/dist/."
+    dependsOn 'mergeDatapacks'
+    def mergedDir = file('build/merged-datapack')
+    def buildDir = file('build')
+    def distDir = file('build/dist')
+    // manifest.output.name mirrors the zip-naming logic inside
+    // mergeDatapacks itself (section 6) so the copy step looks for the
+    // exact zip name that task would have written, without re-parsing
+    // the manifest a second time at execution time (Task.project access
+    // during execution is deprecated - see the 'lint' task comment above
+    // for why every value this doLast needs is captured here instead).
+    def manifestFile = file('packs/merge-manifest.json')
+    def zipBaseName = 'merged-datapack'
+    if (manifestFile.exists()) {
+        try {
+            def manifest = new groovy.json.JsonSlurper().parse(manifestFile)
+            def rawName = manifest?.output?.name
+            if (rawName != null) {
+                def sanitized = rawName.toString().replaceAll('[^A-Za-z0-9_.-]+', '-').replaceAll('^-+|-+$', '')
+                if (sanitized) zipBaseName = sanitized
+            }
+        } catch (Exception ignored) {
+            // mergeDatapacks itself will raise the real error for invalid
+            // manifest JSON; this task only needs a best-effort zip name.
+        }
+    }
+    doLast {
+        if (!mergedDir.exists()) {
+            println "[build] mergeDatapacks produced no build/merged-datapack/ (dry run, or task was up-to-date with nothing to copy) - skipping dist copy."
+            return
+        }
+        if (distDir.exists()) {
+            distDir.deleteDir()
+        }
+        distDir.mkdirs()
+        def destDir = new File(distDir, 'merged-datapack')
+        copyDirRecursive(mergedDir, destDir)
+        println "[build] copied merged datapack -> ${destDir}"
+
+        def zipFile = new File(buildDir, "${zipBaseName}.zip")
+        if (zipFile.exists()) {
+            def destZip = new File(distDir, zipFile.name)
+            java.nio.file.Files.copy(zipFile.toPath(), destZip.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            println "[build] copied ${zipFile.name} -> ${destZip}"
+        }
+    }
 }
