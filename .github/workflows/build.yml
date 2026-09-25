@@ -42,7 +42,15 @@ jobs:
         # interactive stdin, so without this flag the zipPacks step inside
         # buildAll would always fail here. -PconfirmZip=yes is the sanctioned
         # non-interactive path for CI, per build.gradle's own error message.
-        run: ./gradlew buildAll --continue -PconfirmZip=yes
+        #
+        # FIX 3: buildAll never ran mergeDatapacks (they're independent
+        # aggregate tasks - see build.gradle section 2 vs section 6), so the
+        # merged datapack was never produced in CI and never reached the
+        # uploaded artifacts. The root 'build' task (section 8) already
+        # depends on mergeDatapacks and copies its output to build/dist/, so
+        # running it alongside buildAll produces that output here without
+        # duplicating any of build.gradle's own logic in this workflow.
+        run: ./gradlew buildAll build --continue -PconfirmZip=yes
       - name: Upload build artifacts
         if: always()
         uses: actions/upload-artifact@v6
@@ -52,6 +60,7 @@ jobs:
             mods/**/build/libs/*.jar
             examples/**/build/libs/*.jar
             build/packs-dist/*.zip
+            build/dist/**
           if-no-files-found: ignore
           retention-days: 93
   lint:
@@ -110,6 +119,15 @@ jobs:
         # -PconfirmZip=yes is the flag build.gradle itself documents as the
         # non-interactive path for CI.
         run: ./gradlew zipPacks -PconfirmZip=yes
+      - name: Build merged datapack
+        # NEW: mergeDatapacks (build.gradle section 6, wired into the root
+        # 'build' task in section 8) is otherwise never invoked by this
+        # workflow, so the merged/gated datapack this repo generates from
+        # packs/merge-manifest.json never made it into a release asset.
+        # Run it directly rather than 'build' here: this job only needs the
+        # merge output, not a full buildAll pass, and mergeDatapacks already
+        # writes build/dist/ itself.
+        run: ./gradlew mergeDatapacks build
       - name: Remove stale pack assets from release
         # A pack can be renamed or deleted from packs/ (e.g. a version bump
         # like macroEngine-Resourcepack-v26.2 -> v26.3). softprops/action-gh-release
@@ -118,11 +136,17 @@ jobs:
         # this step a renamed/removed pack's old zip stays attached forever,
         # contradicting the "Always reflects the current contents of packs/"
         # promise below.
+        #
+        # FIX: the merged-datapack zip is now a release asset too (see the
+        # "Publish" step's files: list below), so its filename must also be
+        # tracked here or a rename of manifest.output.name would leave a
+        # stale merged-datapack-*.zip attached forever, same as a stale pack
+        # zip would.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if gh release view packs-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            current_files=$(cd build/packs-dist && ls *.zip 2>/dev/null || true)
+            current_files=$( { ls build/packs-dist/*.zip build/dist/*.zip 2>/dev/null || true; } | xargs -n1 basename 2>/dev/null || true)
             existing_assets=$(gh release view packs-latest --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
             for asset in $existing_assets; do
               if ! printf '%s\n' "$current_files" | grep -qxF "$asset"; then
@@ -138,8 +162,14 @@ jobs:
         with:
           tag_name: packs-latest
           name: Latest packs
-          body: Automatically updated on every push to main. Always reflects the current contents of packs/.
-          files: build/packs-dist/*.zip
+          body: Automatically updated on every push to main. Always reflects the current contents of packs/ and the merged datapack built from packs/merge-manifest.json.
+          # FIX: added build/dist/*.zip so the merged datapack (produced by
+          # mergeDatapacks in the step above) is published as a release
+          # asset alongside the individual pack zips, not just the
+          # per-pack files it published before.
+          files: |
+            build/packs-dist/*.zip
+            build/dist/*.zip
           # FIX: was make_latest: false. This doesn't conflict with the intent
           # in the comment above ("keep download links permanently valid" via
           # moving the tag forward), but it does mean GitHub's "Latest
