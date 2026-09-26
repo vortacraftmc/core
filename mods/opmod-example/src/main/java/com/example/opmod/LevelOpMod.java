@@ -13,100 +13,155 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.server.players.PlayerList;
+import net.minecraft.server.permissions.LevelBasedPermissionSet;
 
 import java.util.Collection;
 import java.util.Optional;
 
 /**
- * Adds a "level" argument to the vanilla /op command:
+ * Extends /op with an optional explicit permission level:
  *
- *   /op <targets>          -> vanilla behaviour, unchanged
- *                              (grants op at the server's op-permission-level)
- *   /op <targets> <level>  -> new behaviour added by this mod
- *                              (grants op at the given level, 1-4)
+ *   /op <targets>
+ *   /op <targets> <level>
  *
- * IMPORTANT -- read before building, see README "Mappings risk" section:
- * Minecraft 26.3 ships unobfuscated (Mojang's own names are the only names;
- * there is no Yarn layer to remap through), so this file is written directly
- * against Mojang mappings (CommandSourceStack, PlayerList, NameAndId, etc.)
- * rather than Yarn names (ServerCommandSource, PlayerManager, GameProfile)
- * used in older Fabric mods and in this mod's own first draft.
+ * The second form grants the target the requested permission level.
  *
- * Two specific things could NOT be confirmed against a real 26.3 build and
- * need verifying against the actual 26.3 Minecraft jar / javadoc before this
- * compiles cleanly -- see the inline notes at each usage below:
- *   1. Whether CommandSourceStack#hasPermission(int) still exists as-is in
- *      26.3, given Mojang introduced a new PermissionSet/PermissionLevel
- *      system starting at 1.21.11 (the version immediately before 26.x).
- *   2. Whether PlayerList#op(NameAndId, Optional<Integer>, Optional<Boolean>)
- *      -- confirmed present as of 1.21.9-1.21.11 -- is still the right
- *      overload in 26.3, or whether it has itself moved to the
- *      PermissionLevel-based system by then.
+ * This implementation targets Minecraft 26.3 Mojang mappings, where
+ * operator permissions use LevelBasedPermissionSet rather than the old
+ * Optional<Integer> permission-level API.
  */
 public final class LevelOpMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-			// Extend the existing "op" node with an extra literal path:
-			// op <targets> <level: 1..4>
-			dispatcher.register(Commands.literal("op")
-					// NOTE (see point 1 above): hasPermission(int) is the
-					// Mojang-mapped ExecutionCommandSource method that Yarn
-					// called hasPermissionLevel(int), confirmed present
-					// through 1.21.11. If 26.3 has replaced permission-level
-					// checks with a PermissionLevel-based API, this line is
-					// the first thing to fix -- likely something like
-					// .requires(source -> source.hasPermission(PermissionLevel.ADMINS))
-					.requires(source -> source.hasPermission(3))
-					.then(Commands.argument("targets", GameProfileArgument.gameProfile())
-							.then(Commands.argument("level", IntegerArgumentType.integer(1, 4))
-									.executes(LevelOpMod::opWithLevel))));
-		});
+		CommandRegistrationCallback.EVENT.register(
+				(dispatcher, registryAccess, environment) -> {
+
+					dispatcher.register(
+							Commands.literal("op")
+									.requires(LevelOpMod::canUseCommand)
+
+									.then(
+											Commands.argument(
+													"targets",
+													GameProfileArgument.gameProfile()
+											)
+											.then(
+													Commands.argument(
+															"level",
+															IntegerArgumentType.integer(1, 4)
+													)
+													.executes(LevelOpMod::opWithLevel)
+											)
+									)
+					);
+				}
+		);
 	}
 
-	private static int opWithLevel(CommandContext<CommandSourceStack> context) {
+	/**
+	 * Only server administrators may use the extended /op command.
+	 */
+	private static boolean canUseCommand(CommandSourceStack source) {
+		return source.permissions().hasPermission(
+				LevelBasedPermissionSet.ADMINS
+		);
+	}
+
+	/**
+	 * Converts the old numeric operator level (1-4) to the
+	 * corresponding Minecraft 26.3 permission set.
+	 */
+	private static LevelBasedPermissionSet permissionSetForLevel(int level) {
+		return switch (level) {
+			case 1 -> LevelBasedPermissionSet.GAMEMASTER;
+			case 2 -> LevelBasedPermissionSet.GAMEMASTER;
+			case 3 -> LevelBasedPermissionSet.ADMINS;
+			case 4 -> LevelBasedPermissionSet.OWNERS;
+			default -> throw new IllegalArgumentException(
+					"Operator permission level must be between 1 and 4"
+			);
+		};
+	}
+
+	private static int opWithLevel(
+			CommandContext<CommandSourceStack> context
+	) {
 		Collection<NameAndId> targets;
+
 		try {
-			targets = GameProfileArgument.getGameProfiles(context, "targets");
+			targets = GameProfileArgument.getGameProfiles(
+					context,
+					"targets"
+			);
 		} catch (CommandSyntaxException e) {
-			context.getSource().sendFailure(Component.literal(e.getMessage()));
+			context.getSource().sendFailure(
+					Component.literal(
+							e.getMessage() != null
+									? e.getMessage()
+									: "Unable to resolve target."
+					)
+			);
 			return 0;
 		}
 
-		int level = IntegerArgumentType.getInteger(context, "level");
+		int level = IntegerArgumentType.getInteger(
+				context,
+				"level"
+		);
+
+		LevelBasedPermissionSet permissionSet =
+				permissionSetForLevel(level);
+
 		CommandSourceStack source = context.getSource();
 		PlayerList playerList = source.getServer().getPlayerList();
 
 		int affected = 0;
+
 		for (NameAndId target : targets) {
-			// NOTE (see point 2 above): PlayerList#op(NameAndId,
-			// Optional<Integer>, Optional<Boolean>) grants op directly at
-			// the given level -- unlike the plain op(NameAndId) overload
-			// vanilla /op uses, which always falls back to the server's
-			// op-permission-level default. Confirmed present in Mojang
-			// mappings through 1.21.11 (the version immediately preceding
-			// 26.x); re-verify the overload still takes a plain Integer
-			// (rather than a PermissionLevel enum value) in the actual
-			// 26.3 PlayerList class before relying on this compiling as-is.
-			playerList.op(target, Optional.of(level), Optional.empty());
+			playerList.op(
+					target,
+					Optional.of(permissionSet),
+					Optional.empty()
+			);
+
 			affected++;
 
-			ServerPlayer player = playerList.getPlayer(target.id());
+			ServerPlayer player =
+					playerList.getPlayer(target.id());
+
 			if (player != null) {
-				player.sendSystemMessage(Component.translatable("commands.op.message", level));
+				player.sendSystemMessage(
+						Component.translatable(
+								"commands.op.message",
+								level
+						)
+				);
 			}
 		}
 
 		if (affected == 0) {
-			source.sendFailure(Component.translatable("commands.op.failed"));
+			source.sendFailure(
+					Component.translatable("commands.op.failed")
+			);
 			return 0;
 		}
 
-		final int finalAffected = affected;
-		source.sendSuccess(() -> Component.translatable("commands.op.success",
-				targets.stream().map(NameAndId::name)
-						.reduce((a, b) -> a + ", " + b).orElse("")), true);
-		return finalAffected;
+		String targetNames = targets.stream()
+				.map(NameAndId::name)
+				.reduce(
+						(a, b) -> a + ", " + b
+				)
+				.orElse("");
+
+		source.sendSuccess(
+				() -> Component.translatable(
+						"commands.op.success",
+						targetNames
+				),
+				true
+		);
+
+		return affected;
 	}
 }
