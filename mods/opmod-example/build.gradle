@@ -1,4 +1,8 @@
 plugins {
+	// Pinned to match the version used elsewhere in vortacraftmc/core
+	// (mods/datapack-blocker, examples/itemExampleMod). 1.15.5 is also the
+	// minimum Loom version with unobfuscated-jar support (needed for MC 26.x,
+	// which ships without Yarn mappings) via MinecraftJarProcessor.isUnobfuscated().
 	id 'fabric-loom' version '1.15.5'
 	id 'maven-publish'
 }
@@ -18,19 +22,20 @@ repositories {
 	// for more information about repositories.
 }
 
-loom {
-	// Fabric mods only run on the server/client split introduced in newer versions;
-	// no split source sets needed for a simple command mod.
-}
-
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-	// Fabric API
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+	// MC 26.3 ships unobfuscated (final names, no Yarn layer needed).
+	// fabric.loom.disableObfuscation=true in gradle.properties tells Loom to
+	// skip mapping resolution entirely — there is no `mappings "..."` line.
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	// Fabric API. NOTE: with disableObfuscation=true, Loom's
+	// RemapConfigurations.setupForSourceSet returns early and never creates
+	// the mod* configurations — so this must be plain `implementation`,
+	// not `modImplementation`, or dependency resolution will fail/no-op.
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
 processResources {
@@ -53,11 +58,9 @@ java {
 	withSourcesJar()
 }
 
-jar {
-	from("LICENSE") {
-		rename { "${it}_${project.base.archivesName.get()}" }
-	}
-}
+// NOTE: no `jar { from("LICENSE") {...} }` block here -- add one back only
+// if you add a LICENSE file to this subproject; referencing a nonexistent
+// file here would fail the jar task.
 
 publishing {
 	publications {
