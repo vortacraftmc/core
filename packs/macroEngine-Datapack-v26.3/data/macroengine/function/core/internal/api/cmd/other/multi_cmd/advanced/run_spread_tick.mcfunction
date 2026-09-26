@@ -20,4 +20,4 @@ execute if data storage macroengine:engine _mcmd_queue[0] run schedule function 
 # Cleanup options when fully done
 execute unless data storage macroengine:engine _mcmd_queue[0] run data remove storage macroengine:engine _mcmd_options
 
-# # tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"multi_cmd/spread ","color":"aqua"},{"text":"◉ tick","color":"#555555"}]
+# # tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.path.multi_cmd_spread","color":"aqua"},{"translate":"macroengine.debug.tick_mark","color":"#555555"}]

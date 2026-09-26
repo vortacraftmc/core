@@ -1,4 +1,30 @@
 
+## Localization & Required Resource Pack (i18n)
+
+**The companion resource pack is REQUIRED.**
+
+All user-facing `tellraw` / title messages use Minecraft translation keys under the `macroengine.*` namespace.
+Language files are provided in the resource pack:
+
+- `assets/macroengine/lang/en_us.json` — English
+- `assets/macroengine/lang/tr_tr.json` — Turkish (Türkçe)
+
+Without the resource pack:
+- Messages fall back to raw translation keys or English defaults where `fallback` is used
+- Custom sounds and death messages will not work
+- Players receive a recurring warning on join
+
+Server operators should set in `server.properties`:
+```
+require-resource-pack=true
+resource-pack=<url to macroEngine-Resourcepack-v26.3-i18n.zip>
+resource-pack-prompt=macroEngine resource pack is required
+```
+
+Or distribute the resource pack as a world/server resource pack.
+
+---
+
 # macroEngine (v26.3)
 
 > ⚠️ **Archived.** This datapack is archived and no longer maintained. The `vortacraftmc/core` datapacks are being superseded by [Fabric](https://fabricmc.net/) mods. Existing worlds using this pack will continue to work, but no new features or fixes are planned.
