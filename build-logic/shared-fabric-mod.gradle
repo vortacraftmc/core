@@ -72,8 +72,8 @@ publishing {
             // project.name (the subproject directory name), NOT
             // base.archivesName/archivesBaseName - Gradle does this
             // deliberately, it does not fall back to archivesBaseName. This
-            // reads project.archivesBaseName explicitly instead, which
-            // resolves to whatever each consumer already configured: for
+            // reads base.archivesName explicitly instead, which resolves to
+            // whatever each consumer already configured: for
             // mods/opmod-example (which sets
             // `base { archivesName = project.archives_base_name }`) that's
             // "opmod", not the directory name "opmod-example"; for
@@ -83,7 +83,13 @@ publishing {
             // - so this keeps every mod's published artifactId consistent
             // with its own jar's archivesBaseName, in both directions,
             // without needing to know which mods opted into a custom one.
-            artifactId project.archivesBaseName
+            // (project.archivesBaseName was the `base` plugin's convenience
+            // accessor for this same value; it was deprecated in Gradle 8 and
+            // removed entirely in Gradle 9/10, which is what broke this line
+            // - base.archivesName is the direct Property<String> it always
+            // delegated to, so this is a like-for-like replacement, not a
+            // behavior change.)
+            artifactId base.archivesName.get()
             from components.java
         }
     }
