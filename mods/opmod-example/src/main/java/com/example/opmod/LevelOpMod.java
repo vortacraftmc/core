@@ -1,4 +1,3 @@
-```java
 package com.example.opmod;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -142,4 +141,3 @@ public final class LevelOpMod implements ModInitializer {
         };
     }
 }
-```
