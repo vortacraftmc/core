@@ -18,29 +18,15 @@ import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import java.util.Collection;
 import java.util.Optional;
 
-/**
- * Extends /op with an optional explicit permission level:
- *
- *   /op <targets>
- *   /op <targets> <level>
- *
- * The second form grants the target the requested permission level.
- *
- * This implementation targets Minecraft 26.3 Mojang mappings, where
- * operator permissions use LevelBasedPermissionSet rather than the old
- * Optional<Integer> permission-level API.
- */
 public final class LevelOpMod implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
 		CommandRegistrationCallback.EVENT.register(
 				(dispatcher, registryAccess, environment) -> {
-
 					dispatcher.register(
 							Commands.literal("op")
 									.requires(LevelOpMod::canUseCommand)
-
 									.then(
 											Commands.argument(
 													"targets",
@@ -60,28 +46,26 @@ public final class LevelOpMod implements ModInitializer {
 	}
 
 	/**
-	 * Only server administrators may use the extended /op command.
+	 * The command itself requires permission level 3.
 	 */
 	private static boolean canUseCommand(CommandSourceStack source) {
 		return source.permissions().hasPermission(
-				LevelBasedPermissionSet.ADMINS
+				LevelBasedPermissionSet.of(3)
 		);
 	}
 
 	/**
-	 * Converts the old numeric operator level (1-4) to the
-	 * corresponding Minecraft 26.3 permission set.
+	 * Converts the numeric /op level to the permission set used by
+	 * Minecraft 26.3.
 	 */
 	private static LevelBasedPermissionSet permissionSetForLevel(int level) {
-		return switch (level) {
-			case 1 -> LevelBasedPermissionSet.GAMEMASTER;
-			case 2 -> LevelBasedPermissionSet.GAMEMASTER;
-			case 3 -> LevelBasedPermissionSet.ADMINS;
-			case 4 -> LevelBasedPermissionSet.OWNERS;
-			default -> throw new IllegalArgumentException(
+		if (level < 1 || level > 4) {
+			throw new IllegalArgumentException(
 					"Operator permission level must be between 1 and 4"
 			);
-		};
+		}
+
+		return LevelBasedPermissionSet.of(level);
 	}
 
 	private static int opWithLevel(
@@ -95,13 +79,16 @@ public final class LevelOpMod implements ModInitializer {
 					"targets"
 			);
 		} catch (CommandSyntaxException e) {
+			String message = e.getMessage();
+
 			context.getSource().sendFailure(
 					Component.literal(
-							e.getMessage() != null
-									? e.getMessage()
+							message != null
+									? message
 									: "Unable to resolve target."
 					)
 			);
+
 			return 0;
 		}
 
@@ -144,6 +131,7 @@ public final class LevelOpMod implements ModInitializer {
 			source.sendFailure(
 					Component.translatable("commands.op.failed")
 			);
+
 			return 0;
 		}
 
