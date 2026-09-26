@@ -25,31 +25,33 @@ public final class LevelOpMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-            dispatcher.register(
-                Commands.literal("op")
-                    .requires(LevelOpMod::canUseCommand)
-                    .then(
-                        Commands.argument(
-                                "targets",
-                                GameProfileArgument.gameProfile()
-                            )
-                            .then(
-                                Commands.argument(
-                                        "level",
-                                        IntegerArgumentType.integer(1, 4)
-                                    )
-                                    .executes(LevelOpMod::opWithLevel)
-                            )
-                    )
-            );
-        });
+        CommandRegistrationCallback.EVENT.register(
+            (dispatcher, registryAccess, environment) -> {
+                dispatcher.register(
+                    Commands.literal("op")
+                        .requires(LevelOpMod::canUseCommand)
+                        .then(
+                            Commands.argument(
+                                    "targets",
+                                    GameProfileArgument.gameProfile()
+                                )
+                                .then(
+                                    Commands.argument(
+                                            "level",
+                                            IntegerArgumentType.integer(1, 4)
+                                        )
+                                        .executes(LevelOpMod::opWithLevel)
+                                )
+                        )
+                );
+            }
+        );
     }
 
     private static boolean canUseCommand(CommandSourceStack source) {
-        return source.permissions().hasPermission(
-            LevelBasedPermissionSet.OWNER
-        );
+        return source.permissions()
+            .level()
+            .isAtLeast(PermissionLevel.ADMINS);
     }
 
     private static int opWithLevel(
@@ -80,7 +82,9 @@ public final class LevelOpMod implements ModInitializer {
         );
 
         LevelBasedPermissionSet permissionSet =
-            permissionSetForLevel(level);
+            LevelBasedPermissionSet.forLevel(
+                PermissionLevel.fromLevel(level)
+            );
 
         CommandSourceStack source = context.getSource();
         PlayerList playerList = source.getServer().getPlayerList();
@@ -130,14 +134,5 @@ public final class LevelOpMod implements ModInitializer {
         );
 
         return affected;
-    }
-
-    private static LevelBasedPermissionSet permissionSetForLevel(int level) {
-        return switch (PermissionLevel.byId(level)) {
-            case ALL -> LevelBasedPermissionSet.ALL;
-            case GAMEMASTER -> LevelBasedPermissionSet.GAMEMASTER;
-            case ADMINS -> LevelBasedPermissionSet.ADMINS;
-            case OWNERS -> LevelBasedPermissionSet.OWNER;
-        };
     }
 }
