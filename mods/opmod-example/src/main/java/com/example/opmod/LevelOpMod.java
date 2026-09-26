@@ -11,7 +11,6 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.network.chat.Component;
-
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.server.permissions.PermissionLevel;
@@ -32,16 +31,16 @@ public final class LevelOpMod implements ModInitializer {
                         .requires(LevelOpMod::canUseCommand)
                         .then(
                             Commands.argument(
-                                    "targets",
-                                    GameProfileArgument.gameProfile()
+                                "targets",
+                                GameProfileArgument.gameProfile()
+                            )
+                            .then(
+                                Commands.argument(
+                                    "level",
+                                    IntegerArgumentType.integer(1, 4)
                                 )
-                                .then(
-                                    Commands.argument(
-                                            "level",
-                                            IntegerArgumentType.integer(1, 4)
-                                        )
-                                        .executes(LevelOpMod::opWithLevel)
-                                )
+                                .executes(LevelOpMod::opWithLevel)
+                            )
                         )
                 );
             }
@@ -49,9 +48,16 @@ public final class LevelOpMod implements ModInitializer {
     }
 
     private static boolean canUseCommand(CommandSourceStack source) {
-        return source.permissions()
-            .level()
-            .isAtLeast(PermissionLevel.ADMINS);
+        if (source.permissions() instanceof LevelBasedPermissionSet permissions) {
+            return permissions.level().isAtLeast(PermissionLevel.ADMINS);
+        }
+
+        /*
+         * Non-level permission sets are not assumed to be admin.
+         * This keeps the command restricted instead of accidentally
+         * granting access to an arbitrary PermissionSet.
+         */
+        return false;
     }
 
     private static int opWithLevel(
@@ -65,10 +71,12 @@ public final class LevelOpMod implements ModInitializer {
                 "targets"
             );
         } catch (CommandSyntaxException e) {
+            String message = e.getMessage();
+
             context.getSource().sendFailure(
                 Component.literal(
-                    e.getMessage() != null
-                        ? e.getMessage()
+                    message != null
+                        ? message
                         : "Invalid player target."
                 )
             );
@@ -81,10 +89,31 @@ public final class LevelOpMod implements ModInitializer {
             "level"
         );
 
-        LevelBasedPermissionSet permissionSet =
-            LevelBasedPermissionSet.forLevel(
-                PermissionLevel.fromLevel(level)
-            );
+        LevelBasedPermissionSet permissionSet;
+
+        switch (level) {
+            case 1 -> permissionSet =
+                LevelBasedPermissionSet.MODERATOR;
+
+            case 2 -> permissionSet =
+                LevelBasedPermissionSet.GAMEMASTER;
+
+            case 3 -> permissionSet =
+                LevelBasedPermissionSet.ADMIN;
+
+            case 4 -> permissionSet =
+                LevelBasedPermissionSet.OWNER;
+
+            default -> {
+                context.getSource().sendFailure(
+                    Component.literal(
+                        "OP level must be between 1 and 4."
+                    )
+                );
+
+                return 0;
+            }
+        }
 
         CommandSourceStack source = context.getSource();
         PlayerList playerList = source.getServer().getPlayerList();
