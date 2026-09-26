@@ -17,19 +17,23 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
-processResources {
-    inputs.property "version", project.version
-    filesMatching("fabric.mod.json") {
-        expand "version": project.version
-    }
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
 }
 
 java {
-    withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = "UTF-8"
-}
+// processResources' fabric.mod.json version expansion, withSourcesJar(), and
+// the mavenJava publication are identical across mods/ (and this excluded-
+// but-kept-for-reference pack, see settings.gradle's EXCLUDED_PROJECT_DIRS
+// entry for it) - see build-logic/shared-fabric-mod.gradle for what this
+// pulls in and why it's `apply from:` rather than a precompiled plugin. A
+// projectDir-relative path is used (not ${rootDir}) so this also resolves
+// correctly when built standalone via this project's own settings.gradle,
+// where rootDir would point here instead of at vortacraftmc/core's root.
+// One extra `../` versus mods/*/build.gradle's copy of this line, since this
+// project sits one directory deeper (packs/RTWrapper/rtwrapper-fabric).
+apply from: "${projectDir}/../../../build-logic/shared-fabric-mod.gradle"
