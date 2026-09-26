@@ -38,14 +38,6 @@ dependencies {
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
-processResources {
-	inputs.property "version", project.version
-
-	filesMatching("fabric.mod.json") {
-		expand "version": project.version
-	}
-}
-
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 25
 }
@@ -54,23 +46,22 @@ java {
 	// Java 25 is required by Minecraft 26.3
 	sourceCompatibility = JavaVersion.VERSION_25
 	targetCompatibility = JavaVersion.VERSION_25
-
-	withSourcesJar()
 }
 
 // NOTE: no `jar { from("LICENSE") {...} }` block here -- add one back only
 // if you add a LICENSE file to this subproject; referencing a nonexistent
 // file here would fail the jar task.
 
-publishing {
-	publications {
-		create("mavenJava", MavenPublication) {
-			artifactId project.archives_base_name
-			from components.java
-		}
-	}
-
-	repositories {
-		// Add repositories to publish to here.
-	}
-}
+// processResources' fabric.mod.json version expansion, withSourcesJar(), and
+// the mavenJava publication are identical across mods/ - see
+// build-logic/shared-fabric-mod.gradle for what this pulls in and why it's
+// `apply from:` rather than a precompiled plugin. A projectDir-relative path
+// is used (not ${rootDir}) so this also resolves correctly if this mod is
+// ever built standalone via its own settings.gradle, where rootDir would
+// point here instead of at vortacraftmc/core's root. The shared script sets
+// `artifactId project.archivesBaseName` explicitly on the publication (see
+// its own comment) - maven-publish's plugin default for artifactId is
+// project.name, not archivesBaseName, so that line is still needed here; it
+// resolves to "opmod" (from `base { archivesName = ... }` above), not the
+// "opmod-example" directory name.
+apply from: "${projectDir}/../../build-logic/shared-fabric-mod.gradle"

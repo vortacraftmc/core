@@ -37,25 +37,11 @@ dependencies {
 	
 }
 
-processResources {
-	def version = project.version
-	inputs.property "version", version
-
-	filesMatching("fabric.mod.json") {
-		expand "version": version
-	}
-}
-
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 25
 }
 
 java {
-	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-	// if it is present.
-	// If you remove this line, sources will not be generated.
-	withSourcesJar()
-
 	sourceCompatibility = JavaVersion.VERSION_25
 	targetCompatibility = JavaVersion.VERSION_25
 }
@@ -69,19 +55,14 @@ jar {
 	}
 }
 
-// configure the maven publication
-publishing {
-	publications {
-		create("mavenJava", MavenPublication) {
-			from components.java
-		}
-	}
-
-	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
-	repositories {
-		// Add repositories to publish to here.
-		// Notice: This block does NOT have the same function as the block in the top level.
-		// The repositories here will be used for publishing your artifact, not for
-		// retrieving dependencies.
-	}
-}
+// processResources' fabric.mod.json version expansion, withSourcesJar(), and
+// the mavenJava publication (published under project.archivesBaseName,
+// which with no base.archivesName override here is just project.name -
+// same as before this file had no publishing{} block's artifactId set
+// either) are identical across mods/ - see build-logic/shared-fabric-mod.gradle
+// for what this pulls in and why it's `apply from:` rather than a
+// precompiled plugin. A projectDir-relative path is used (not ${rootDir})
+// so this also resolves correctly if this mod is ever built standalone via
+// its own settings.gradle, where rootDir would point here instead of at
+// vortacraftmc/core's root.
+apply from: "${projectDir}/../../build-logic/shared-fabric-mod.gradle"
