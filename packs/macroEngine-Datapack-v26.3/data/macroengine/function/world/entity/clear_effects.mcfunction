@@ -7,4 +7,4 @@
 # ─────────────────────────────────────────────────────────────────
 
 $effect clear @e[type=$(type),tag=$(tag)]
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/clear_effects ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(type)[tag=$(tag)]","color":"aqua"}]
+# # $tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.path.entity_clear_effects","color":"aqua"},{"translate":"macroengine.arrow","color":"#555555"},{"text":"$(type)[tag=$(tag)]","color":"aqua"}]

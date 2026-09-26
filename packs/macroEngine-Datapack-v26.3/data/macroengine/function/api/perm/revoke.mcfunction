@@ -8,4 +8,4 @@ $execute store result score $prv_pid macroengine.tmp run data get storage macroe
 $execute as @a if score @s macroengine.pid = $prv_pid macroengine.tmp run tag @s remove perm.$(perm)
 $advancement revoke @a[name=$(player),limit=1] only macroengine:api/perm/$(perm)
 
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"perm/revoke ","color":"aqua"},{"text":"✘ ","color":"red"},{"text":"$(player)","color":"white"},{"text":" — ","color":"#555555"},{"text":"$(perm)","color":"aqua"},{"text":" revoked","color":"#555555"}]
+# # $tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.path.perm_revoke","color":"aqua"},{"text":"✘ ","color":"red"},{"text":"$(player)","color":"white"},{"translate":"macroengine.ui.emdash","color":"#555555"},{"text":"$(perm)","color":"aqua"},{"translate":"macroengine.debug.revoked","color":"#555555"}]

@@ -10,4 +10,4 @@
 #   data get storage macroengine:output queue.size
 
 execute store result storage macroengine:output queue.size int 1 run data get storage macroengine:engine work_queue
-# # tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"queue/size ","color":"aqua"},{"text":"→ ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"queue.size","color":"yellow"}]
+# # tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.path.queue_size","color":"aqua"},{"translate":"macroengine.ui.arrow_sp","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"queue.size","color":"yellow"}]

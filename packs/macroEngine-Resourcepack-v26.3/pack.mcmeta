@@ -1,9 +1,15 @@
 {
   "pack": {
-    "description": "MacroEngine v6.2.0-26.3rc2 — resource pack companion (sound effects) for 26.3-rc-2 | vortacraftmc (based on Runtoolkit)",
+    "description": "MacroEngine v26.3 — resource pack (REQUIRED, i18n + sounds)",
     "pack_format": 97,
-    "min_format": [97, 0],
-    "max_format": [97, 0]
+    "min_format": [
+      97,
+      0
+    ],
+    "max_format": [
+      97,
+      0
+    ]
   },
   "features": {
     "enabled": [

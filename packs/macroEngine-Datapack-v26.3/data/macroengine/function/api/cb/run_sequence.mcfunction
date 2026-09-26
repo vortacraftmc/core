@@ -24,7 +24,7 @@ execute store result score #macroengine.gate_ok macroengine.tmp run function mac
 execute if score #macroengine.gate_ok macroengine.tmp matches 0 run return 0
 
 # Verify required input
-execute unless data storage macroengine:input cb.cmds[0] run tellraw @s [{"text":"[MACROENGINE/cb] ","color":"#00AAAA","bold":true},{"text":"cb.cmds is empty or not set","color":"red"}]
+execute unless data storage macroengine:input cb.cmds[0] run tellraw @s [{"translate":"macroengine.prefix.cb","color":"#00AAAA","bold":true},{"translate":"macroengine.cb.cmds_empty","color":"red"}]
 execute unless data storage macroengine:input cb.cmds[0] run return 0
 
 # Fill defaults

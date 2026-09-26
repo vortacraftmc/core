@@ -16,4 +16,4 @@
 # ─────────────────────────────────────────────────────────────────
 
 $execute as @a[name=$(player),tag=macroengine.frozen,limit=1] run function macroengine:core/internal/api/cmd/freeze/remove
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"cmd/unfreeze ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"translate":"macroengine.msg.unfreeze","color":"#55ff55","bold":true}]
+# # $tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.path.cmd_unfreeze","color":"aqua"},{"text":"$(player)","color":"white"},{"translate":"macroengine.arrow","color":"#555555"},{"translate":"macroengine.msg.unfreeze","color":"#55ff55","bold":true}]

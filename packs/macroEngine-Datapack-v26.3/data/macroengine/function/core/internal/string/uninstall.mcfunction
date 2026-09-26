@@ -1,12 +1,12 @@
 # Check if it's installed
 scoreboard objectives add StringLib.Uninstall dummy
 execute if score #StringLib.Init StringLib matches 1 run scoreboard players set #StringLib.Init StringLib.Uninstall 1
-execute unless score #StringLib.Init StringLib.Uninstall matches 1 run tellraw @a ["﹌ ",{"text":"StringLib >> ","color":"#99EAD6"},{"text":"⚠ Could not remove StringLib.\nIs it installed?","color":"red"}]
+execute unless score #StringLib.Init StringLib.Uninstall matches 1 run tellraw @a ["﹌ ",{"translate":"macroengine.stringlib.prefix","color":"#99EAD6"},{"translate":"macroengine.stringlib.remove_fail","color":"red"}]
 execute unless score #StringLib.Init StringLib.Uninstall matches 1 run return run scoreboard objectives remove StringLib.Uninstall
 scoreboard objectives remove StringLib.Uninstall
 
 # Tellraw
-tellraw @s ["﹌ ",{"text":"StringLib >> ","color":"#99EAD6"},"Uninstalled StringLib (v0.2.0)"]
+tellraw @s ["﹌ ",{"translate":"macroengine.stringlib.prefix","color":"#99EAD6"},"Uninstalled StringLib (v0.2.0)"]
 
 # Remove scoreboards & data storages
 scoreboard objectives remove StringLib

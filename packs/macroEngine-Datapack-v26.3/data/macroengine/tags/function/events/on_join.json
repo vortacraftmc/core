@@ -1,3 +1,5 @@
 {
-  "values": []
+  "values": [
+    "macroengine:core/internal/rp/on_join"
+  ]
 }

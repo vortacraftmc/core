@@ -7,4 +7,4 @@ $data modify storage macroengine:engine _tc_uval set value $(value)
 function macroengine:core/internal/api/trigger/unbind_filter
 data remove storage macroengine:engine _tc_unbind
 data remove storage macroengine:engine _tc_uval
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"trigger/unbind ","color":"aqua"},{"text":"✘ ","color":"red"},{"text":"value=$(value)","color":"white"},{"text":" removed","color":"#555555"}]
+# # $tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.path.trigger_unbind","color":"aqua"},{"text":"✘ ","color":"red"},{"translate":"macroengine.fmt.value_eq","color":"white"},{"translate":"macroengine.ui.removed","color":"#555555"}]

@@ -12,7 +12,7 @@
 
 execute unless entity @s[tag=macroengine.dialog_opened] run return 0
 
-tellraw @a[tag=macroengine.admin] ["",{"text":"[DL/dialog] ","color":"gold","bold":true},{"selector":"@s","color":"yellow"},{"text":" opened dialog: ","color":"white"},{"nbt":"dialog.DIALOG.title","plain":true ,"storage":"macroengine:engine","color":"aqua","italic":true}]
+tellraw @a[tag=macroengine.admin] ["",{"translate":"macroengine.dialog.prefix","color":"gold","bold":true},{"selector":"@s","color":"yellow"},{"translate":"macroengine.dialog.opened","color":"white"},{"nbt":"dialog.DIALOG.title","plain":true ,"storage":"macroengine:engine","color":"aqua","italic":true}]
 
 data modify storage macroengine:engine _log_add_tmp.message set value "[dialog/notify_admins] dialog opened"
 data modify storage macroengine:engine _log_add_tmp.level set value "INFO"
