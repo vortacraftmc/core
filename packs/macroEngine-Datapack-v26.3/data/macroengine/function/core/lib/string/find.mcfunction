@@ -12,4 +12,4 @@ function macroengine:core/internal/string/util/find
 data modify storage macroengine:output string.result set from storage macroengine:core/internal/string/output find
 data remove storage macroengine:core/internal/string/input find
 data remove storage macroengine:core/internal/string/output find
-# # tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/string/find","color":"aqua"}]
+# # tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.path.lib_string_find","color":"aqua"}]

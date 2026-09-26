@@ -16,4 +16,4 @@
 # function macroengine:systems/string/separator with storage macroengine:input {}
 # ─────────────────────────────────────────────────────────────────
 
-$tellraw $(target) ["",{"text":"──────────","color":"$(color)"},{"text":"$(label)","color":"$(color)","bold":true},{"text":"──────────","color":"$(color)"}]
+$tellraw $(target) ["",{"translate":"macroengine.ui.dash10","color":"$(color)"},{"text":"$(label)","color":"$(color)","bold":true},{"translate":"macroengine.ui.dash10","color":"$(color)"}]

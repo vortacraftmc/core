@@ -1,4 +1,4 @@
 # macroengine:systems/log/get_level
 # Usage: /function macroengine:systems/log/get_level
 # Shows the current log level.
-tellraw @s ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"Log level: ","color":"gray"},{"score":{"name":"#macroengine.log_level","objective":"macroengine.log_level"},"color":"white","bold":true},{"text":"  (0=off 1=error 2=warn 3=info 4=debug)","color":"#555555"}]
+tellraw @s ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.log.level","color":"gray"},{"score":{"name":"#macroengine.log_level","objective":"macroengine.log_level"},"color":"white","bold":true},{"translate":"macroengine.log.level_help","color":"#555555"}]

@@ -4,4 +4,4 @@
 
 
 data modify storage macroengine:engine security.auto_debug_tag set value 1b
-tellraw @s ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"✔ ","color":"green"},{"text":"auto_debug_tag ","color":"white"},{"text":"enabled","color":"green"},{"text":" — admins get macroengine.debug automatically again.","color":"gray"}]
+tellraw @s ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"text":"✔ ","color":"green"},{"translate":"macroengine.path.auto_debug_tag","color":"white"},{"translate":"macroengine.state.enabled","color":"green"},{"translate":"macroengine.debug.tag_auto_on","color":"gray"}]

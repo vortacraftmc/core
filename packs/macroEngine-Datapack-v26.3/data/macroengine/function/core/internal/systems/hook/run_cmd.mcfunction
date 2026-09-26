@@ -4,5 +4,5 @@
 
 # SECURITY: central gate
 
-execute if score #macroengine.log_level macroengine.log_level matches 4.. run tellraw @a[tag=macroengine.debug] ["",{"text":"[Hook] ","color":"aqua"},{"selector":"@s","color":"gold"},{"text":" cmd executed","color":"#555555"}]
+execute if score #macroengine.log_level macroengine.log_level matches 4.. run tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.debug.hook_prefix","color":"aqua"},{"selector":"@s","color":"gold"},{"translate":"macroengine.debug.cmd_exec","color":"#555555"}]
 $$(cmd)
