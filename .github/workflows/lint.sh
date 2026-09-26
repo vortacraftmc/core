@@ -41,18 +41,27 @@ echo "::endgroup::"
 
 echo "::group::🔍 Mecha validation"
 
+mecha_status=0
 if mecha .; then
     echo "::notice::Mecha validation passed."
 else
-    status=$?
-    echo "::warning::Mecha reported validation errors ($status). Ignored."
+    mecha_status=$?
+    echo "::error::Mecha reported validation errors (exit $mecha_status)."
 fi
 
 echo "::endgroup::"
 
 echo "::group::✅ Validation summary"
-echo "Mecha validation finished."
+if [ "$mecha_status" -eq 0 ]; then
+    echo "Mecha validation finished: PASSED."
+else
+    echo "Mecha validation finished: FAILED (exit $mecha_status)."
+fi
 echo "Ignored paths: ${#IGNORE_PATHS[@]}"
 echo "::endgroup::"
 
-exit 0
+# FIX (audit): this script previously always ended with `exit 0`, so a real
+# Mecha validation failure was logged as a warning and then swallowed -- the
+# "lint" job in build.yml could never actually fail because of it. Propagate
+# Mecha's real exit status so the job goes red when validation fails.
+exit "$mecha_status"
