@@ -1,0 +1,4 @@
+{
+  "commands.op.message": "Operatör seviyesi %s olarak ayarlandı.",
+  "commands.op.failed": "Operatör seviyesi ayarlanamadı."
+}
