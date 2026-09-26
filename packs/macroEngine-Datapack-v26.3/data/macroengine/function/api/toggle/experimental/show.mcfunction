@@ -9,7 +9,11 @@
 #
 # Flags:
 #   strict_gating   — enables core/internal/security/check_all enforcement
-#                      (cmd_min_level / sandbox_cmd_min_level / admin_min_level).
+#                      (cmd_min_level / sandbox_cmd_min_level / admin_min_level,
+#                      plus security.admin_can_override and
+#                      security.sandbox_allowlist — the wand/trigger raw-
+#                      command dispatch paths and their register/bind
+#                      steps are now gated too, not just cmd/ and cb/).
 #                      Turn this OFF immediately if permission checks start
 #                      blocking things that should work — every threshold
 #                      defaults to 0 (everyone passes) so leaving it on is

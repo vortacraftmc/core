@@ -28,10 +28,20 @@ execute unless data storage macroengine:engine config.namespace_allowlist run da
 # are read but never compared against anything, same as before that flag existed.
 # Threshold 0 = everyone passes even when strict_gating is on; raise these once
 # you've confirmed strict_gating is stable for your server.
+# NOTE: this only fills keys that are still missing after
+# core/internal/load/loader/storages.mcfunction has already run (config
+# re-applies after storages in core/internal/load/all.mcfunction) — its
+# richer defaults (cmd_min_level:3, sandbox_cmd_min_level:4,
+# admin_min_level:2, admin_can_override:0b, sandbox_allowlist:{}) win on
+# fresh installs. These lines exist only as a fallback for a `security`
+# compound created some other way (e.g. a partial /data modify) that's
+# missing one of these specific keys.
 execute unless data storage macroengine:engine security run data modify storage macroengine:engine security set value {}
 execute unless data storage macroengine:engine security.admin_min_level run data modify storage macroengine:engine security.admin_min_level set value 0
 execute unless data storage macroengine:engine security.cmd_min_level run data modify storage macroengine:engine security.cmd_min_level set value 0
 execute unless data storage macroengine:engine security.sandbox_cmd_min_level run data modify storage macroengine:engine security.sandbox_cmd_min_level set value 0
+execute unless data storage macroengine:engine security.admin_can_override run data modify storage macroengine:engine security.admin_can_override set value 0b
+execute unless data storage macroengine:engine security.sandbox_allowlist run data modify storage macroengine:engine security.sandbox_allowlist set value {}
 
 # ── Experimental feature flags (systems/flag/experimental/*) ──────
 # All default OFF except strict_gating (see below). Each gates one piece
