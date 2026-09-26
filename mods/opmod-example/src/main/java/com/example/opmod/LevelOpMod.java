@@ -49,8 +49,9 @@ public final class LevelOpMod implements ModInitializer {
 
     private static boolean canUseCommand(CommandSourceStack source) {
         if (source.permissions() instanceof LevelBasedPermissionSet permissions) {
-            return permissions.level().getLevel()
-                >= PermissionLevel.ADMINS.getLevel();
+            return permissions.level().isEqualOrHigherThan(
+                PermissionLevel.ADMINS
+            );
         }
 
         return false;
@@ -125,7 +126,9 @@ public final class LevelOpMod implements ModInitializer {
 
             affected++;
 
-            ServerPlayer player = playerList.getPlayer(target.id());
+            ServerPlayer player = playerList.getPlayer(
+                target.id()
+            );
 
             if (player != null) {
                 player.sendSystemMessage(
