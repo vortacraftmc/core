@@ -49,14 +49,10 @@ public final class LevelOpMod implements ModInitializer {
 
     private static boolean canUseCommand(CommandSourceStack source) {
         if (source.permissions() instanceof LevelBasedPermissionSet permissions) {
-            return permissions.level().isAtLeast(PermissionLevel.ADMINS);
+            return permissions.level().getLevel()
+                >= PermissionLevel.ADMINS.getLevel();
         }
 
-        /*
-         * Non-level permission sets are not assumed to be admin.
-         * This keeps the command restricted instead of accidentally
-         * granting access to an arbitrary PermissionSet.
-         */
         return false;
     }
 
