@@ -41,4 +41,4 @@ function macroengine:core/internal/world/entity/random_dispatch with storage mac
 # Cleanup
 data remove storage macroengine:engine _rnd
 
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/random ","color":"aqua"},{"text":"$(type)","color":"aqua"},{"text":" [$(tag)]","color":"gray"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"}]
+# # $tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.path.entity_random","color":"aqua"},{"text":"$(type)","color":"aqua"},{"translate":"macroengine.fmt.tag","color":"gray"},{"translate":"macroengine.arrow","color":"#555555"},{"text":"$(func)","color":"aqua"}]

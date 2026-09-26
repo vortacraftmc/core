@@ -10,4 +10,4 @@ scoreboard players operation $ce_exp macroengine.tmp += $ce_amt macroengine.tmp
 
 $execute store result storage macroengine:engine cooldowns.$(player).$(key) int 1 run scoreboard players get $ce_exp macroengine.tmp
 
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"cooldown/extend ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":":","color":"#555555"},{"text":"$(key)","color":"aqua"},{"text":" +$(amount)t","color":"green"},{"text":" → exp=","color":"#555555"},{"score":{"name":"$ce_exp","objective":"macroengine.tmp"},"color":"yellow"}]
+# # $tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.path.cooldown_extend","color":"aqua"},{"text":"$(player)","color":"white"},{"text":":","color":"#555555"},{"text":"$(key)","color":"aqua"},{"translate":"macroengine.fmt.plus_ticks","color":"green"},{"translate":"macroengine.fmt.arrow_exp","color":"#555555"},{"score":{"name":"$ce_exp","objective":"macroengine.tmp"},"color":"yellow"}]

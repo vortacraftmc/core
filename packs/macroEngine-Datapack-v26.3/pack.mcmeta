@@ -1,6 +1,6 @@
 {
   "pack": {
-    "description": "macroEngine | 26.3",
+    "description": "macroEngine | 26.3 | i18n (resource pack REQUIRED)",
     "min_format": [
       121,
       0

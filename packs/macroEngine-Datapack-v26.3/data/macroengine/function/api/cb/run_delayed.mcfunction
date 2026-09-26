@@ -23,9 +23,9 @@ execute store result score #macroengine.gate_ok macroengine.tmp run function mac
 execute if score #macroengine.gate_ok macroengine.tmp matches 0 run return 0
 
 # Verify required inputs
-execute unless data storage macroengine:input cb.cmd run tellraw @s [{"text":"[MACROENGINE/cb] ","color":"#00AAAA","bold":true},{"text":"cb.cmd not set","color":"red"}]
+execute unless data storage macroengine:input cb.cmd run tellraw @s [{"translate":"macroengine.prefix.cb","color":"#00AAAA","bold":true},{"translate":"macroengine.cb.cmd_not_set","color":"red"}]
 execute unless data storage macroengine:input cb.cmd run return 0
-execute unless data storage macroengine:input cb.delay run tellraw @s [{"text":"[MACROENGINE/cb] ","color":"#00AAAA","bold":true},{"text":"cb.delay not set","color":"red"}]
+execute unless data storage macroengine:input cb.delay run tellraw @s [{"translate":"macroengine.prefix.cb","color":"#00AAAA","bold":true},{"translate":"macroengine.cb.delay_not_set","color":"red"}]
 execute unless data storage macroengine:input cb.delay run return 0
 
 # Fill coordinate defaults
