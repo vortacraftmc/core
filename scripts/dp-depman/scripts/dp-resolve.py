@@ -15,6 +15,7 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -142,7 +143,35 @@ def resolve_github(dep_id: str, dep_cfg: dict, token: str | None) -> dict:
         "sha256":       None,
     }
 
-def download_asset(url: str, dest: Path, token: str | None, expected_sha256: str | None = None) -> str:
+# SECURITY (audit): download_asset() attaches an Authorization: Bearer token
+# to whatever URL the upstream API handed back (info["download_url"]).  That
+# URL is only as trustworthy as the API response it came from, and nothing
+# previously checked it before sending the token.  This is a defense-in-depth
+# allowlist -- not a bypass-the-API-response concern, but a guard against a
+# malformed/unexpected download_url (e.g. a bad manifest, a compromised
+# mirror, a future source type) silently exfiltrating the token to an
+# arbitrary host.
+_ALLOWED_DOWNLOAD_HOSTS = {
+    "github": {"github.com", "objects.githubusercontent.com", "api.github.com"},
+    "modrinth": {"cdn.modrinth.com", "modrinth.com", "api.modrinth.com"},
+}
+
+def _validate_download_url(url: str, source: str | None) -> None:
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme != "https":
+        die(f"Refusing to download from non-https URL: {url}")
+    allowed = _ALLOWED_DOWNLOAD_HOSTS.get(source)
+    if allowed is not None and parsed.hostname not in allowed:
+        die(
+            f"Refusing to download asset: host '{parsed.hostname}' is not in the "
+            f"allowlist for source '{source}' ({sorted(allowed)}).\n"
+            f"  URL: {url}\n"
+            f"  This is a safety check against a malformed or unexpected "
+            f"download_url being sent an auth token."
+        )
+
+def download_asset(url: str, dest: Path, token: str | None, expected_sha256: str | None = None, source: str | None = None) -> str:
+    _validate_download_url(url, source)
     dest.parent.mkdir(parents=True, exist_ok=True)
     req = urllib.request.Request(url)
     if token:
@@ -337,7 +366,7 @@ def get_dep_zip(dep_id: str, info: dict, root: Path, token: str | None, dep_cfg:
                 cache_zip.unlink()
                 log(f"  Cached file failed pinned SHA-256 check, re-downloading: {cache_zip.name}")
         if not cache_zip.exists():
-            sha            = download_asset(info["download_url"], cache_zip, token, expected)
+            sha            = download_asset(info["download_url"], cache_zip, token, expected, source=info.get("source"))
             info["sha256"] = sha
             if not expected:
                 log(f"  SHA-256: {sha}  (not pinned in .depends/{dep_id}.json — consider adding it)")
@@ -457,6 +486,28 @@ def build_merged_zip(manifest: dict, resolved: dict, root: Path, token: str | No
 
 # ─── Submodule init ───────────────────────────────────────────────────────────
 
+# SECURITY (audit): url/path here come from .depends/<dep_id>.json (or the
+# legacy datapack_depends.json), which is repo-controlled but still gets
+# passed straight into `git submodule add <url> <path>`. Two real risks:
+#   1. Argument injection: a value starting with "-" is parsed by git as a
+#      flag, not a positional argument (e.g. "--upload-pack=...").
+#   2. Git URL scheme abuse: git supports remote helpers like "ext::" that
+#      execute an arbitrary local command as part of cloning -- a known RCE
+#      class. "file://" is also unwanted here (arbitrary local path read).
+# Fix: only allow https:// and git@ (SCP-style SSH) URLs, reject any
+# url/path starting with "-", and pass "--" before positionals so git can
+# never reinterpret them as options even if a future check is loosened.
+_ALLOWED_SUBMODULE_URL_RE = re.compile(r"^(https://|git@[\w.\-]+:)")
+
+def _validate_submodule_url_and_path(dep_id: str, url: str, path: str) -> None:
+    if url.startswith("-") or path.startswith("-"):
+        die(f"[{dep_id}] Refusing submodule url/path starting with '-' (looks like a flag): url={url!r} path={path!r}")
+    if not _ALLOWED_SUBMODULE_URL_RE.match(url):
+        die(
+            f"[{dep_id}] Refusing submodule url with disallowed scheme: {url!r}\n"
+            f"  Only https:// and git@host: (SSH) URLs are permitted."
+        )
+
 def cmd_init_submodules(deps: dict, root: Path):
     for dep_id, dep_cfg in deps.items():
         if isinstance(dep_cfg, str) or dep_cfg.get("source") != "submodule":
@@ -466,13 +517,14 @@ def cmd_init_submodules(deps: dict, root: Path):
             warn(f"[{dep_id}] Missing 'url' — cannot add submodule")
             continue
         path     = dep_cfg.get("path", str(SUBMODULE_DIR / dep_id))
+        _validate_submodule_url_and_path(dep_id, url, path)
         abs_path = root / path
         if abs_path.exists():
             log(f"[{dep_id}] Already present: {path}")
             continue
         log(f"[{dep_id}] git submodule add {url} {path}")
         result = subprocess.run(
-            ["git", "submodule", "add", url, path],
+            ["git", "submodule", "add", "--", url, path],
             cwd=root, capture_output=True, text=True,
         )
         if result.returncode != 0:

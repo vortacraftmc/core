@@ -1,7 +1,13 @@
 name: Source Code (with Git History)
 
+# AUDIT: this used to run on every push, with no branch/path filter, and
+# bundled the full .git history into a downloadable artifact. If any commit
+# in the repo's history ever contained a secret (even one later removed),
+# this workflow packaged and published it as an Actions artifact on every
+# single push, to anyone with read access to Actions artifacts. Restricted
+# to manual runs only -- run it deliberately when a full-history export is
+# actually needed, not automatically on every commit.
 on:
-  push:
   workflow_dispatch:
 
 permissions:
