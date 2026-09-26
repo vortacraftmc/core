@@ -16,10 +16,13 @@
 //       zipPacks and checkOriginWatermarks)
 //   4. zipPacks - packages every pack under packs/ into build/packs-dist/
 //   5. Shared datapack-validation helpers + checkPacks / printPackList /
-//      printModList - pack.mcmeta + JSON + reference validation and listing
+//      printPackFormats / printModList / printModVersions - pack.mcmeta +
+//      JSON + reference validation and listing (checkPacks also supports
+//      -PcheckPacksReport=<path> to write a JSON summary)
 //   6. mergeDatapacks - merges packs/merge-manifest.json into one datapack
 //      with a gated load/tick system, kill-switch, toggleable debug, and
-//      load-error checking (+ .zip output)
+//      load-error checking (+ .zip output). -PmergeManifest=<path> reads an
+//      alternate manifest; -PmergeReport=<path> writes a JSON run summary.
 //   7. clean task extension - also wipes build/packs-dist and packs-remap
 //   8. Root 'build'/'check' lifecycle tasks - 'build' runs mergeDatapacks
 //      and copies its output into build/dist/
@@ -543,12 +546,14 @@ def vcReadTagValues = { groovy.json.JsonSlurper slurper, File tagFile ->
 
 tasks.register('checkPacks') {
     group = 'verification'
-    description = 'Validates every pack under packs/: pack.mcmeta (format range, description, overlays, filter), every JSON under data/, namespace rules, and load/tick + function reference resolution. Warnings fail the build only with -PcheckPacksStrict=true; -PcheckPacksJson=mcmeta checks pack.mcmeta files only.'
+    description = 'Validates every pack under packs/: pack.mcmeta (format range, description, overlays, filter), every JSON under data/, namespace rules, and load/tick + function reference resolution. Warnings fail the build only with -PcheckPacksStrict=true; -PcheckPacksJson=mcmeta checks pack.mcmeta files only; -PcheckPacksReport=<path> also writes a JSON summary to that path.'
     def packsRoot = rootProject.file('packs')
     // Captured at configuration time - see the 'lint' task above for why
     // 'project.findProperty' can't be called from inside doLast itself.
     def jsonScopeProp = project.findProperty('checkPacksJson')
     def strictProp = project.findProperty('checkPacksStrict')
+    def reportPathProp = project.findProperty('checkPacksReport')
+    def reportProjectDir = projectDir
     doLast {
         def jsonScope = (jsonScopeProp ?: 'all').toString().toLowerCase()
         def strict = (strictProp?.toString()?.toLowerCase() == 'true')
@@ -735,6 +740,22 @@ tasks.register('checkPacks') {
 
         println "[checkPacks] checked ${packDirs.size()} pack(s), ${jsonChecked} JSON file(s), ${funcChecked} function file(s): ${errors.size()} error(s), ${warnings.size()} warning(s)."
         warnings.each { println "[checkPacks] WARN: ${it}" }
+        if (reportPathProp) {
+            def reportFile = new File(reportPathProp.toString()).with { it.isAbsolute() ? it : new File(reportProjectDir, it.path) }
+            reportFile.parentFile?.mkdirs()
+            def json = new StringBuilder()
+            json << '{\n'
+            json << "  \"packCount\": ${packDirs.size()},\n"
+            json << "  \"jsonChecked\": ${jsonChecked},\n"
+            json << "  \"funcChecked\": ${funcChecked},\n"
+            json << "  \"errorCount\": ${errors.size()},\n"
+            json << "  \"warningCount\": ${warnings.size()},\n"
+            json << '  "errors": [' << errors.collect { "\"${vcJsonEscape(it)}\"" }.join(', ') << '],\n'
+            json << '  "warnings": [' << warnings.collect { "\"${vcJsonEscape(it)}\"" }.join(', ') << ']\n'
+            json << '}\n'
+            reportFile.text = json.toString()
+            println "[checkPacks] wrote report -> ${reportFile}"
+        }
         if (errors) {
             errors.each { println "[checkPacks] ERROR: ${it}" }
             throw new GradleException("[checkPacks] failed: ${errors.size()} error(s) in ${packDirs.size()} pack(s).")
@@ -772,6 +793,52 @@ tasks.register('printPackList') {
     }
 }
 
+// printPackFormats: printPackList above only tells you a pack exists; this
+// answers the next question you'd usually then have to open pack.mcmeta
+// for - what pack_format (or min_format/max_format range) it declares.
+// Read-only, same as printPackList - it does not run any of checkPacks'
+// validation and will not fail the build on a bad or missing format.
+tasks.register('printPackFormats') {
+    group = 'help'
+    description = 'Lists every detected pack under packs/ with its declared pack_format (or min_format-max_format range), without validating anything.'
+    def packsRoot = rootProject.file('packs')
+    doLast {
+        if (!packsRoot.exists()) {
+            println "[printPackFormats] no packs/ directory found."
+            return
+        }
+        def slurper = new groovy.json.JsonSlurper()
+        def packDirs = findPackDirs(packsRoot)
+        if (packDirs.isEmpty()) {
+            println "[printPackFormats] no packs found."
+            return
+        }
+        println "[printPackFormats] ${packDirs.size()} pack(s):"
+        packDirs.sort { it.path }.each { dir ->
+            def packLabel = packsRoot.toPath().relativize(dir.toPath()).toString()
+            def metaFile = new File(dir, 'pack.mcmeta')
+            def rangeText
+            try {
+                def meta = slurper.parse(metaFile)
+                def pack = (meta instanceof Map) ? meta.pack : null
+                def minFmt = (pack instanceof Map) ? vcNormalizeFormatValue(pack.min_format) : null
+                def maxFmt = (pack instanceof Map) ? vcNormalizeFormatValue(pack.max_format) : null
+                def legacyFmt = (pack instanceof Map) ? vcNormalizeFormatValue(pack.pack_format) : null
+                if (minFmt != null && maxFmt != null) {
+                    rangeText = "min_format=${minFmt.join('.')} max_format=${maxFmt.join('.')}"
+                } else if (legacyFmt != null) {
+                    rangeText = "pack_format=${legacyFmt.join('.')}"
+                } else {
+                    rangeText = '(no valid format declared)'
+                }
+            } catch (Exception e) {
+                rangeText = "(invalid pack.mcmeta: ${e.message})"
+            }
+            println "[printPackFormats]   - ${packLabel}: ${rangeText}"
+        }
+    }
+}
+
 // printModList: the mods/ counterpart to printPackList above. There was
 // previously no way to list mod subprojects without either reading
 // settings.gradle by hand or running a real build ('buildAll'/':mods:x:build').
@@ -797,6 +864,47 @@ tasks.register('printModList') {
         } else {
             println "[printModList] detected ${found.size()} mod(s):"
             found.sort().each { println "[printModList]   - ${it}" }
+        }
+    }
+}
+
+// printModVersions: the id/version counterpart to printModList above -
+// read-only, does not build anything, and tolerates a missing or invalid
+// fabric.mod.json (reported inline rather than failing the task) since
+// unlike verifyMod this task is meant for a quick listing, not validation.
+tasks.register('printModVersions') {
+    group = 'help'
+    description = 'Lists every detected Fabric mod under mods/ with its id and version from fabric.mod.json, without building anything.'
+    def modsRoot = rootProject.file('mods')
+    doLast {
+        if (!modsRoot.exists()) {
+            println "[printModVersions] no mods/ directory found."
+            return
+        }
+        def slurper = new groovy.json.JsonSlurper()
+        def found = []
+        modsRoot.eachFile { d ->
+            if (d.isDirectory() && new File(d, 'build.gradle').exists()) {
+                def modJsonFile = new File(d, 'src/main/resources/fabric.mod.json')
+                def label
+                if (modJsonFile.exists()) {
+                    try {
+                        def modJson = slurper.parse(modJsonFile)
+                        label = "${modJson.id ?: '?'} (v${modJson.version ?: '?'})"
+                    } catch (Exception e) {
+                        label = "(invalid fabric.mod.json: ${e.message})"
+                    }
+                } else {
+                    label = '(no fabric.mod.json found)'
+                }
+                found << "${d.name}: ${label}"
+            }
+        }
+        if (found.isEmpty()) {
+            println "[printModVersions] no mods found."
+        } else {
+            println "[printModVersions] detected ${found.size()} mod(s):"
+            found.sort().each { println "[printModVersions]   - ${it}" }
         }
     }
 }
@@ -867,22 +975,32 @@ tasks.register('printModList') {
 // -----------------------------------------------------------------------
 tasks.register('mergeDatapacks') {
     group = 'build'
-    description = 'Merges packs/merge-manifest.json into build/merged-datapack/ (+ .zip) with a gated load/tick system, kill-switch, toggleable debug, and load-error checking.'
+    description = 'Merges packs/merge-manifest.json into build/merged-datapack/ (+ .zip) with a gated load/tick system, kill-switch, toggleable debug, and load-error checking. -PmergeManifest=<path> uses an alternate manifest file; -PmergeReport=<path> also writes a JSON summary of a completed (non-dry-run) merge.'
     def packsRoot = rootProject.file('packs')
-    def manifestFile = file('packs/merge-manifest.json')
-    def outDir = file('build/merged-datapack')
-    def buildDir = file('build')
     // Captured at configuration time - see the 'lint' task above for why
     // 'project.findProperty' can't be called from inside doLast itself.
     def dryRunProp = project.findProperty('mergeDryRun')
     def priorityProp = project.findProperty('mergePriority')
+    def manifestPathProp = project.findProperty('mergeManifest')
+    def reportPathProp = project.findProperty('mergeReport')
+    def reportProjectDir = projectDir
+    // manifestFile/manifestDisplayPath must also be resolved here (file()
+    // is a Project API call, same restriction as findProperty above) so
+    // -PmergeManifest can point at a manifest anywhere, not just packs/.
+    def manifestDisplayPath = manifestPathProp ? manifestPathProp.toString() : 'packs/merge-manifest.json'
+    def manifestFile = manifestPathProp ? file(manifestPathProp.toString()) : file('packs/merge-manifest.json')
+    def outDir = file('build/merged-datapack')
+    def buildDir = file('build')
     doLast {
         def dryRun = (dryRunProp?.toString()?.toLowerCase() == 'true')
         if (dryRun) {
             println "[mergeDatapacks] -PmergeDryRun=true: validation-only run, no files will be written under ${outDir} or ${buildDir}."
         }
         if (!manifestFile.exists()) {
-            throw new GradleException("[mergeDatapacks] failed: packs/merge-manifest.json not found. Create it with { \"output\": {...}, \"include\": [...] }.")
+            throw new GradleException("[mergeDatapacks] failed: ${manifestDisplayPath} not found. Create it with { \"output\": {...}, \"include\": [...] }.")
+        }
+        if (manifestPathProp) {
+            println "[mergeDatapacks] using manifest override: ${manifestDisplayPath}"
         }
         def slurper = new groovy.json.JsonSlurper()
         def manifest
@@ -1578,6 +1696,37 @@ tellraw @s ["", {"text":"[@TAG@] ","color":"dark_gray"}, {"text":"error log clea
             println "[mergeDatapacks] OK: merged ${packDirs.size()} pack(s) -> ${outDir}"
         }
         println "[mergeDatapacks] included: ${packDirs.keySet().join(', ')}"
+
+        if (reportPathProp) {
+            def reportFile = new File(reportPathProp.toString()).with { it.isAbsolute() ? it : new File(reportProjectDir, it.path) }
+            reportFile.parentFile?.mkdirs()
+            // zip file name mirrors the sanitizing logic just above (and the
+            // root 'build' task's own copy of it) rather than re-reading
+            // manifest.output.name a second time, since 'output' is already
+            // a plain local Map captured earlier in this doLast.
+            def reportZipName = null
+            if (zipEnabled) {
+                def zb = (output.name ?: 'merged-datapack').toString().replaceAll('[^A-Za-z0-9_.-]+', '-').replaceAll('^-+|-+$', '')
+                reportZipName = "${zb ?: 'merged-datapack'}.zip"
+            }
+            def report = [
+                generatedAt       : new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'", TimeZone.getTimeZone('UTC')),
+                manifest          : manifestDisplayPath,
+                namespace         : coreNs,
+                packsIncluded     : packDirs.keySet().toList(),
+                packFormats       : formats,
+                options           : [gatedLoad: gatedLoad, killSwitch: killSwitch, loadErrorHandling: loadErrorHandling,
+                                     strictLoadRefs: strictLoadRefs, debugDefault: debugDefault,
+                                     allowMismatchedFormats: allowMismatchedFormats, prefixConflicts: prefixConflicts,
+                                     zip: zipEnabled],
+                generatedFileCount: genStats.count,
+                collisionCount    : hardCollisionRels.size(),
+                outputDir         : outDir.path,
+                zipFile           : reportZipName
+            ]
+            reportFile.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(report))
+            println "[mergeDatapacks] wrote report -> ${reportFile}"
+        }
     }
 }
 // -----------------------------------------------------------------------
