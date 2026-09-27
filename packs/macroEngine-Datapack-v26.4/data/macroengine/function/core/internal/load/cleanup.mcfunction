@@ -21,14 +21,19 @@
 # it's undone by dropping the storage that held the pids (player_pids /
 # _pid_seq), further down where loader/storages is reversed.
 
+tag @s remove macroengine.admin
+tag @s remove macroengine.debug
+
+kill @e[type=minecraft:command_block_minecart,tag=macroengine_input]
+
 execute if score #sys_admin macroengine.tick_flags matches 1.. run scoreboard players reset #sys_admin macroengine.tick_flags
 execute if score #sys_hud macroengine.tick_flags matches 1.. run scoreboard players reset #sys_hud macroengine.tick_flags
 execute if score #sys_queue macroengine.tick_flags matches 1.. run scoreboard players reset #sys_queue macroengine.tick_flags
 execute if score #sys_player macroengine.tick_flags matches 1.. run scoreboard players reset #sys_player macroengine.tick_flags
 execute if score #sys_time macroengine.tick_flags matches 1.. run scoreboard players reset #sys_time macroengine.tick_flags
 
-scoreboard players disable @a[tag=macroengine.admin] macroengine_action
-scoreboard players disable @a[tag=macroengine.admin] macroengine_run
+scoreboard players reset @a[tag=macroengine.admin] macroengine_action
+scoreboard players reset @a[tag=macroengine.admin] macroengine_run
 
 schedule clear macroengine:core/lib/sync_tick
 
