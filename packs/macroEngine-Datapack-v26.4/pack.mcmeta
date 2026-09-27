@@ -1,7 +1,6 @@
 {
   "pack": {
     "description": "macroEngine | 26.4-snapshot-1",
-    "pack_format": 122,
     "min_format": [
       122,
       0
