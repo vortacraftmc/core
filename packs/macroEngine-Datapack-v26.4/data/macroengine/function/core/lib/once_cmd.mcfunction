@@ -2,7 +2,7 @@ $execute if data storage macroengine:engine once_keys.$(key) run return 0
 
 $data modify storage macroengine:engine once_keys.$(key) set value 1b
 
-# SECURITY: central gate
+
 
 tellraw @a[tag=macroengine.admin] [{"selector":"@s","color":"gold"},{"text":" - command executed","color":"yellow"}]
 

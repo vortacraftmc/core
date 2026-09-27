@@ -57,8 +57,6 @@ data remove storage macroengine:engine modules.hook
 
 data remove storage macroengine:engine multiCommands
 
-data remove storage macroengine:engine security
-
 data remove storage macroengine:engine wand_cooldowns
 
 data remove storage macroengine:engine batches

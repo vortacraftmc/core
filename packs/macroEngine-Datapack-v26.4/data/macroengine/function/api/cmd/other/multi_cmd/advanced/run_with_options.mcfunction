@@ -5,8 +5,6 @@
 #   list    → command list (string or object)
 #   options → {priority_sort:1b, spread_ticks:0, error_mode:"continue", profile:1b, type:"..."}
 #
-# SECURITY: if options.type is set, validates it against multi_type_allowlist.
-# Invalid type → type_violation (log + kick) + abort.
 
 data modify storage macroengine:engine _mcmd_queue set from storage macroengine:input list
 execute unless data storage macroengine:input options run data modify storage macroengine:input options set value {}
