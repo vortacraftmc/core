@@ -26,7 +26,7 @@ Or distribute the resource pack as a world/server resource pack.
 
 # macroEngine (v26.3)
 
-> ⚠️ **UNSUPPORTED.** This datapack is archived and no longer maintained. Development has moved to [dataLib-dp](https://github.com/runtoolkit/dataLib-dp), macroEngine's successor. No new features or fixes are planned. (v26.4 is a separate, still-supported pack.)
+> ⚠️ **UNSUPPORTED.** This datapack is archived and no longer maintained. Development has moved to [macroEngine v26.4](https://github.com/vortacraftmc/core/tree/main/packs/macroEngine-Datapack-v26.4), its successor. No new features or fixes are planned. (v26.4 is a separate, still-supported pack.)
 >
 > On every `/reload` the pack prints an unsupported warning, and the internal engine (`macro:input`/`macro:output`/`macro:engine`) will **not** initialize unless you explicitly opt in with `/data modify storage macroengine:engine config.allow_unsupported_load set value 1b`. Static content (recipes, loot tables, advancements, predicates, item modifiers, enchantments) is unaffected either way. See `core/internal/load/unsupported_gate.mcfunction`.
 
