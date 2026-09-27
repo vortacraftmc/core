@@ -24,7 +24,7 @@
   "macroengine.rp.missing": "macroEngine kaynak paketi zorunludur! Seçenekler → Kaynak Paketleri menüsünden etkinleştirip yeniden bağlanın.",
   "macroengine.rp.missing.actionbar": "⚠ macroEngine kaynak paketi eksik — devam etmek için etkinleştirin",
   "macroengine.load.starting": "macroEngine başlatılıyor...",
-  "macroengine.load.loaded": "macroEngine v2643 yüklendi.",
+  "macroengine.load.loaded": "macroEngine v26.4 yüklendi.",
   "macroengine.load.force": "Zorla yeniden başlatılıyor...",
   "macroengine.load.disabled": "macroengine devre dışı bırakıldı.",
   "macroengine.backport.active": "Backport sistemi aktif.",
