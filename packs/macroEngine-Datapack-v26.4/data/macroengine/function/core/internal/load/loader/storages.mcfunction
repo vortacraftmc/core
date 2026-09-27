@@ -122,18 +122,7 @@ execute unless data storage macroengine:engine wand_cooldowns run data modify st
 #                          via /function macroengine:debug/tools/admin/debug_tag/*
 #                          (see admin_systems.mcfunction)
 # ─────────────────────────────────────────────────────────────────
-execute unless data storage macroengine:engine security run data modify storage macroengine:engine security set value {multi_type_allowlist:{multi_cmd:1b,multi_cmd_adv:1b},auto_debug_tag:1b}
-# Migration: packs upgraded from a version that had the old gate fields
-# (trust_players, cmd_min_level, sandbox_cmd_min_level, admin_min_level,
-# admin_can_override, sandbox_allowlist) keep them as inert leftover data —
-# nothing reads them anymore. Backfill any of the fields still in use in
-# case only some of them exist on an old world.
-execute unless data storage macroengine:engine security.multi_type_allowlist run data modify storage macroengine:engine security.multi_type_allowlist set value {multi_cmd:1b,multi_cmd_adv:1b}
 execute unless data storage macroengine:engine security.auto_debug_tag run data modify storage macroengine:engine security.auto_debug_tag set value 1b
-
-# multiCommands context tracker (always reset on load — transient state)
-data remove storage macroengine:engine multiCommands
-data modify storage macroengine:engine multiCommands set value {type:"",active:0b}
 
 # ─────────────────────────────────────────────────────────────────
 # Module toggle init (macroengine:api/toggle)

@@ -2,17 +2,6 @@
 # Executes a list of commands in order.
 # INPUT (macro args): $(commands) — list of command strings/objects
 #
-# SECURITY: sets multiCommands.type = "multi_cmd" before run.
-# Type is validated against security.multi_type_allowlist before execution.
-# Invalid or unlisted types trigger type_violation (log + kick).
-
-# Tag type — must be done before validation
-data modify storage macroengine:engine multiCommands.type set value "multi_cmd"
-data modify storage macroengine:engine multiCommands.active set value 1b
-
-# Validate type
-execute if data storage macroengine:engine {security:{multi_type_allowlist:{multi_cmd_adv:0b}}} run data remove storage macroengine:engine multiCommands.type
-execute if data storage macroengine:engine {security:{multi_type_allowlist:{multi_cmd_adv:0b}}} run data remove storage macroengine:engine multiCommands.active
 
 $data modify storage macroengine:engine _mcmd_queue set value $(commands)
 data modify storage macroengine:engine _mcmd_options set value {error_mode:"continue",profile:0b,spread:0}

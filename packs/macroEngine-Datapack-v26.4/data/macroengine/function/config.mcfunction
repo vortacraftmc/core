@@ -6,9 +6,9 @@
 say Loading macroEngine-Datapack-v26.4 config...
 
 
-# ── Version (620 = 6.2.0) ──────────────────────────────────────────
+# ── Version (264 = 26.4) ──────────────────────────────────────────
 scoreboard objectives add macroengine.meta dummy
-scoreboard players set #vortacraftmc.packs.macroengine.version macroengine.meta 620
+scoreboard players set #vortacraftmc.packs.macroengine.version macroengine.meta 264
 
 # Archived flag: set to 1 to show archive warning on every /reload
 # scoreboard players set #vortacraftmc.archivedpacks.macroengine macroengine.meta 1
