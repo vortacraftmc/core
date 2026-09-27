@@ -1,0 +1,8 @@
+{
+  "palette_id": "macroengine:trim/overload",
+  "palette": "macroengine:trim/overload",
+  "description": {
+    "translate": "trim_material.macroengine.overload",
+    "color": "#00AAAA"
+  }
+}

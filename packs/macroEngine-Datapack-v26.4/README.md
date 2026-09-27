@@ -22,6 +22,9 @@
 - **Item modifiers** (`item_modifier/`) — reusable `item_modifier` definitions for enchanting, glint, lore, tooltip, and rename operations
 - **Advancement-driven triggers** (`advancement/`) — core, hidden, and system advancements used to drive internal logic and hooks
 - **Experimental namespace** — gated behind `toggle/experimental`, for features not yet considered stable
+- **Enchantments** (`enchantment/`) — `steady_hand`, `xp_thrift`, plus `momentum_surge` (movement speed on boots) and `overload_ward` (protection against macroEngine's own `overload`/`purge`/`sanctioned` damage types, grouped under `#macroengine:core` in `tags/damage_type/`)
+- **Armor trim** (`trim_pattern/`, `trim_material/`) — custom `macroengine:circuit` pattern and `macroengine:overload` material (1.21.5+ registry shape: no `template_item`/`ingredient`, `override_armor_assets` only). Applied via any vanilla smithing template + the crafted trim ingot (`recipe/util/overload_trim_ingot.json`). Matching resource pack assets (overlay textures, color palette, `armor_trims.json` atlas extension via `replace:false`) ship in the companion resource pack
+- **Trim processing** (`systems/trim/`) — example module that scans an entity's armor for the circuit+overload trim and fires a `macroengine:trim_matched` hook event per matching slot; `on_matched_example.mcfunction` shows a handler you can bind with `systems/hook/bind`. This fills the gap where the pack previously only had validation helpers (`input/validate/`) but no processing logic for the trim registries
 
 ---
 
@@ -54,6 +57,16 @@ function macroengine:api/wand/give
 ```
 
 Internal systems under `systems/` are used by API functions and are not intended to be called directly by end users, though they remain accessible for advanced/custom integrations.
+
+Example — scan a player for the circuit/overload trim and react to matches:
+
+```mcfunction
+data modify storage macroengine:input event set value "macroengine:trim_matched"
+data modify storage macroengine:input func set value "macroengine:systems/trim/on_matched_example"
+function macroengine:systems/hook/bind
+
+execute as @a run function macroengine:systems/trim/scan
+```
 
 ---
 

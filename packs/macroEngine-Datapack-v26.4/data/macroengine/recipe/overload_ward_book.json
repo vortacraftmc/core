@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "group": "macroengine_enchant_book",
+  "ingredients": [
+    "minecraft:book",
+    "minecraft:netherite_scrap",
+    "minecraft:obsidian"
+  ],
+  "result": {
+    "id": "minecraft:enchanted_book",
+    "count": 1,
+    "components": {
+      "minecraft:stored_enchantments": {
+          "macroengine:overload_ward": 1
+      }
+    }
+  }
+}

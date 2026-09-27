@@ -1,0 +1,35 @@
+{
+  "anvil_cost": 3,
+  "description": {
+    "translate": "enchantment.macroengine.momentum_surge"
+  },
+  "effects": {
+    "minecraft:attributes": [
+      {
+        "amount": {
+          "type": "minecraft:linear",
+          "base": 0.05,
+          "per_level_above_first": 0.03
+        },
+        "attribute": "minecraft:movement_speed",
+        "id": "macroengine:enchantment.momentum_surge",
+        "operation": "add_multiplied_total"
+      }
+    ]
+  },
+  "max_cost": {
+    "base": 20,
+    "per_level_above_first": 10
+  },
+  "max_level": 3,
+  "min_cost": {
+    "base": 5,
+    "per_level_above_first": 10
+  },
+  "primary_items": "#minecraft:enchantable/foot_armor",
+  "slots": [
+    "feet"
+  ],
+  "supported_items": "#minecraft:enchantable/armor",
+  "weight": 4
+}
