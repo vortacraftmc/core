@@ -1,0 +1,40 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "show_notification": false,
+  "category": "misc",
+  "group": "macroengine_util",
+  "key": {
+    "N": "minecraft:netherite_scrap",
+    "R": "minecraft:redstone",
+    "Q": "minecraft:quartz"
+  },
+  "pattern": [
+    " R ",
+    "RNR",
+    " Q "
+  ],
+  "result": {
+    "id": "minecraft:netherite_scrap",
+    "count": 1,
+    "components": {
+      "minecraft:custom_data": {
+        "macroengine": {
+          "util": {
+            "overload_trim_ingot": true
+          }
+        }
+      },
+      "minecraft:item_name": {
+        "translate": "item.macroengine.overload_trim_ingot"
+      },
+      "minecraft:provides_trim_material": "macroengine:overload",
+      "minecraft:lore": [
+        {
+          "translate": "item.macroengine.overload_trim_ingot.lore",
+          "color": "gray",
+          "italic": true
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "macroengine_enchant_book",
+  "key": {
+    "B": "minecraft:book",
+    "F": "minecraft:feather",
+    "S": "minecraft:sugar"
+  },
+  "pattern": [
+    " F ",
+    "FBF",
+    " S "
+  ],
+  "result": {
+    "id": "minecraft:enchanted_book",
+    "count": 1,
+    "components": {
+      "minecraft:stored_enchantments": {
+          "macroengine:momentum_surge": 1
+      }
+    }
+  }
+}
