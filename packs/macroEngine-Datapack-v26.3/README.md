@@ -1,5 +1,4 @@
-
-## Localization & Required Resource Pack (i18n)
+## Localization & Required Resource Pack
 
 **The companion resource pack is REQUIRED.**
 
@@ -27,8 +26,6 @@ Or distribute the resource pack as a world/server resource pack.
 
 # macroEngine (v26.3)
 
-> ⚠️ **Archived.** This datapack is archived and no longer maintained. The `vortacraftmc/core` datapacks are being superseded by [Fabric](https://fabricmc.net/) mods. Existing worlds using this pack will continue to work, but no new features or fixes are planned.
-
 **macroEngine** is a macro/module framework datapack for Minecraft Java Edition, providing a large library of reusable command-based systems (math, string, NBT, geo, permissions, UUID cache, hooks, rate limiting, and more) plus a multi-source text/value input system (dialogs, books, signs, lecterns, name tags, command block minecarts).
 
 > Owner: [vortacraftmc](https://github.com/vortacraftmc)
@@ -55,7 +52,7 @@ Or distribute the resource pack as a world/server resource pack.
 ## Requirements
 
 - Minecraft Java Edition **26.3**
-- Datapack `min_format`/`max_format`: **121**
+- Datapack `min_format`/`max_format`: **122**
 
 ---
 
