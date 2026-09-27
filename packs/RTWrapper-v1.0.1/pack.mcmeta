@@ -3,11 +3,11 @@
     "description": "RTWrapper 26.3 macro-command wrapper API",
     "pack_format": 107,
     "min_format": [
-      107,
+      122,
       1
     ],
     "max_format": [
-      107,
+      122,
       1
     ]
   },
