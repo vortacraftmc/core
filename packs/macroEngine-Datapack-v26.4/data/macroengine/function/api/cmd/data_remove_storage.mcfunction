@@ -1,4 +1,4 @@
-# Storage removal: applies immediately (no confirmation gate). This command
+# Storage removal: applies immediately — no permission check. This command
 # can destroy arbitrary storage data (including macroengine's own engine
 # state) — callers should be careful with $(path).
 #

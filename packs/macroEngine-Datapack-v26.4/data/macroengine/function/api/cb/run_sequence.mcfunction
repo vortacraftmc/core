@@ -10,18 +10,12 @@
 #   y         (int)             — CB block Y  [default: -64]
 #   z         (int)             — CB block Z  [default: 0]
 #
-# SECURITY: caller must hold macroengine.perm_level >= security.cmd_min_level.
+# No permission gate — caller is trusted as-is.
 #
 # EXAMPLE:
 #   data modify storage macroengine:input cb set value {cmds:["say one","say two","say three"],interval:20}
 #   function macroengine:api/cb/run_sequence
 # ─────────────────────────────────────────────────────────────────
-
-# Security gate — see core/internal/security/check_all.
-# No-op (always passes) unless flags.experimental.strict_gating is on.
-scoreboard players set #macroengine.gate_ok macroengine.tmp 0
-execute store result score #macroengine.gate_ok macroengine.tmp run function macroengine:core/internal/security/check_all {required:"cmd_min_level"}
-execute if score #macroengine.gate_ok macroengine.tmp matches 0 run return 0
 
 # Verify required input
 execute unless data storage macroengine:input cb.cmds[0] run tellraw @s [{"text":"[MACROENGINE/cb] ","color":"#00AAAA","bold":true},{"text":"cb.cmds is empty or not set","color":"red"}]

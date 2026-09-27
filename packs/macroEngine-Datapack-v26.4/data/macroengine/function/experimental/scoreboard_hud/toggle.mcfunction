@@ -1,5 +1,5 @@
 # macroengine:experimental/scoreboard_hud/toggle
-# Toggles a global sidebar scoreboard showing macroengine.perm_level and
+# Toggles a global sidebar scoreboard showing
 # macroengine.exp_combat_timer for every online player (a small
 # general-purpose status HUD, not tied to one specific feature).
 # Gated behind flags.experimental.scoreboard_hud.

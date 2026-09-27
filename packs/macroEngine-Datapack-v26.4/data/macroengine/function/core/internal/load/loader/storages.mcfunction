@@ -108,40 +108,27 @@ data modify storage macroengine:engine batches set value {}
 execute unless data storage macroengine:engine wand_cooldowns run data modify storage macroengine:engine wand_cooldowns set value {}
 
 # ─────────────────────────────────────────────────────────────────
-# Security module init (v26.3+)
-# BREAKING CHANGE: trust_players defaults to 0b — players must have
-# macroengine.perm_level explicitly set. macroengine.admin tag alone gives no access.
+# Security module (v26.4+)
+# No permission gate exists in this pack — the trust_players /
+# cmd_min_level / sandbox_cmd_min_level / admin_min_level / sandbox_allowlist
+# fields that used to live here (and the check_all function that read
+# them) were removed. Nothing enforces macroengine.perm_level anymore.
 #
-# Fields (all preserved across reloads via 'unless data' guards):
-#   trust_players         0b = players not trusted (default, breaking)
-#   cmd_min_level         min macroengine.perm_level to trigger $$(cmd) [3]
-#   sandbox_cmd_min_level stricter $$(cmd) floor when sandbox:1b [4]
-#   admin_min_level       min level for cmd/ functions (check_all) [2]
-#   admin_can_override    0b = admins cannot bypass security rules
-#   sandbox_allowlist     list of allowed command prefixes in sandbox []
+# Remaining fields:
+#   multi_type_allowlist  compound of permitted multiCommands.type values
 #   auto_debug_tag        1b = macroengine.admin tag auto-grants macroengine.debug
 #                          every tick (default, legacy behavior). 0b =
 #                          admins must be given macroengine.debug explicitly
 #                          via /function macroengine:debug/tools/admin/debug_tag/*
-#                          (v26.3, see admin_systems.mcfunction)
+#                          (see admin_systems.mcfunction)
 # ─────────────────────────────────────────────────────────────────
-execute unless data storage macroengine:engine security run data modify storage macroengine:engine security set value {trust_players:0b,cmd_min_level:3,sandbox_cmd_min_level:4,admin_min_level:2,admin_can_override:0b,sandbox_allowlist:{},auto_debug_tag:1b}
-# ─────────────────────────────────────────────────────────────────
-# Security module v26.3+ additions
-# BREAKING CHANGE: sandbox_allowlist is now a compound {} (was list []).
-# Empty compound {} = all sandbox commands blocked.
-# multi_type_allowlist: compound of permitted multiCommands.type values.
-# multiCommands: tracks active multi-command execution context.
-# ─────────────────────────────────────────────────────────────────
-# Reset security to new compound format (migration: [] → {})
-execute if data storage macroengine:engine security.sandbox_allowlist[] run data modify storage macroengine:engine security.sandbox_allowlist set value {}
-execute unless data storage macroengine:engine security run data modify storage macroengine:engine security set value {trust_players:0b,cmd_min_level:3,sandbox_cmd_min_level:4,admin_min_level:2,admin_can_override:0b,sandbox_allowlist:{},auto_debug_tag:1b}
-execute unless data storage macroengine:engine security.sandbox_allowlist run data modify storage macroengine:engine security.sandbox_allowlist set value {}
+execute unless data storage macroengine:engine security run data modify storage macroengine:engine security set value {multi_type_allowlist:{multi_cmd:1b,multi_cmd_adv:1b},auto_debug_tag:1b}
+# Migration: packs upgraded from a version that had the old gate fields
+# (trust_players, cmd_min_level, sandbox_cmd_min_level, admin_min_level,
+# admin_can_override, sandbox_allowlist) keep them as inert leftover data —
+# nothing reads them anymore. Backfill any of the fields still in use in
+# case only some of them exist on an old world.
 execute unless data storage macroengine:engine security.multi_type_allowlist run data modify storage macroengine:engine security.multi_type_allowlist set value {multi_cmd:1b,multi_cmd_adv:1b}
-# Migration: packs upgraded from pre-v26.3 will have a security
-# compound already present without auto_debug_tag — backfill it so the
-# 'unless data storage ... security run ...' guard above (which only
-# fires when the whole compound is absent) doesn't skip existing worlds.
 execute unless data storage macroengine:engine security.auto_debug_tag run data modify storage macroengine:engine security.auto_debug_tag set value 1b
 
 # multiCommands context tracker (always reset on load — transient state)

@@ -25,8 +25,7 @@ execute unless entity @a run return 0
 
 # Guard: engine not initialised
 # (loaded flag lives under global.loaded — see macroengine:core/internal/load/all which sets
-#  `macroengine:engine global.loaded`; every other guard in the pack, e.g.
-#  core/security/cmd_gate.mcfunction, already checks the correct path)
+#  `macroengine:engine global.loaded`)
 execute unless data storage macroengine:engine global{loaded:1b} run return 0
 
 # Guard: globally paused (set/clear via: data merge storage macroengine:engine {tick:{paused:1b}} )

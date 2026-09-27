@@ -4,7 +4,7 @@
 # at the caller, not duplicated here.
 #
 # INPUT (macro):
-#   $(flag)  -> one of: strict_gating, hologram, particle_trail,
+#   $(flag)  -> one of: hologram, particle_trail,
 #               crafting_ui, waypoint, combat_tag, scoreboard_hud
 #   $(value) -> literal "1b" or "0b" (NBT byte literal, passed as string)
 
