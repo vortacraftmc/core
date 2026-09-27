@@ -2,6 +2,10 @@
 # Single source of runtime configuration (replaces _rt_origin + scattered defaults).
 # Other packs may read macroengine:engine config / macroengine.meta scores; do not hardcode.
 
+
+say Loading macroEngine-Datapack-v26.4 config...
+
+
 # ── Version (620 = 6.2.0) ──────────────────────────────────────────
 scoreboard objectives add macroengine.meta dummy
 scoreboard players set #runtoolkit.packs.macroengine.version macroengine.meta 620

@@ -1,3 +1,5 @@
+say Loading macroEngine-Datapack-v26.4 data pack...
+
 function macroengine:core/internal/string/zprivate/load
 function macroengine:core/internal/player/enumerate
 function macroengine:core/internal/player/resolve
