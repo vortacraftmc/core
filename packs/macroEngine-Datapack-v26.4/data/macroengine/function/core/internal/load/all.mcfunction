@@ -13,5 +13,6 @@ function macroengine:core/internal/load/loader/other
 function macroengine:config
 
 data modify storage macroengine:engine global.loaded set value 1b
+say Loaded macroEngine-Datapack-v26.4 data pack!
 
 schedule function macroengine:core/internal/load/final 2s
