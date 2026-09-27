@@ -18,6 +18,11 @@ execute unless data storage macroengine:engine config run data modify storage ma
 
 # Feature toggles (override via /data modify storage macroengine:engine config.*)
 execute unless data storage macroengine:engine config.enabled run data modify storage macroengine:engine config.enabled set value 1b
+# UNSUPPORTED: this pack is frozen (see core/internal/load/unsupported_gate).
+# Engine init is blocked on every /reload unless this is set to 1b.
+# Default OFF — do not flip this in fresh installs; migrate to dataLib-dp
+# (https://github.com/runtoolkit/dataLib-dp) instead.
+execute unless data storage macroengine:engine config.allow_unsupported_load run data modify storage macroengine:engine config.allow_unsupported_load set value 0b
 execute unless data storage macroengine:engine config.debug_default run data modify storage macroengine:engine config.debug_default set value 0b
 execute unless data storage macroengine:engine config.log_level run data modify storage macroengine:engine config.log_level set value 1
 execute unless data storage macroengine:engine config.reload_warn run data modify storage macroengine:engine config.reload_warn set value 1b
