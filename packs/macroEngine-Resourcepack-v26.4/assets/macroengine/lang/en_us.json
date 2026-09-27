@@ -24,7 +24,7 @@
   "macroengine.rp.missing": "macroEngine resource pack is required! Enable it under Options → Resource Packs, then reconnect.",
   "macroengine.rp.missing.actionbar": "⚠ macroEngine resource pack missing — enable it to continue",
   "macroengine.load.starting": "Starting macroEngine...",
-  "macroengine.load.loaded": "macroEngine v2643 loaded.",
+  "macroengine.load.loaded": "macroEngine v26.4 loaded.",
   "macroengine.load.force": "Force re-init...",
   "macroengine.load.disabled": "macroengine disabled.",
   "macroengine.backport.active": "Backport system active.",
