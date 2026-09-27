@@ -9,7 +9,7 @@
   },
   "include": [
     "guikit-datapack",
-    "macroEngine-Datapack-v26.3"
+    "macroEngine-Datapack-v26.4"
   ],
   "exclude": [],
   "allowMismatchedFormats": false,
