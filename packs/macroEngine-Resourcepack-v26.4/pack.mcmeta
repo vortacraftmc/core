@@ -1,0 +1,19 @@
+{
+  "pack": {
+    "description": "MacroEngine v2643 — resource pack (REQUIRED, i18n + sounds)",
+    "pack_format": 98,
+    "min_format": [
+      98,
+      0
+    ],
+    "max_format": [
+      98,
+      0
+    ]
+  },
+  "features": {
+    "enabled": [
+      "minecraft:vanilla"
+    ]
+  }
+}
