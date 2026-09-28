@@ -1,0 +1,1325 @@
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/first_exec.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/first_exec.mcfunction
+index 7d7973d..4bf7a8f 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/first_exec.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/first_exec.mcfunction
+@@ -2,5 +2,3 @@
+ # INPUT: $(src_storage), $(src_path), $(dst_storage), $(dst_path)
+ 
+ $data modify storage $(dst_storage) $(dst_path) set from storage $(src_storage) $(src_path)[0]
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"nbt/first ","color":"aqua"},{"text":"$(src_storage):$(src_path)[0]","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(dst_storage):$(dst_path)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/merge_exec.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/merge_exec.mcfunction
+index 1e19b60..4564a29 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/merge_exec.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/merge_exec.mcfunction
+@@ -2,5 +2,3 @@
+ # INPUT: $(src_storage), $(src_path), $(dst_storage), $(dst_path)
+ 
+ $data modify storage $(dst_storage) $(dst_path) merge from storage $(src_storage) $(src_path)
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"nbt/merge ","color":"aqua"},{"text":"$(src_storage):$(src_path)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(dst_storage):$(dst_path)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/move_exec.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/move_exec.mcfunction
+index e20d4d0..44d6fa2 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/move_exec.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/move_exec.mcfunction
+@@ -3,5 +3,3 @@
+ 
+ $data modify storage $(storage) $(to_path) set from storage $(storage) $(from_path)
+ $data remove storage $(storage) $(from_path)
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"nbt/move ","color":"aqua"},{"text":"$(from_path)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(to_path)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/pop_exec.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/pop_exec.mcfunction
+index 433524d..e317ae9 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/pop_exec.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/pop_exec.mcfunction
+@@ -4,5 +4,3 @@
+ $execute if data storage $(storage) $(path)[0] run data modify storage macroengine:output result set from storage $(storage) $(path)[0]
+ $execute if data storage $(storage) $(path)[0] run data remove storage $(storage) $(path)[0]
+ $execute unless data storage $(storage) $(path)[0] run data modify storage macroengine:output result set value 0b
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"nbt/pop ","color":"aqua"},{"text":"$(storage):$(path)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/swap_exec.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/swap_exec.mcfunction
+index 65de350..951591b 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/swap_exec.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/nbt/swap_exec.mcfunction
+@@ -5,5 +5,3 @@ $data modify storage macroengine:engine _nbt_swap set from storage $(storage) $(
+ $data modify storage $(storage) $(path_a) set from storage $(storage) $(path_b)
+ $data modify storage $(storage) $(path_b) set from storage macroengine:engine _nbt_swap
+ data remove storage macroengine:engine _nbt_swap
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"nbt/swap ","color":"aqua"},{"text":"$(path_a)","color":"white"},{"text":" ↔ ","color":"#555555"},{"text":"$(path_b)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/evaluate.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/evaluate.mcfunction
+index eb4eaa9..7821c45 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/evaluate.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/evaluate.mcfunction
+@@ -37,5 +37,3 @@ execute if score $rl_count macroengine.tmp >= $rl_limit macroengine.tmp run retu
+ # ALLOWED path — append new hit timestamp
+ execute store result storage macroengine:rl_work new_hit.t int 1 run scoreboard players get $rl_now macroengine.tmp
+ $data modify storage macroengine:engine rate_limit.rules.$(key).hits append from storage macroengine:rl_work new_hit
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"rate_limit ","color":"aqua"},{"text":"ALLOW ","color":"#55FF55"},{"text":"$(key)","color":"white"},{"text":" (","color":"#555555"},{"score":{"name":"$rl_count","objective":"macroengine.tmp"},"color":"green"},{"text":"+1/","color":"#555555"},{"text":"$(limit)","color":"green"},{"text":")","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/no_rule.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/no_rule.mcfunction
+index e8066ca..0607b50 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/no_rule.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/no_rule.mcfunction
+@@ -1,5 +1,3 @@
+ # macroengine:systems/rate_limit/internal/no_rule — Warn when check called on unregistered key [MACRO]
+ # Input: $(key)
+ # Fail-open: result stays 1b (ALLOWED) so callers aren't broken by missing config.
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"rate_limit/check ","color":"aqua"},{"text":"WARN ","color":"#FFAA00"},{"text":"no rule for key: ","color":"#555555"},{"text":"$(key)","color":"#FF5555"},{"text":" — fail-open","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/player/ensure.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/player/ensure.mcfunction
+index e781fa6..6806eae 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/player/ensure.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/player/ensure.mcfunction
+@@ -5,4 +5,3 @@
+ $execute unless data storage macroengine:engine rate_limit.player_templates.$(tpl) run return 0
+ $data modify storage macroengine:engine "rate_limit.rules.$(full)" set from storage macroengine:engine rate_limit.player_templates.$(tpl)
+ $data modify storage macroengine:engine "rate_limit.rules.$(full).hits" set value []
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"rate_limit ","color":"aqua"},{"text":"INIT ","color":"#55FFFF"},{"text":"player bucket: ","color":"#555555"},{"text":"$(full)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/player_ensure.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/player_ensure.mcfunction
+index 20c4d28..960f098 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/player_ensure.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/internal/systems/rate_limit/player_ensure.mcfunction
+@@ -7,4 +7,3 @@
+ $execute unless data storage macroengine:engine rate_limit.player_templates.$(tpl) run return 0
+ $data modify storage macroengine:engine rate_limit.rules.$(key) set from storage macroengine:engine rate_limit.player_templates.$(tpl)
+ $data modify storage macroengine:engine rate_limit.rules.$(key).hits set value []
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"rate_limit ","color":"aqua"},{"text":"INIT ","color":"#55FFFF"},{"text":"bucket for ","color":"#555555"},{"text":"$(key)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/debounce.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/debounce.mcfunction
+index 5417554..db4b7ab 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/debounce.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/debounce.mcfunction
+@@ -1,4 +1,3 @@
+ $execute if data storage macroengine:engine schedules.$(key) run return 0
+ 
+ function macroengine:core/lib/schedule with storage macroengine:input {}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/debounce ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/debounce_cmd.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/debounce_cmd.mcfunction
+index be9f2fd..d516181 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/debounce_cmd.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/debounce_cmd.mcfunction
+@@ -1,4 +1,3 @@
+ $execute if data storage macroengine:engine schedules.$(key) run return 0
+ 
+ function macroengine:core/lib/schedule_cmd with storage macroengine:input {}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/debounce_cmd ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_entity.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_entity.mcfunction
+index a0014ec..bbdee17 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_entity.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_entity.mcfunction
+@@ -1,3 +1,2 @@
+ $data modify storage macroengine:engine _dispatch.func set value "$(func)"
+ $execute as @e[type=$(type),tag=$(tag)] run function #macroengine:internal/dispatch
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/for_each_entity ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_list.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_list.mcfunction
+index 7506eed..c601cc0 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_list.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_list.mcfunction
+@@ -6,4 +6,3 @@ data remove storage macroengine:engine _felist_input
+ data remove storage macroengine:engine _felist_state
+ data remove storage macroengine:engine _felist_current
+ data remove storage macroengine:engine _felist_i
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/for_each_list ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_player.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_player.mcfunction
+index bf5b474..af1b947 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_player.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_player.mcfunction
+@@ -1,3 +1,2 @@
+ $data modify storage macroengine:engine _dispatch.func set value "$(func)"
+ execute as @a run function #macroengine:internal/dispatch
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/for_each_player ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_player_at.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_player_at.mcfunction
+index 5ad596c..b0079af 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_player_at.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/for_each_player_at.mcfunction
+@@ -1,3 +1,2 @@
+ $data modify storage macroengine:engine _dispatch.func set value "$(func)"
+ execute as @a at @s run function #macroengine:internal/dispatch
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/for_each_player_at ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/once.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/once.mcfunction
+index a5cd3eb..e160162 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/once.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/once.mcfunction
+@@ -4,5 +4,3 @@ $data modify storage macroengine:engine once_keys.$(key) set value 1b
+ 
+ $data modify storage macroengine:engine _dispatch.func set value "$(func)"
+ function #macroengine:internal/dispatch
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/once ","color":"aqua"},{"text":"[fired] ","color":"green"},{"text":"$(key)","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/once_per_player.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/once_per_player.mcfunction
+index 73eddcf..e1722f3 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/once_per_player.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/once_per_player.mcfunction
+@@ -17,5 +17,3 @@ $data modify storage macroengine:engine once_per_player.$(player).$(key) set val
+ 
+ $data modify storage macroengine:engine _dispatch.func set value "$(func)"
+ function #macroengine:internal/dispatch
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/once_per_player ","color":"aqua"},{"text":"$(player):$(key) ","color":"white"},{"text":"✔ ran for the first time","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/once_per_player_reset.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/once_per_player_reset.mcfunction
+index dd7f371..8d6926d 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/once_per_player_reset.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/once_per_player_reset.mcfunction
+@@ -5,4 +5,3 @@
+ # ─────────────────────────────────────────────────────────────────
+ 
+ $data remove storage macroengine:engine once_per_player.$(player).$(key)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/once_per_player_reset ","color":"aqua"},{"text":"$(player):$(key) reset","color":"yellow"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/queue_add.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/queue_add.mcfunction
+index bc45f33..344d59d 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/queue_add.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/queue_add.mcfunction
+@@ -1,2 +1 @@
+ $data modify storage macroengine:engine queue append value {func:"$(func)", delay:$(delay)}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/queue_add ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/queue_add_as.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/queue_add_as.mcfunction
+index 89db7aa..c4f0ad3 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/queue_add_as.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/queue_add_as.mcfunction
+@@ -1,2 +1 @@
+ $data modify storage macroengine:engine queue append value {func:"$(func)", delay:$(delay), player:"$(player)"}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/queue_add_as ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"},{"text":" as $(player)","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/queue_add_cmd.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/queue_add_cmd.mcfunction
+index f7bcb0e..5904f59 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/queue_add_cmd.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/queue_add_cmd.mcfunction
+@@ -1,2 +1 @@
+ $data modify storage macroengine:engine queue append value {cmd:"$(cmd)", delay:$(delay)}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/queue_add_cmd ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(cmd)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/repeat.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/repeat.mcfunction
+index 3f03333..35570a4 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/repeat.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/repeat.mcfunction
+@@ -5,4 +5,3 @@ execute store result storage macroengine:engine _repeat.i int 1 run scoreboard p
+ execute store result storage macroengine:engine _repeat.remaining int 1 run scoreboard players get $rep_n macroengine.tmp
+ function macroengine:core/internal/core/lib/repeat_run
+ data remove storage macroengine:engine _repeat
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/repeat ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/repeat_as.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/repeat_as.mcfunction
+index c972511..80533ba 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/repeat_as.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/repeat_as.mcfunction
+@@ -1,2 +1 @@
+ $data modify storage macroengine:engine queue append value {func:"$(func)", delay:$(interval), player:"$(player)"}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/repeat_as ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"},{"text":" as $(player)","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/repeat_n.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/repeat_n.mcfunction
+index 2a4445d..5780f93 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/repeat_n.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/repeat_n.mcfunction
+@@ -6,4 +6,3 @@ execute if score $rn_n macroengine.tmp matches ..0 run return 0
+ $data modify storage macroengine:engine _rn_func set value "$(func)"
+ function macroengine:core/internal/core/lib/repeat_n_loop
+ data remove storage macroengine:engine _rn_func
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/repeat_n ","color":"aqua"},{"text":"$(func) × $(n)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule.mcfunction
+index 3ade062..d5229f9 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule.mcfunction
+@@ -3,4 +3,3 @@ $execute if data storage macroengine:engine schedules.$(key) run data remove sto
+ $data modify storage macroengine:engine schedules.$(key).func set value "$(func)"
+ $data modify storage macroengine:engine schedules.$(key).interval set value $(interval)
+ $data modify storage macroengine:engine queue append value {func:"$(func)", delay:$(interval)}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/schedule ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_as.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_as.mcfunction
+index c20e48b..825e0e9 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_as.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_as.mcfunction
+@@ -4,4 +4,3 @@ $data modify storage macroengine:engine schedules.$(key).func set value "$(func)
+ $data modify storage macroengine:engine schedules.$(key).interval set value $(interval)
+ $data modify storage macroengine:engine schedules.$(key).player set value "$(player)"
+ $data modify storage macroengine:engine queue append value {func:"$(func)", delay:$(interval), player:"$(player)"}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/schedule_as ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"},{"text":" as $(player)","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_cancel.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_cancel.mcfunction
+index 06c14f5..5d2a144 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_cancel.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_cancel.mcfunction
+@@ -1,2 +1 @@
+ $data remove storage macroengine:engine schedules.$(key)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/schedule_cancel ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_cmd.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_cmd.mcfunction
+index 2c4a449..ce5eb2d 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_cmd.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_cmd.mcfunction
+@@ -13,4 +13,3 @@ $execute if data storage macroengine:engine schedules.$(key) run data remove sto
+ $data modify storage macroengine:engine schedules.$(key).cmd set value "$(cmd)"
+ $data modify storage macroengine:engine schedules.$(key).interval set value $(interval)
+ $data modify storage macroengine:engine queue append value {cmd:"$(cmd)", delay:$(interval)}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/schedule_cmd ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"},{"text":" ($(interval)t)","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_cmd_as.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_cmd_as.mcfunction
+index 6aea611..401c676 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_cmd_as.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_cmd_as.mcfunction
+@@ -4,4 +4,3 @@ $data modify storage macroengine:engine schedules.$(key).cmd set value "$(cmd)"
+ $data modify storage macroengine:engine schedules.$(key).interval set value $(interval)
+ $data modify storage macroengine:engine schedules.$(key).player set value "$(player)"
+ $data modify storage macroengine:engine queue append value {cmd:"$(cmd)", delay:$(interval), player:"$(player)"}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/schedule_cmd_as ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"},{"text":" as $(player)","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_renew.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_renew.mcfunction
+index 5a3cf42..ddc89e9 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_renew.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_renew.mcfunction
+@@ -5,4 +5,3 @@ execute if data storage macroengine:engine _sched_tmp.func unless data storage m
+ execute if data storage macroengine:engine _sched_tmp.cmd if data storage macroengine:engine _sched_tmp.player run function macroengine:core/internal/core/lib/schedule_requeue_cmd_as with storage macroengine:engine _sched_tmp
+ execute if data storage macroengine:engine _sched_tmp.cmd unless data storage macroengine:engine _sched_tmp.player run function macroengine:core/internal/core/lib/schedule_requeue_cmd with storage macroengine:engine _sched_tmp
+ data remove storage macroengine:engine _sched_tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/schedule_renew ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_reset.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_reset.mcfunction
+index 6d59ecb..718c309 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_reset.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/schedule_reset.mcfunction
+@@ -10,4 +10,3 @@ execute if data storage macroengine:engine _sreset.func unless data storage macr
+ execute if data storage macroengine:engine _sreset.cmd if data storage macroengine:engine _sreset.player run function macroengine:core/internal/core/lib/schedule_reset_do_cmd_as with storage macroengine:engine _sreset
+ execute if data storage macroengine:engine _sreset.cmd unless data storage macroengine:engine _sreset.player run function macroengine:core/internal/core/lib/schedule_reset_do_cmd with storage macroengine:engine _sreset
+ data remove storage macroengine:engine _sreset
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/schedule_reset ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/throttle.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/throttle.mcfunction
+index b21ec9d..3cb41c0 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/throttle.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/throttle.mcfunction
+@@ -4,7 +4,6 @@ $execute if data storage macroengine:engine throttle.$(key) run execute store re
+ execute store result score $thr_now macroengine.tmp run scoreboard players get $epoch macroengine.time
+ $execute if data storage macroengine:engine throttle.$(key) run execute if score $thr_now macroengine.tmp < $thr_exp macroengine.tmp run scoreboard players set $thr_go macroengine.tmp 0
+ 
+-# # $execute if score $thr_go macroengine.tmp matches 0 run execute as @a[tag=macroengine.debug] run tellraw @s ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/throttle ","color":"aqua"},{"text":"SKIP ","color":"#FF5555"},{"text":"$(key)","color":"aqua"},{"text":" — throttled, skipped","color":"#555555"}]
+ execute if score $thr_go macroengine.tmp matches 0 run return 0
+ 
+ $scoreboard players set $thr_int macroengine.tmp $(interval)
+@@ -12,4 +11,3 @@ scoreboard players operation $thr_now macroengine.tmp += $thr_int macroengine.tm
+ $execute store result storage macroengine:engine throttle.$(key) int 1 run scoreboard players get $thr_now macroengine.tmp
+ 
+ function macroengine:core/lib/queue_add with storage macroengine:input {}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/throttle ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/ticks_to_time.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/ticks_to_time.mcfunction
+index 5fb4558..b1fc702 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/ticks_to_time.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/ticks_to_time.mcfunction
+@@ -22,5 +22,3 @@ execute store result storage macroengine:output minutes int 1 run scoreboard pla
+ 
+ scoreboard players operation $ttt_t macroengine.tmp /= $ttt_60 macroengine.tmp
+ execute store result storage macroengine:output hours int 1 run scoreboard players get $ttt_t macroengine.tmp
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/ticks_to_time ","color":"aqua"},{"text":"($(ticks)t)","color":"gray"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"hours","color":"green"},{"text":"h ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"minutes","color":"green"},{"text":"m ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"seconds","color":"green"},{"text":"s ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"ticks","color":"green"},{"text":"t","color":"gray"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/wait_as.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/wait_as.mcfunction
+index e0ceeb9..c4f0ad3 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/wait_as.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/wait_as.mcfunction
+@@ -1,2 +1 @@
+ $data modify storage macroengine:engine queue append value {func:"$(func)", delay:$(delay), player:"$(player)"}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/wait_as ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"},{"text":" ($(delay)t) as $(player)","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/wait_cmd_as.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/wait_cmd_as.mcfunction
+index 616edac..ebabc8e 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/wait_cmd_as.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/lib/wait_cmd_as.mcfunction
+@@ -1,2 +1 @@
+ $data modify storage macroengine:engine queue append value {cmd:"$(cmd)", delay:$(delay), player:"$(player)"}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/wait_cmd_as ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(cmd)","color":"aqua"},{"text":" ($(delay)t) as $(player)","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/queue/push.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/queue/push.mcfunction
+index 3c65c7b..eb8e2dc 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/queue/push.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/queue/push.mcfunction
+@@ -14,4 +14,3 @@
+ #   function macroengine:core/queue/push with storage macroengine:input queue
+ 
+ $data modify storage macroengine:engine work_queue append value {fn:"$(fn)"}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"queue/push ","color":"aqua"},{"text":"→ ","color":"#555555"},{"text":"$(fn)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/queue/push_as.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/queue/push_as.mcfunction
+index edfff76..a47d446 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/queue/push_as.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/queue/push_as.mcfunction
+@@ -11,4 +11,3 @@
+ #   function macroengine:core/queue/push_as with storage macroengine:input queue
+ 
+ $data modify storage macroengine:engine work_queue append value {fn:"$(fn)",player:"$(player)"}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"queue/push_as ","color":"aqua"},{"text":"→ ","color":"#555555"},{"text":"$(fn)","color":"white"},{"text":" as ","color":"#555555"},{"text":"$(player)","color":"#FFAA00"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/queue/set_rate.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/queue/set_rate.mcfunction
+index 497d2b4..3c27b83 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/queue/set_rate.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/queue/set_rate.mcfunction
+@@ -11,4 +11,3 @@
+ #   function macroengine:core/queue/set_rate with storage macroengine:input queue
+ 
+ $data modify storage macroengine:engine work_queue_rate set value $(rate)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"queue/set_rate ","color":"aqua"},{"text":"→ ","color":"#555555"},{"text":"$(rate)","color":"yellow"},{"text":" items/tick","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/clear.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/clear.mcfunction
+index 035a5ad..16a2e13 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/clear.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/clear.mcfunction
+@@ -1,2 +1 @@
+ $data remove storage macroengine:engine states.$(player)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"state/clear ","color":"aqua"},{"text":"$(player)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/is.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/is.mcfunction
+index bee9e18..ca256ec 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/is.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/is.mcfunction
+@@ -1,3 +1,2 @@
+ data modify storage macroengine:output result set value 0b
+ $execute if data storage macroengine:engine states{$(player):"$(state)"} run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"state/is ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(state)","color":"aqua"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/set.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/set.mcfunction
+index f6e856e..c3ac214 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/set.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/set.mcfunction
+@@ -1,2 +1 @@
+ $data modify storage macroengine:engine states.$(player) set value "$(state)"
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"state/set ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(state)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/toggle.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/toggle.mcfunction
+index d0c1ec2..cfa9cb6 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/toggle.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/core/state/toggle.mcfunction
+@@ -6,5 +6,3 @@ $execute if score $st_tog macroengine.tmp matches 0 run data modify storage macr
+ 
+ data remove storage macroengine:output result
+ $data modify storage macroengine:output result set from storage macroengine:engine states.$(player)
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"state/toggle ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" (","color":"#555555"},{"text":"$(on)","color":"gray"},{"text":"↔","color":"#555555"},{"text":"$(off)","color":"gray"},{"text":") → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/debug/tools/trigger/execute.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/debug/tools/trigger/execute.mcfunction
+index b6ffcbe..b7f538d 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/debug/tools/trigger/execute.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/debug/tools/trigger/execute.mcfunction
+@@ -15,8 +15,6 @@ $data modify storage macroengine:engine tools_trigger.data set value $(data)
+ # Execute action
+ function macroengine:core/internal/debug/tools/trigger/dispatch
+ 
+-# Debug message
+-# # $execute if data storage macroengine:engine tools_trigger.config{silent:1} run tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"tools/trigger/execute ","color":"aqua"},{"text":"► ","color":"yellow"},{"text":"$(type)","color":"white"}]
+ execute if data storage macroengine:engine tools_trigger.config{silent:0} run function macroengine:core/tick/disabled
+ 
+ # Remove 'macroengine:engine tools_trigger' storage
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/count.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/count.mcfunction
+index 7d94fb4..b578dd9 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/count.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/count.mcfunction
+@@ -1,3 +1,2 @@
+ data modify storage macroengine:output result set value 0
+ $execute if data storage macroengine:engine events.$(event) run execute store result storage macroengine:output result int 1 run data get storage macroengine:engine events.$(event)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"event/count ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(event)","color":"aqua"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire.mcfunction
+index 75581eb..1d63eb9 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire.mcfunction
+@@ -1,7 +1,5 @@
+-# # $execute unless data storage macroengine:engine events.$(event) run execute as @a[tag=macroengine.debug] run tellraw @s ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"event/fire ","color":"aqua"},{"text":"SKIP ","color":"#FF5555"},{"text":"$(event)","color":"#AAAAAA"},{"text":" — no handlers registered","color":"#555555"}]
+ $execute unless data storage macroengine:engine events.$(event) run return 0
+ 
+ $data modify storage macroengine:engine _event_tmp set from storage macroengine:engine events.$(event)
+ execute if data storage macroengine:engine _event_tmp[0] run function macroengine:core/internal/events/fire_next
+ data remove storage macroengine:engine _event_tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"event/fire ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(event)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire_as.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire_as.mcfunction
+index d26ef1e..eeceb08 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire_as.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire_as.mcfunction
+@@ -3,5 +3,3 @@ $data modify storage macroengine:engine event_context.player set value "$(player
+ function macroengine:events/fire with storage macroengine:input {}
+ 
+ data remove storage macroengine:engine event_context.player
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"event/fire_as ","color":"aqua"},{"text":"$(event)","color":"aqua"},{"text":" as ","color":"#555555"},{"text":"$(player)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire_queued.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire_queued.mcfunction
+index 66ed21a..d20f871 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire_queued.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire_queued.mcfunction
+@@ -1,4 +1,3 @@
+ $execute unless data storage macroengine:engine events.$(event) run return 0
+ 
+ $data modify storage macroengine:engine queue append value {func:"macroengine:events/internal/fire_deferred", delay:$(delay), event:"$(event)"}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"event/fire_queued ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(event)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire_to_player.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire_to_player.mcfunction
+index eb8a1c9..2e30ec0 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire_to_player.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/fire_to_player.mcfunction
+@@ -4,4 +4,3 @@ $data modify storage macroengine:engine _event_tmp set from storage macroengine:
+ 
+ $execute as @a[name=$(player),limit=1] run function macroengine:core/internal/events/fire_next
+ data remove storage macroengine:engine _event_tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"event/fire_to_player ","color":"aqua"},{"text":"$(event) → $(player)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/has.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/has.mcfunction
+index a27d0d4..ff40203 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/has.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/has.mcfunction
+@@ -1,3 +1,2 @@
+ data modify storage macroengine:output result set value 0b
+ $execute if data storage macroengine:engine events.$(event) run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"event/has ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(event)","color":"aqua"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/register.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/register.mcfunction
+index b7bea45..a11ae10 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/register.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/register.mcfunction
+@@ -1,2 +1 @@
+ $data modify storage macroengine:engine events.$(event) append value {func:"$(func)"}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"event/register ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/unregister.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/unregister.mcfunction
+index f4e98bd..7d6bd4d 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/unregister.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/unregister.mcfunction
+@@ -1,2 +1 @@
+ $data remove storage macroengine:engine events.$(event)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"event/unregister ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(event)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/unregister_one.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/unregister_one.mcfunction
+index b6f6d4b..ab45293 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/unregister_one.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/events/unregister_one.mcfunction
+@@ -9,4 +9,3 @@ $data remove storage macroengine:engine events.$(event)
+ execute if data storage macroengine:engine _uro.src[0] run function macroengine:core/internal/events/uro_loop
+ 
+ data remove storage macroengine:engine _uro
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"event/unregister_one ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/add_default.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/add_default.mcfunction
+index d56d11f..d29f3f6 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/add_default.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/add_default.mcfunction
+@@ -1,2 +1 @@
+ $execute unless data storage macroengine:engine players.$(player).$(key) run data modify storage macroengine:engine players.$(player).$(key) set value $(value)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/add_default ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/add_to_var.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/add_to_var.mcfunction
+index 5c24853..201111f 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/add_to_var.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/add_to_var.mcfunction
+@@ -3,4 +3,3 @@ $scoreboard players set $pamount macroengine.tmp $(amount)
+ scoreboard players operation $pvar macroengine.tmp += $pamount macroengine.tmp
+ $execute store result storage macroengine:engine players.$(player).$(key) int 1 run scoreboard players get $pvar macroengine.tmp
+ execute store result storage macroengine:output result int 1 run scoreboard players get $pvar macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/add_to_var ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/clamp_var.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/clamp_var.mcfunction
+index b89741b..18349c5 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/clamp_var.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/clamp_var.mcfunction
+@@ -5,4 +5,3 @@ execute if score $cv macroengine.tmp < $cv_mn macroengine.tmp run scoreboard pla
+ execute if score $cv macroengine.tmp > $cv_mx macroengine.tmp run scoreboard players operation $cv macroengine.tmp = $cv_mx macroengine.tmp
+ $execute store result storage macroengine:engine players.$(player).$(key) int 1 run scoreboard players get $cv macroengine.tmp
+ execute store result storage macroengine:output result int 1 run scoreboard players get $cv macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/clamp_var ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/copy_var.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/copy_var.mcfunction
+index 3b03d97..005df40 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/copy_var.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/copy_var.mcfunction
+@@ -1,2 +1 @@
+ $data modify storage macroengine:engine players.$(to).$(key) set from storage macroengine:engine players.$(from).$(key)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/copy_var ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/decrement.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/decrement.mcfunction
+index 6eea163..85cfd3b 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/decrement.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/decrement.mcfunction
+@@ -2,4 +2,3 @@ $execute store result score $pvar macroengine.tmp run data get storage macroengi
+ scoreboard players remove $pvar macroengine.tmp 1
+ $execute store result storage macroengine:engine players.$(player).$(key) int 1 run scoreboard players get $pvar macroengine.tmp
+ execute store result storage macroengine:output result int 1 run scoreboard players get $pvar macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/decrement ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/del_var.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/del_var.mcfunction
+index 7f7caee..41ccd8e 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/del_var.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/del_var.mcfunction
+@@ -1,2 +1 @@
+ $data remove storage macroengine:engine players.$(player).$(key)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/del_var ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/has_var.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/has_var.mcfunction
+index 6749e5a..71b59b8 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/has_var.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/has_var.mcfunction
+@@ -1,3 +1,2 @@
+ data modify storage macroengine:output result set value 0b
+ $execute if data storage macroengine:engine players.$(player).$(key) run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/has_var ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/increment.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/increment.mcfunction
+index 6c73469..8968d8d 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/increment.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/increment.mcfunction
+@@ -2,4 +2,3 @@ $execute store result score $pvar macroengine.tmp run data get storage macroengi
+ scoreboard players add $pvar macroengine.tmp 1
+ $execute store result storage macroengine:engine players.$(player).$(key) int 1 run scoreboard players get $pvar macroengine.tmp
+ execute store result storage macroengine:output result int 1 run scoreboard players get $pvar macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/increment ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/init.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/init.mcfunction
+index 83fa144..e259e48 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/init.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/init.mcfunction
+@@ -6,4 +6,3 @@ $data modify storage macroengine:engine players.$(player).online set value 1b
+ $execute unless data storage macroengine:engine players.$(player).first_join_tick run execute store result storage macroengine:engine players.$(player).first_join_tick int 1 run scoreboard players get $epoch macroengine.time
+ $execute store result storage macroengine:engine players.$(player).last_join_tick int 1 run scoreboard players get $epoch macroengine.time
+ $execute unless data storage macroengine:engine player_pids.$(player) run function macroengine:core/internal/player/assign_pid with storage macroengine:engine _pid_init_tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/init ","color":"aqua"},{"text":"$(player)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/chest_minecart_if_item.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/chest_minecart_if_item.mcfunction
+index 0edb0ae..524ab13 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/chest_minecart_if_item.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/chest_minecart_if_item.mcfunction
+@@ -1,2 +1 @@
+ $execute as @a[name=$(player),limit=1] at @s if items entity @e[type=minecraft:chest_minecart,distance=..2,limit=1,tag=$(tag)] container.$(slot) $(item)[minecraft:custom_data=$(customData)] run $(invoke)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"inv/chest_minecart_if_item ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(tag)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/chest_minecart_unless_item.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/chest_minecart_unless_item.mcfunction
+index a076215..df9ec02 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/chest_minecart_unless_item.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/chest_minecart_unless_item.mcfunction
+@@ -1,2 +1 @@
+ $execute as @a[name=$(player),limit=1] at @s unless items entity @e[type=minecraft:chest_minecart,distance=..2,limit=1,tag=$(tag)] container.$(slot) $(item)[minecraft:custom_data=$(customData)] run $(invoke)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"inv/chest_minecart_unless_item ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(tag)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/clear_custom.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/clear_custom.mcfunction
+index 42b731d..83d5f4a 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/clear_custom.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/clear_custom.mcfunction
+@@ -1,2 +1 @@
+ $execute as @a[name=$(player),limit=1] run clear @s $(item)[minecraft:custom_data=$(customData)] $(count)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"inv/clear_custom ","color":"aqua"},{"text":"$(player)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/count_item.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/count_item.mcfunction
+index e31064e..3e6910a 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/count_item.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/count_item.mcfunction
+@@ -1,4 +1,3 @@
+ scoreboard players set $inv_cnt macroengine.tmp 0
+ $execute as @a[name=$(player),limit=1] run execute store result score $inv_cnt macroengine.tmp run clear @s *[minecraft:custom_data=$(customData)] 0
+ execute store result storage macroengine:output count int 1 run scoreboard players get $inv_cnt macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"inv/count_item ","color":"aqua"},{"text":"$(player)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/player_if_item.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/player_if_item.mcfunction
+index 4fdf374..678aba1 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/player_if_item.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/player_if_item.mcfunction
+@@ -1,2 +1 @@
+ $execute as @a[name=$(player),limit=1] at @s if items entity @s contents $(item)[minecraft:custom_data=$(customData)] run $(invoke)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"inv/player_if_item ","color":"aqua"},{"text":"$(player)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/player_slot_if_item.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/player_slot_if_item.mcfunction
+index 2d216cb..63d18b7 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/player_slot_if_item.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/player_slot_if_item.mcfunction
+@@ -1,2 +1 @@
+ $execute as @a[name=$(player),limit=1] at @s if items entity @s $(slot) $(item)[minecraft:custom_data=$(customData)] run $(invoke)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"inv/player_slot_if_item ","color":"aqua"},{"text":"$(player)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/player_unless_item.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/player_unless_item.mcfunction
+index d494f2e..551ad55 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/player_unless_item.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/player_unless_item.mcfunction
+@@ -1,2 +1 @@
+ $execute as @a[name=$(player),limit=1] at @s unless items entity @s contents $(item)[minecraft:custom_data=$(customData)] run $(invoke)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"inv/player_unless_item ","color":"aqua"},{"text":"$(player)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/transfer_item.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/transfer_item.mcfunction
+index f7ab7b5..d9448ec 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/transfer_item.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/inv/transfer_item.mcfunction
+@@ -1,2 +1 @@
+ $execute as @a[name=$(player),limit=1] at @s run item replace entity @s weapon.mainhand from entity @e[type=minecraft:chest_minecart,distance=..2,limit=1,tag=$(tag)] container.$(slot)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"inv/transfer_item ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(tag)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_burning.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_burning.mcfunction
+index d82ca7f..b49b909 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_burning.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_burning.mcfunction
+@@ -19,4 +19,3 @@ $execute unless entity @a[name=$(player),limit=1] run return 0
+ 
+ data modify storage macroengine:output found set value 1b
+ $execute as @a[name=$(player),limit=1] if predicate macroengine:is_burning run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/is_burning ","color":"aqua"},{"text":"$(player) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_flying.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_flying.mcfunction
+index cd1de94..5bc626b 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_flying.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_flying.mcfunction
+@@ -11,4 +11,3 @@ $execute unless entity @a[name=$(player),limit=1] run return 0
+ 
+ data modify storage macroengine:output found set value 1b
+ $execute as @a[name=$(player),limit=1] if data entity @s {abilities:{flying:1b}} run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/is_flying ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_gliding.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_gliding.mcfunction
+index a354062..787967f 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_gliding.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_gliding.mcfunction
+@@ -19,4 +19,3 @@ $execute unless entity @a[name=$(player),limit=1] run return 0
+ 
+ data modify storage macroengine:output found set value 1b
+ $execute as @a[name=$(player),limit=1] if predicate macroengine:is_gliding run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/is_gliding ","color":"aqua"},{"text":"$(player) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_in_water.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_in_water.mcfunction
+index df4f6ac..1db0347 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_in_water.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_in_water.mcfunction
+@@ -19,4 +19,3 @@ $execute unless entity @a[name=$(player),limit=1] run return 0
+ 
+ data modify storage macroengine:output found set value 1b
+ $execute as @a[name=$(player),limit=1] if predicate macroengine:is_in_water run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/is_in_water ","color":"aqua"},{"text":"$(player) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_on_ground.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_on_ground.mcfunction
+index 4990f0d..8960f97 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_on_ground.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_on_ground.mcfunction
+@@ -19,4 +19,3 @@ $execute unless entity @a[name=$(player),limit=1] run return 0
+ 
+ data modify storage macroengine:output found set value 1b
+ $execute as @a[name=$(player),limit=1] if predicate macroengine:is_on_ground run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/is_on_ground ","color":"aqua"},{"text":"$(player) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_online.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_online.mcfunction
+index 4661a80..c8c3001 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_online.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_online.mcfunction
+@@ -7,4 +7,3 @@
+ 
+ data modify storage macroengine:output result set value 0b
+ $execute if entity @a[name=$(player),limit=1] run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/is_online ","color":"aqua"},{"text":"$(player) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_sneaking.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_sneaking.mcfunction
+index 1414772..540c315 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_sneaking.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_sneaking.mcfunction
+@@ -19,4 +19,3 @@ $execute unless entity @a[name=$(player),limit=1] run return 0
+ 
+ data modify storage macroengine:output found set value 1b
+ $execute as @a[name=$(player),limit=1] if predicate macroengine:is_sneaking run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/is_sneaking ","color":"aqua"},{"text":"$(player) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_sprinting.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_sprinting.mcfunction
+index 5deef29..feac0ab 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_sprinting.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/is_sprinting.mcfunction
+@@ -19,4 +19,3 @@ $execute unless entity @a[name=$(player),limit=1] run return 0
+ 
+ data modify storage macroengine:output found set value 1b
+ $execute as @a[name=$(player),limit=1] if predicate macroengine:is_sprinting run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/is_sprinting ","color":"aqua"},{"text":"$(player) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/online_check.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/online_check.mcfunction
+index 37a70b5..2c0b35d 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/online_check.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/online_check.mcfunction
+@@ -1,3 +1,2 @@
+ data modify storage macroengine:output result set value 0b
+ $execute if entity @a[name=$(player),limit=1] run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/online_check ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/reset.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/reset.mcfunction
+index f8353be..5a9c949 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/reset.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/reset.mcfunction
+@@ -3,4 +3,3 @@ $data remove storage macroengine:engine cooldowns.$(player)
+ $advancement revoke @a[name=$(player),limit=1] from macroengine:hidden/root
+ $data modify storage macroengine:engine _pid_init_tmp set value {player:"$(player)"}
+ function macroengine:player/init with storage macroengine:engine _pid_init_tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/reset ","color":"aqua"},{"text":"$(player)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/set_var.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/set_var.mcfunction
+index a8276e0..1c24901 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/set_var.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/set_var.mcfunction
+@@ -1,2 +1 @@
+ $data modify storage macroengine:engine players.$(player).$(key) set value $(value)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/set_var ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/swap_var.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/swap_var.mcfunction
+index 64e96fe..7a2f923 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/swap_var.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/swap_var.mcfunction
+@@ -2,4 +2,3 @@ $data modify storage macroengine:engine _swap.tmp set from storage macroengine:e
+ $data modify storage macroengine:engine players.$(player_a).$(key) set from storage macroengine:engine players.$(player_b).$(key)
+ $data modify storage macroengine:engine players.$(player_b).$(key) set from storage macroengine:engine _swap.tmp
+ data remove storage macroengine:engine _swap
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/swap_var ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/add.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/add.mcfunction
+index 7d17f3d..2f30a74 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/add.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/add.mcfunction
+@@ -1,2 +1 @@
+ $team join $(team) $(player)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"team/add ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(team)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/count.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/count.mcfunction
+index 81cfdc8..fd8062d 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/count.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/count.mcfunction
+@@ -1,4 +1,3 @@
+ scoreboard players set $team_cnt macroengine.tmp 0
+ $execute as @a[team=$(team)] run scoreboard players add $team_cnt macroengine.tmp 1
+ execute store result storage macroengine:output result int 1 run scoreboard players get $team_cnt macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"team/count ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(team)","color":"aqua"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/create.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/create.mcfunction
+index 6924858..9588e85 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/create.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/create.mcfunction
+@@ -1,3 +1,2 @@
+ $team add $(team)
+ $data modify storage macroengine:engine teams.$(team) set value {color:"white",friendly_fire:"true",see_friendly_invisibles:"false"}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"team/create ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(team)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/delete.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/delete.mcfunction
+index f759a42..5b43af9 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/delete.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/delete.mcfunction
+@@ -1,3 +1,2 @@
+ $team remove $(team)
+ $data remove storage macroengine:engine teams.$(team)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"team/delete ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(team)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/has.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/has.mcfunction
+index d00f757..860ca15 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/has.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/has.mcfunction
+@@ -1,3 +1,2 @@
+ data modify storage macroengine:output result set value 0b
+ $execute if entity @a[name=$(player),team=$(team)] run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"team/has ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(team)","color":"aqua"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/remove.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/remove.mcfunction
+index 4216877..194bf47 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/remove.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/remove.mcfunction
+@@ -1,2 +1 @@
+ $team leave $(player)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"team/remove ","color":"aqua"},{"text":"$(player)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/set_color.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/set_color.mcfunction
+index b92c93b..9fa750c 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/set_color.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/set_color.mcfunction
+@@ -1,3 +1,2 @@
+ $team modify $(team) color $(color)
+ $data modify storage macroengine:engine teams.$(team).color set value "$(color)"
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"team/set_color ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(team)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/set_friendly_fire.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/set_friendly_fire.mcfunction
+index 5588c86..50975b4 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/set_friendly_fire.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/team/set_friendly_fire.mcfunction
+@@ -1,3 +1,2 @@
+ $team modify $(team) friendlyFire $(value)
+ $data modify storage macroengine:engine teams.$(team).friendly_fire set value "$(value)"
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"team/set_friendly_fire ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(team)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/transfer_var.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/transfer_var.mcfunction
+index 38155a7..ff5411c 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/transfer_var.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/player/transfer_var.mcfunction
+@@ -8,4 +8,3 @@ scoreboard players operation $tr_t macroengine.tmp += $tr_a macroengine.tmp
+ $execute store result storage macroengine:engine players.$(to).$(key) int 1 run scoreboard players get $tr_t macroengine.tmp
+ 
+ execute store result storage macroengine:output result int 1 run scoreboard players get $tr_t macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"player/transfer_var ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/any.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/any.mcfunction
+index f2e3025..4446f0f 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/any.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/any.mcfunction
+@@ -30,5 +30,3 @@ execute if score #fany_b macroengine.tmp matches 1 run data modify storage macro
+ 
+ scoreboard players operation #fany_a macroengine.tmp += #fany_b macroengine.tmp
+ execute if score #fany_a macroengine.tmp matches 1.. run data modify storage macroengine:output result set value 1b
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"flag/any ","color":"aqua"},{"text":"$(key_a)|$(key_b) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/clear.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/clear.mcfunction
+index eed9a5b..f4a3a77 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/clear.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/clear.mcfunction
+@@ -1,2 +1 @@
+ $data remove storage macroengine:engine flags.$(key)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"flag/clear ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/copy.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/copy.mcfunction
+index 56893f6..143b97e 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/copy.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/copy.mcfunction
+@@ -19,5 +19,3 @@ data modify storage macroengine:output result set value 0b
+ $execute if data storage macroengine:engine flags.$(from) run data modify storage macroengine:engine flags.$(to) set value 1b
+ $execute if data storage macroengine:engine flags.$(from) run data modify storage macroengine:output result set value 1b
+ $execute unless data storage macroengine:engine flags.$(from) run data remove storage macroengine:engine flags.$(to)
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"flag/copy ","color":"aqua"},{"text":"$(from) → $(to) ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/set.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/set.mcfunction
+index 2c54d2a..755f572 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/set.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/set.mcfunction
+@@ -1,2 +1 @@
+ $data modify storage macroengine:engine flags.$(key) set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"flag/set ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/set_if.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/set_if.mcfunction
+index c44c308..81f3626 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/set_if.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/set_if.mcfunction
+@@ -17,4 +17,3 @@
+ data modify storage macroengine:output result set value 0b
+ $execute if score $(score_holder) $(objective) matches $(matches) run data modify storage macroengine:engine flags.$(key) set value 1b
+ $execute if score $(score_holder) $(objective) matches $(matches) run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"flag/set_if ","color":"aqua"},{"text":"$(key) if $(score_holder) $(objective) matches $(matches) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/toggle.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/toggle.mcfunction
+index 5321583..b5de615 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/toggle.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/toggle.mcfunction
+@@ -6,4 +6,3 @@ execute if score $ftgl macroengine.tmp matches 1 run data modify storage macroen
+ 
+ $execute if score $ftgl macroengine.tmp matches 0 run data modify storage macroengine:engine flags.$(key) set value 1b
+ execute if score $ftgl macroengine.tmp matches 0 run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"flag/toggle ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/unset.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/unset.mcfunction
+index fbad91c..f4a3a77 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/unset.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/flag/unset.mcfunction
+@@ -1,2 +1 @@
+ $data remove storage macroengine:engine flags.$(key)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"flag/unset ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(key)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/as_nearby_player.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/as_nearby_player.mcfunction
+index 09fb322..af722ed 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/as_nearby_player.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/as_nearby_player.mcfunction
+@@ -1,3 +1,2 @@
+ $data modify storage macroengine:engine _dispatch.func set value "$(func)"
+ $execute as @a[distance=..$(distance),limit=1,sort=nearest] at @s run function #macroengine:internal/dispatch
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"geo/as_nearby_player ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/in_region.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/in_region.mcfunction
+index 7d70fbb..7d6b8f3 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/in_region.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/in_region.mcfunction
+@@ -31,4 +31,3 @@ execute if score $rgn_z macroengine.tmp < $rgn_z1 macroengine.tmp run return 0
+ execute if score $rgn_z macroengine.tmp > $rgn_z2 macroengine.tmp run return 0
+ 
+ data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"geo/in_region ","color":"aqua"},{"text":"($(x),$(y),$(z)) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/in_region_unless.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/in_region_unless.mcfunction
+index 12a0cb3..58c123a 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/in_region_unless.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/in_region_unless.mcfunction
+@@ -1,2 +1 @@
+ $execute as @a[name=$(player),limit=1] unless entity @s[x=$(x),y=$(y),z=$(z),dx=$(dx),dy=$(dy),dz=$(dz)] run $(invoke)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"geo/in_region_unless ","color":"aqua"},{"text":"$(player)","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/in_sphere.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/in_sphere.mcfunction
+index 590257c..8b77682 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/in_sphere.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/in_sphere.mcfunction
+@@ -33,4 +33,3 @@ $scoreboard players set $sph_r macroengine.tmp $(r)
+ scoreboard players operation $sph_r macroengine.tmp *= $sph_r macroengine.tmp
+ 
+ execute if score $sph_dsq macroengine.tmp <= $sph_r macroengine.tmp run data modify storage macroengine:output result set value 1b
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"geo/in_sphere ","color":"aqua"},{"text":"r=$(r) dsq=","color":"gray"},{"score":{"name":"$sph_dsq","objective":"macroengine.tmp"},"color":"yellow"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/near_entity.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/near_entity.mcfunction
+index c81b22d..42149ed 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/near_entity.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/near_entity.mcfunction
+@@ -1,2 +1 @@
+ $execute as @a[name=$(player),limit=1] at @s if entity @e[type=$(type),tag=$(tag),distance=..$(distance),limit=1] run $(invoke)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"geo/near_entity ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(type)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/near_entity_unless.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/near_entity_unless.mcfunction
+index 0e2c477..b6d3986 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/near_entity_unless.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/geo/near_entity_unless.mcfunction
+@@ -1,2 +1 @@
+ $execute as @a[name=$(player),limit=1] at @s unless entity @e[type=$(type),tag=$(tag),distance=..$(distance),limit=1] run $(invoke)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"geo/near_entity_unless ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(type)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/atan2.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/atan2.mcfunction
+index cc2a5a5..7e25bab 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/atan2.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/atan2.mcfunction
+@@ -182,4 +182,3 @@ execute if score $a2_sx macroengine.tmp matches 1 if score $a2_sy macroengine.tm
+ execute if score $a2_sx macroengine.tmp matches 1 if score $a2_sy macroengine.tmp matches -1 run scoreboard players operation $a2_r macroengine.tmp = $a2_neg macroengine.tmp
+ 
+ execute store result storage macroengine:output result int 1 run scoreboard players get $a2_r macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/atan2 ","color":"aqua"},{"text":"y=$(y) x=$(x) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"},{"text":"/1000°","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/average.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/average.mcfunction
+index cd3418d..200db4f 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/average.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/average.mcfunction
+@@ -31,4 +31,3 @@ $execute if score $avg_c macroengine.tmp matches 8.. run scoreboard players add
+ scoreboard players operation $avg_s macroengine.tmp /= $avg_c macroengine.tmp
+ 
+ execute store result storage macroengine:output result int 1 run scoreboard players get $avg_s macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/average ","color":"aqua"},{"text":"count=$(count) ","color":"gray"},{"text":"→ ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/cos.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/cos.mcfunction
+index e44dc94..227cfd5 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/cos.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/cos.mcfunction
+@@ -107,4 +107,3 @@ execute if score $cos_d macroengine.tmp matches 90 run scoreboard players set $c
+ 
+ scoreboard players operation $cos_r macroengine.tmp *= $cos_nf macroengine.tmp
+ execute store result storage macroengine:output result int 1 run scoreboard players get $cos_r macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/cos ","color":"aqua"},{"text":"deg=$(deg) ","color":"gray"},{"text":"→ ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"},{"text":"/1000","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/divmod.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/divmod.mcfunction
+index df511ba..6ceaeaa 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/divmod.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/divmod.mcfunction
+@@ -12,5 +12,3 @@ execute store result storage macroengine:output quotient int 1 run scoreboard pl
+ scoreboard players operation $dvm_v macroengine.tmp %= $dvm_d macroengine.tmp
+ execute if score $dvm_v macroengine.tmp matches ..-1 run scoreboard players operation $dvm_v macroengine.tmp += $dvm_d macroengine.tmp
+ execute store result storage macroengine:output remainder int 1 run scoreboard players get $dvm_v macroengine.tmp
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/divmod ","color":"aqua"},{"text":"($(value)/$(divisor))","color":"gray"},{"text":" → ","color":"#555555"},{"text":"q=","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"quotient","color":"green"},{"text":" r=","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"remainder","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/factorial.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/factorial.mcfunction
+index 8adb22d..38a431d 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/factorial.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/factorial.mcfunction
+@@ -40,5 +40,3 @@ execute if score $fact_n macroengine.tmp matches 9 run data modify storage macro
+ execute if score $fact_n macroengine.tmp matches 10 run data modify storage macroengine:output result set value 3628800
+ execute if score $fact_n macroengine.tmp matches 11 run data modify storage macroengine:output result set value 39916800
+ execute if score $fact_n macroengine.tmp matches 12 run data modify storage macroengine:output result set value 479001600
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/factorial ","color":"aqua"},{"text":"$(n)! = ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/gcd.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/gcd.mcfunction
+index ba4371d..d48b632 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/gcd.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/gcd.mcfunction
+@@ -27,4 +27,3 @@ execute if score $gcd_b macroengine.tmp matches 0 run return 0
+ function macroengine:core/internal/systems/math/gcd_loop
+ 
+ execute store result storage macroengine:output result int 1 run scoreboard players get $gcd_a macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/gcd ","color":"aqua"},{"text":"($(a),$(b)) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/is_between.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/is_between.mcfunction
+index 04efe84..2314d5a 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/is_between.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/is_between.mcfunction
+@@ -19,5 +19,3 @@ $scoreboard players set $ib_hi macroengine.tmp $(max)
+ data modify storage macroengine:output result set value 0b
+ 
+ execute if score $ib_v macroengine.tmp >= $ib_lo macroengine.tmp run execute if score $ib_v macroengine.tmp <= $ib_hi macroengine.tmp run data modify storage macroengine:output result set value 1b
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/is_between ","color":"aqua"},{"text":"$(value) in [$(min),$(max)] → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/lcm.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/lcm.mcfunction
+index 899a165..e103d09 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/lcm.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/lcm.mcfunction
+@@ -36,4 +36,3 @@ scoreboard players operation $lcm_a macroengine.tmp /= $gcd_a macroengine.tmp
+ scoreboard players operation $lcm_a macroengine.tmp *= $lcm_b macroengine.tmp
+ 
+ execute store result storage macroengine:output result int 1 run scoreboard players get $lcm_a macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/lcm ","color":"aqua"},{"text":"($(a),$(b)) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/lerp_clamped.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/lerp_clamped.mcfunction
+index f22ca00..ab0d9f3 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/lerp_clamped.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/lerp_clamped.mcfunction
+@@ -14,4 +14,3 @@ scoreboard players operation $lc_r macroengine.tmp /= $lc_100 macroengine.tmp
+ scoreboard players operation $lc_r macroengine.tmp += $lc_a macroengine.tmp
+ 
+ execute store result storage macroengine:output result int 1 run scoreboard players get $lc_r macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/lerp_clamped ","color":"aqua"},{"text":"a=","color":"#555555"},{"text":"$(a)","color":"white"},{"text":" b=","color":"#555555"},{"text":"$(b)","color":"white"},{"text":" t=","color":"#555555"},{"text":"$(t)","color":"white"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/minmax.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/minmax.mcfunction
+index 6af4ce1..458f3fa 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/minmax.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/minmax.mcfunction
+@@ -9,5 +9,3 @@ execute if score $mmx_b macroengine.tmp > $mmx_a macroengine.tmp run scoreboard
+ 
+ execute store result storage macroengine:output min int 1 run scoreboard players get $mmx_lo macroengine.tmp
+ execute store result storage macroengine:output max int 1 run scoreboard players get $mmx_hi macroengine.tmp
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/minmax ","color":"aqua"},{"text":"($(a),$(b))","color":"gray"},{"text":" → ","color":"#555555"},{"text":"min=","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"min","color":"green"},{"text":" max=","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"max","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/mul_div.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/mul_div.mcfunction
+index 697f659..2f5c86a 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/mul_div.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/mul_div.mcfunction
+@@ -41,4 +41,3 @@ scoreboard players operation $md_r macroengine.tmp /= $md_c macroengine.tmp
+ scoreboard players operation $md_q macroengine.tmp += $md_r macroengine.tmp
+ 
+ execute store result storage macroengine:output result int 1 run scoreboard players get $md_q macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/mul_div ","color":"aqua"},{"text":"($(a)*$(b)/$(c)) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/round.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/round.mcfunction
+index e611b86..4345676 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/round.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/round.mcfunction
+@@ -32,4 +32,3 @@ scoreboard players operation #rnd_v macroengine.tmp /= #rnd_s macroengine.tmp
+ scoreboard players operation #rnd_v macroengine.tmp *= #rnd_s macroengine.tmp
+ 
+ execute store result storage macroengine:output result int 1 run scoreboard players get #rnd_v macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/round ","color":"aqua"},{"text":"$(value) step=$(step) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/sign_nonzero.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/sign_nonzero.mcfunction
+index 8f22a8f..d4a47ae 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/sign_nonzero.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/sign_nonzero.mcfunction
+@@ -16,4 +16,3 @@
+ $scoreboard players set #snz_v macroengine.tmp $(value)
+ data modify storage macroengine:output result set value 1
+ execute if score #snz_v macroengine.tmp matches ..-1 run data modify storage macroengine:output result set value -1
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/sign_nonzero ","color":"aqua"},{"text":"$(value) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/sin.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/sin.mcfunction
+index 8a32bd4..e61c50b 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/sin.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/sin.mcfunction
+@@ -112,4 +112,3 @@ execute if score $sin_d macroengine.tmp matches 90 run scoreboard players set $s
+ 
+ scoreboard players operation $sin_r macroengine.tmp *= $sin_nf macroengine.tmp
+ execute store result storage macroengine:output result int 1 run scoreboard players get $sin_r macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/sin ","color":"aqua"},{"text":"deg=$(deg) ","color":"gray"},{"text":"→ ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"},{"text":"/1000","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/sum3.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/sum3.mcfunction
+index 8330072..3d855c4 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/sum3.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/sum3.mcfunction
+@@ -25,4 +25,3 @@ scoreboard players operation $s3_a macroengine.tmp += $s3_c macroengine.tmp
+ execute if score $s3_a macroengine.tmp matches 2147483647.. run scoreboard players set $s3_a macroengine.tmp 2147483647
+ 
+ execute store result storage macroengine:output result int 1 run scoreboard players get $s3_a macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/sum3 ","color":"aqua"},{"text":"($(a)+$(b)+$(c)) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/weighted_random.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/weighted_random.mcfunction
+index d2bfdc8..9393639 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/weighted_random.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/math/weighted_random.mcfunction
+@@ -55,5 +55,3 @@ execute if score $wr_done macroengine.tmp matches 0 run execute if score $wr_rol
+ $scoreboard players add $wr_acc macroengine.tmp $(w9)
+ execute if score $wr_done macroengine.tmp matches 0 run execute if score $wr_roll macroengine.tmp < $wr_acc macroengine.tmp run data modify storage macroengine:output result set value 9
+ execute if score $wr_done macroengine.tmp matches 0 run execute if score $wr_roll macroengine.tmp < $wr_acc macroengine.tmp run scoreboard players set $wr_done macroengine.tmp 1
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/weighted_random ","color":"aqua"},{"text":"total=$(total) roll=","color":"gray"},{"score":{"name":"$wr_roll","objective":"macroengine.tmp"},"color":"yellow"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/rate_limit/config.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/rate_limit/config.mcfunction
+index 1ebc5f2..0efc54d 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/rate_limit/config.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/rate_limit/config.mcfunction
+@@ -21,4 +21,3 @@
+ # Listing rules: function macroengine:systems/rate_limit/list
+ 
+ $data modify storage macroengine:engine rate_limit.rules.$(key) set value {limit:$(limit),window:$(window),hits:[]}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"rate_limit/config ","color":"aqua"},{"text":"→ ","color":"#555555"},{"text":"$(key)","color":"white"},{"text":" limit=","color":"#555555"},{"text":"$(limit)","color":"green"},{"text":" window=","color":"#555555"},{"text":"$(window)","color":"green"},{"text":"t","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/rate_limit/player/config.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/rate_limit/player/config.mcfunction
+index be3f47d..e7b26a7 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/rate_limit/player/config.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/rate_limit/player/config.mcfunction
+@@ -14,4 +14,3 @@
+ 
+ # Store template rule — concrete player buckets inherit limit+window on first hit
+ $data modify storage macroengine:engine rate_limit.player_templates.$(key) set value {limit:$(limit),window:$(window)}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"rate_limit/player/config ","color":"aqua"},{"text":"→ ","color":"#555555"},{"text":"player:$(key):<player>","color":"white"},{"text":" limit=","color":"#555555"},{"text":"$(limit)","color":"green"},{"text":" window=","color":"#555555"},{"text":"$(window)","color":"green"},{"text":"t","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/sound/play.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/sound/play.mcfunction
+index 0c90fd5..942697c 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/sound/play.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/sound/play.mcfunction
+@@ -18,4 +18,3 @@
+ #   function macroengine:systems/sound/play with storage macroengine:input sound
+ 
+ $playsound $(sound) $(category) $(target) ~ ~ ~ $(volume) $(pitch)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"sound/play ","color":"aqua"},{"text":"→ ","color":"#555555"},{"text":"$(sound)","color":"white"},{"text":" [","color":"#555555"},{"text":"$(category)","color":"green"},{"text":"]","color":"#555555"},{"text":" vol:","color":"#555555"},{"text":"$(volume)","color":"yellow"},{"text":" pitch:","color":"#555555"},{"text":"$(pitch)","color":"yellow"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/sound/play_at.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/sound/play_at.mcfunction
+index 2330fe1..d2d7247 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/sound/play_at.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/sound/play_at.mcfunction
+@@ -17,4 +17,3 @@
+ #   function macroengine:systems/sound/play_at with storage macroengine:input sound
+ 
+ $playsound $(sound) $(category) @a $(x) $(y) $(z) $(volume) $(pitch) $(min_volume)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"sound/play_at ","color":"aqua"},{"text":"→ ","color":"#555555"},{"text":"$(sound)","color":"white"},{"text":" @ ","color":"#555555"},{"text":"$(x) $(y) $(z)","color":"#AAAAAA"},{"text":" vol:","color":"#555555"},{"text":"$(volume)","color":"yellow"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/sound/stop.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/sound/stop.mcfunction
+index afd8bba..cb1c0d6 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/sound/stop.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/sound/stop.mcfunction
+@@ -12,4 +12,3 @@
+ #   function macroengine:systems/sound/stop with storage macroengine:input sound
+ 
+ $stopsound $(target) $(category) $(sound)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"sound/stop ","color":"aqua"},{"text":"→ ","color":"#555555"},{"text":"$(target)","color":"white"},{"text":" [","color":"#555555"},{"text":"$(category)","color":"green"},{"text":"] ","color":"#555555"},{"text":"$(sound)","color":"#AAAAAA"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/format_number.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/format_number.mcfunction
+index 0eb54e5..88e4349 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/format_number.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/format_number.mcfunction
+@@ -42,5 +42,3 @@ execute if score $fn_v macroengine.tmp matches 1000000000.. run data modify stor
+ execute if score $fn_v macroengine.tmp matches 1000000000.. run scoreboard players set $fn_div macroengine.tmp 100000000
+ execute if score $fn_v macroengine.tmp matches 1000000000.. run scoreboard players operation $fn_v macroengine.tmp /= $fn_div macroengine.tmp
+ execute if score $fn_v macroengine.tmp matches 1000000000.. run execute store result storage macroengine:output short int 1 run scoreboard players get $fn_v macroengine.tmp
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"string/format_number ","color":"aqua"},{"text":"$(value) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"short","color":"green"},{"plain":true ,"storage":"macroengine:output","nbt":"suffix","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/format_ticks.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/format_ticks.mcfunction
+index 3603d70..a959035 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/format_ticks.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/format_ticks.mcfunction
+@@ -14,5 +14,3 @@ scoreboard players operation $ft_s macroengine.tmp %= $ft_60 macroengine.tmp
+ 
+ execute store result storage macroengine:output minutes int 1 run scoreboard players get $ft_m macroengine.tmp
+ execute store result storage macroengine:output seconds int 1 run scoreboard players get $ft_s macroengine.tmp
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"string/format_ticks ","color":"aqua"},{"text":"$(ticks)t","color":"white"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"minutes","color":"green"},{"text":"m ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"seconds","color":"green"},{"text":"s","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/ordinal.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/ordinal.mcfunction
+index 08ed4ee..65ddc16 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/ordinal.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/ordinal.mcfunction
+@@ -45,5 +45,3 @@ execute if score $ord_d macroengine.tmp matches 3 run data modify storage macroe
+ 
+ # Teen override — 11, 12, 13 must always be "th"
+ execute if score $ord_h macroengine.tmp matches 11..13 run data modify storage macroengine:output suffix set value "th"
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"string/ordinal ","color":"aqua"},{"text":"$(n)","color":"white"},{"text":" → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"suffix","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/pad_left.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/pad_left.mcfunction
+index 7a450c3..447042b 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/pad_left.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/pad_left.mcfunction
+@@ -25,5 +25,3 @@ execute if score $pl_pad macroengine.tmp matches 4.. run data modify storage mac
+ execute if score $pl_pad macroengine.tmp matches 5.. run data modify storage macroengine:output result set value "00000"
+ execute if score $pl_pad macroengine.tmp matches 6.. run data modify storage macroengine:output result set value "000000"
+ execute if score $pl_pad macroengine.tmp matches 7.. run data modify storage macroengine:output result set value "0000000"
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"string/pad_left ","color":"aqua"},{"text":"$(value) w=$(width) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"},{"text":"[NUM]","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/pluralize.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/pluralize.mcfunction
+index 1eda96f..f3350f8 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/pluralize.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/pluralize.mcfunction
+@@ -22,5 +22,3 @@ $data modify storage macroengine:engine _plr_plural set value $(plural)
+ 
+ data modify storage macroengine:output result set from storage macroengine:engine _plr_plural
+ execute if score #plr_c macroengine.tmp matches 1 run data modify storage macroengine:output result set from storage macroengine:engine _plr_singular
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"string/pluralize ","color":"aqua"},{"text":"count=$(count) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/progress_bar.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/progress_bar.mcfunction
+index 7709c0c..9d16cb5 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/progress_bar.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/progress_bar.mcfunction
+@@ -21,4 +21,3 @@ $execute if score $pb1_seg macroengine.tmp matches 7 run title @a[name=$(player)
+ $execute if score $pb1_seg macroengine.tmp matches 8 run title @a[name=$(player),limit=1] actionbar {"text":"$(label) ████████░░"}
+ $execute if score $pb1_seg macroengine.tmp matches 9 run title @a[name=$(player),limit=1] actionbar {"text":"$(label) █████████░"}
+ $execute if score $pb1_seg macroengine.tmp matches 10 run title @a[name=$(player),limit=1] actionbar {"text":"$(label) ██████████"}
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"string/progress_bar ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(label)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/repeat.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/repeat.mcfunction
+index 90a88da..14106ed 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/repeat.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/repeat.mcfunction
+@@ -29,5 +29,3 @@ execute if score $sr_n macroengine.tmp matches 13 run function macroengine:core/
+ execute if score $sr_n macroengine.tmp matches 14 run function macroengine:core/internal/systems/string/repeat_14 with storage macroengine:input {}
+ execute if score $sr_n macroengine.tmp matches 15 run function macroengine:core/internal/systems/string/repeat_15 with storage macroengine:input {}
+ execute if score $sr_n macroengine.tmp matches 16 run function macroengine:core/internal/systems/string/repeat_16 with storage macroengine:input {}
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"string/repeat ","color":"aqua"},{"text":"'$(char)'","color":"yellow"},{"text":" × $(count) → ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"white"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/truncate.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/truncate.mcfunction
+index 92036a1..b832e89 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/truncate.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/systems/string/truncate.mcfunction
+@@ -25,5 +25,3 @@ execute store result score #trunc_flag macroengine.tmp run data get storage macr
+ 
+ $execute if score #trunc_flag macroengine.tmp matches 0 run title @a[name=$(player),limit=1] actionbar {"plain":true ,"storage":"macroengine:output","nbt":"text"}
+ $execute if score #trunc_flag macroengine.tmp matches 1.. run title @a[name=$(player),limit=1] actionbar ["",{"plain":true ,"storage":"macroengine:output","nbt":"text"},{"text":"$(suffix)","color":"gray"}]
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"string/truncate ","color":"aqua"},{"text":"$(player) truncated=$(truncated)","color":"gray"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/block_if.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/block_if.mcfunction
+index d59ed9c..fa077db 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/block_if.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/block_if.mcfunction
+@@ -1,2 +1 @@
+ $execute if block $(x) $(y) $(z) $(block) run $(invoke)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"world/block_if ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(block)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/block_unless.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/block_unless.mcfunction
+index 58fd468..0202982 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/block_unless.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/block_unless.mcfunction
+@@ -1,2 +1 @@
+ $execute unless block $(x) $(y) $(z) $(block) run $(invoke)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"world/block_unless ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(block)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/clear_effects.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/clear_effects.mcfunction
+index 4084586..bda8833 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/clear_effects.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/clear_effects.mcfunction
+@@ -7,4 +7,3 @@
+ # ─────────────────────────────────────────────────────────────────
+ 
+ $effect clear @e[type=$(type),tag=$(tag)]
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/clear_effects ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(type)[tag=$(tag)]","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/count.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/count.mcfunction
+index 5250a20..325e25b 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/count.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/count.mcfunction
+@@ -1,4 +1,3 @@
+ scoreboard players set $ent_count macroengine.tmp 0
+ $execute as @e[type=$(type),tag=$(tag)] run scoreboard players add $ent_count macroengine.tmp 1
+ execute store result storage macroengine:output count int 1 run scoreboard players get $ent_count macroengine.tmp
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/count ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(type)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/damage.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/damage.mcfunction
+index 6c4e709..ed1fea5 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/damage.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/damage.mcfunction
+@@ -1,2 +1 @@
+ $damage @e[type=$(type),tag=$(tag)] $(amount) $(damage_type)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/damage ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(type)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/for_each.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/for_each.mcfunction
+index 6776736..0c52744 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/for_each.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/for_each.mcfunction
+@@ -1,3 +1,2 @@
+ $data modify storage macroengine:engine _dispatch.func set value "$(func)"
+ $execute as @e[type=$(type),tag=$(tag)] at @s run function #macroengine:internal/dispatch
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/for_each ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(type)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/for_each_in_radius.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/for_each_in_radius.mcfunction
+index a1cec92..596d1d2 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/for_each_in_radius.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/for_each_in_radius.mcfunction
+@@ -14,4 +14,3 @@
+ 
+ $data modify storage macroengine:engine _dispatch.func set value "$(func)"
+ $execute as @a[name=$(player),limit=1] at @s run execute as @e[type=$(type),distance=..$(radius)] at @s run function #macroengine:internal/dispatch
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/for_each_in_radius ","color":"aqua"},{"text":"$(player) r=$(radius) → ","color":"gray"},{"text":"$(type)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/give_effect.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/give_effect.mcfunction
+index ca6f7e2..47e4070 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/give_effect.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/give_effect.mcfunction
+@@ -1,2 +1 @@
+ $effect give @e[type=$(type),tag=$(tag)] $(effect) $(duration) $(amplifier) true
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/give_effect ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(effect)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/kill_tagged.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/kill_tagged.mcfunction
+index 2ef040e..c110e90 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/kill_tagged.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/kill_tagged.mcfunction
+@@ -1,2 +1 @@
+ $kill @e[type=$(type),tag=$(tag)]
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/kill_tagged ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(type)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/nearest.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/nearest.mcfunction
+index fa06cf5..ed88ca3 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/nearest.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/nearest.mcfunction
+@@ -12,4 +12,3 @@
+ 
+ $data modify storage macroengine:engine _dispatch.func set value "$(func)"
+ $execute as @a[name=$(player),limit=1] at @s run execute as @e[type=$(type),sort=nearest,limit=1,distance=..$(radius)] at @s run function #macroengine:internal/dispatch
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/nearest ","color":"aqua"},{"text":"$(player) → ","color":"gray"},{"text":"$(type) r=$(radius)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/random.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/random.mcfunction
+index 61a88fe..295775e 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/random.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/random.mcfunction
+@@ -40,5 +40,3 @@ function macroengine:core/internal/world/entity/random_dispatch with storage mac
+ 
+ # Cleanup
+ data remove storage macroengine:engine _rnd
+-
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/random ","color":"aqua"},{"text":"$(type)","color":"aqua"},{"text":" [$(tag)]","color":"gray"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/set_health.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/set_health.mcfunction
+index 1427928..88d3c90 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/set_health.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/set_health.mcfunction
+@@ -17,4 +17,3 @@
+ 
+ $effect give @e[type=$(type),tag=$(tag)] minecraft:instant_damage 1 255 true
+ $effect give @e[type=$(type),tag=$(tag)] minecraft:instant_health 1 $(amount) true
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/set_health ","color":"aqua"},{"text":" → amplifier=$(amount) on ","color":"#555555"},{"text":"$(type)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/set_name.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/set_name.mcfunction
+index fc66d7d..53837bb 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/set_name.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/set_name.mcfunction
+@@ -23,4 +23,3 @@
+ # ─────────────────────────────────────────────────────────────────
+ 
+ $execute as @e[tag=$(tag)] run data modify entity @s CustomName set from storage macroengine:input name
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/set_name ","color":"aqua"},{"text":"[$(tag)]","color":"gray"},{"text":" ← macroengine:input name","color":"#555555"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/summon_at_player.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/summon_at_player.mcfunction
+index 8e5ec7c..cc1a755 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/summon_at_player.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/summon_at_player.mcfunction
+@@ -1,2 +1 @@
+ $execute as @a[name=$(player),limit=1] at @s run summon $(entity) ~ ~ ~ $(nbt)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/summon_at_player ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(entity)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/tag_add.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/tag_add.mcfunction
+index e98a063..570aee4 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/tag_add.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/tag_add.mcfunction
+@@ -1,2 +1 @@
+ $tag @e[type=$(type),tag=$(filter)] add $(new_tag)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/tag_add ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(type)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/tag_remove.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/tag_remove.mcfunction
+index 3c9446e..b67351a 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/tag_remove.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/tag_remove.mcfunction
+@@ -1,2 +1 @@
+ $tag @e[type=$(type),tag=$(filter)] remove $(remove_tag)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/tag_remove ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(type)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/tp_to.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/tp_to.mcfunction
+index b0e288a..2a70d30 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/tp_to.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/entity/tp_to.mcfunction
+@@ -1,2 +1 @@
+ $tp @e[type=$(type),tag=$(tag)] $(x) $(y) $(z)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"entity/tp_to ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(type)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_hollow.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_hollow.mcfunction
+index 7f6ac29..81eb6c4 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_hollow.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_hollow.mcfunction
+@@ -1,2 +1 @@
+ $fill $(x1) $(y1) $(z1) $(x2) $(y2) $(z2) $(block) hollow
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"world/fill_hollow ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(block)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_keep.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_keep.mcfunction
+index 5eca1b1..910736a 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_keep.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_keep.mcfunction
+@@ -1,2 +1 @@
+ $fill $(x1) $(y1) $(z1) $(x2) $(y2) $(z2) $(block) keep
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"world/fill_keep ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(block)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_outline.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_outline.mcfunction
+index edfbdaa..96c8859 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_outline.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_outline.mcfunction
+@@ -1,2 +1 @@
+ $fill $(x1) $(y1) $(z1) $(x2) $(y2) $(z2) $(block) outline
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"world/fill_outline ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(block)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_replace.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_replace.mcfunction
+index e2fb9ea..fca0cb2 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_replace.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/fill_replace.mcfunction
+@@ -1,2 +1 @@
+ $fill $(x1) $(y1) $(z1) $(x2) $(y2) $(z2) $(block) replace $(replace_with)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"world/fill_replace ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(block)","color":"aqua"}]
+diff --git a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/setblock_if.mcfunction b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/setblock_if.mcfunction
+index 04697ed..b45e530 100644
+--- a/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/setblock_if.mcfunction
++++ b/packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/setblock_if.mcfunction
+@@ -1,2 +1 @@
+ $execute if block $(x) $(y) $(z) $(expected) run setblock $(x) $(y) $(z) $(new_block) $(mode)
+-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"world/setblock_if ","color":"aqua"},{"text":" → ","color":"#555555"},{"text":"$(mode)","color":"aqua"}]

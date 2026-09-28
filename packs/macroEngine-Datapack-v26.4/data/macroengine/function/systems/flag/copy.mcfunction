@@ -19,5 +19,3 @@ data modify storage macroengine:output result set value 0b
 $execute if data storage macroengine:engine flags.$(from) run data modify storage macroengine:engine flags.$(to) set value 1b
 $execute if data storage macroengine:engine flags.$(from) run data modify storage macroengine:output result set value 1b
 $execute unless data storage macroengine:engine flags.$(from) run data remove storage macroengine:engine flags.$(to)
-
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"flag/copy ","color":"aqua"},{"text":"$(from) → $(to) ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
