@@ -1,10 +1,9 @@
 # macroengine:core/internal/load/all — full init pipeline (no fork / rt_origin / confirm gates)
 
-tellraw @a ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"Starting macroEngine...","color":"gray"}]
-
 # forceload classic marker chunk (legacy features)
 forceload add -30000000 1600
 
+# Load scoreboards, storages and other systems
 function macroengine:core/internal/load/loader/scoreboards
 function macroengine:core/internal/load/loader/storages
 function macroengine:core/internal/load/loader/other
@@ -12,7 +11,5 @@ function macroengine:core/internal/load/loader/other
 # Re-apply config after storages (storages may reset defaults)
 function macroengine:config
 
-data modify storage macroengine:engine global.loaded set value 1b
-say Loaded macroEngine-Datapack-v26.4 data pack!
-
-schedule function macroengine:core/internal/load/final 2s
+# Run macroengine:core/internal/load/final function
+function macroengine:core/internal/load/final
