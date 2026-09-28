@@ -1,6 +1,6 @@
 {
   "pack": {
-    "description": "MacroEngine v26.4 — resource pack (REQUIRED, i18n + sounds)",
+    "description": "macroEngine | 26.4-snapshot-1 \u2014 resource pack (REQUIRED: i18n, sounds, trim assets)",
     "min_format": [
       98,
       0
