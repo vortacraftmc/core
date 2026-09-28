@@ -1,13 +1,15 @@
 # macroEngine (v26.4-snapshot-1)
 
-> ⚠️ **Archived.** This datapack is archived and no longer maintained. The `runtoolkit/suite` datapacks are being superseded by [Fabric](https://fabricmc.net/) mods. Existing worlds using this pack will continue to work, but no new features or fixes are planned.
-
 **macroEngine** is a macro/module framework datapack for Minecraft Java Edition, providing a large library of reusable command-based systems (math, string, NBT, geo, permissions, UUID cache, hooks, rate limiting, and more) plus a multi-source text/value input system (dialogs, books, signs, lecterns, name tags, command block minecarts).
 
 > Owner: [runtoolkit](https://github.com/runtoolkit)
 > Minecraft: **26.4-snapshot-1** (`pack_format` / `min_format`–`max_format` **122**)
+> 
 > License: Unlicense
+> 
 > Namespace: `macroengine`
+> 
+> Maintainer: [vortacraftmc](https://github.com/vortacraftmc)
 
 ---
 
@@ -63,7 +65,7 @@ Example — scan a player for the circuit/overload trim and react to matches:
 ```mcfunction
 data modify storage macroengine:input event set value "macroengine:trim_matched"
 data modify storage macroengine:input func set value "macroengine:systems/trim/on_matched_example"
-function macroengine:systems/hook/bind
+function macroengine:systems/hook/bind with storage macroengine:input {]
 
 execute as @a run function macroengine:systems/trim/scan
 ```
