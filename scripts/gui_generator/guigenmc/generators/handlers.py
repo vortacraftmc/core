@@ -138,6 +138,29 @@ def handler_for(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
         lines.append(tellraw_line(msg))
         return lines
 
+    if w["kind"] == "radio":
+        # Radio button: selecting this option sets the shared group score
+        # to this option's value; sibling options re-render via fill.
+        r = w["radio"]
+        lines.extend(playsound(w.get("sound")))
+        lines.append(f"scoreboard players set @s {r['score']} {r['value']}")
+        for c in r.get("on_commands") or []:
+            lines.append(str(c))
+        lines.append("")
+        lines.append(tellraw_line(w.get("success_message") or r["on_name"]))
+        lines.append(f"function {menu_function_prefix(menu)}/fill")
+        return lines
+
+    if w["kind"] == "tab":
+        # Page tab: nav that also highlights itself while the page is open
+        # (rendered by emit_tab against guigen_page).
+        lines.extend(playsound(w.get("sound")))
+        lines.append(f"scoreboard players set @s guigen_page {w['target_page']}")
+        lines.append(f"function {menu_function_prefix(menu)}/fill")
+        if w.get("success_message"):
+            lines.append(tellraw_line(w["success_message"]))
+        return lines
+
     if w["kind"] == "toggle":
         t = w["toggle"]
         lines.extend(playsound(w.get("sound")))
@@ -336,6 +359,29 @@ def handler_for(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
             lines.append(
                 f"execute unless entity @s[advancements={{{adv}=true}}] run {tellraw_line(fail)}"
             )
+        elif cond["type"] == "dimension":
+            # guikit-datapack v5 port (cond/t_dimension): `at @s` moves the
+            # execution context to the player, so the check is correct no
+            # matter where the caller was running.
+            dim = cond["dimension"]
+            lines.append(f"# condition: player is in dimension {dim}")
+            ok = f"execute at @s if dimension {dim} run "
+            lines.extend(success_block(ok))
+            lines.append(f"execute at @s unless dimension {dim} run {tellraw_line(fail)}")
+        elif cond["type"] == "weather":
+            # NOTE: Java Edition has NO `execute if weather` subcommand —
+            # guikit-datapack v5's cond/t_weather used it, but that syntax
+            # is invalid. The valid check is the built-in
+            # minecraft:weather_check predicate; guigenmc emits the
+            # predicate files (data/<ns>/predicate/guigen/weather_*.json).
+            # `at @s` keeps guikit's semantics: weather is read where the
+            # player stands. clear | rain | thunder.
+            wx = cond["weather"]
+            pred = f"{menu['namespace']}:guigen/weather_{wx}"
+            lines.append(f"# condition: weather is {wx} in the player's dimension")
+            ok = f"execute at @s if predicate {pred} run "
+            lines.extend(success_block(ok))
+            lines.append(f"execute at @s unless predicate {pred} run {tellraw_line(fail)}")
         else:
             lines.extend(emit_actions(w))
             if w.get("success_message"):

@@ -7,6 +7,8 @@ from typing import Any
 from ..components import item_replace_command, mk_item_components
 from ..models import (
     components_for_cycle,
+    components_for_radio,
+    components_for_tab,
     components_for_toggle,
     container_entity_id,
     container_slot_count,
@@ -62,6 +64,27 @@ def emit_cycle(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
     return lines
 
 
+def emit_radio(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
+    r = w["radio"]
+    lines: list[str] = []
+    for selected in (False, True):
+        item, comps = components_for_radio(w, selected)
+        cmd = item_replace_command(cart_selector(menu), w["slot"], item, comps)
+        kw = "if" if selected else "unless"
+        lines.append(f"execute {kw} score @s {r['score']} matches {r['value']} run {cmd}")
+    return lines
+
+
+def emit_tab(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+    for active in (False, True):
+        item, comps = components_for_tab(w, active)
+        cmd = item_replace_command(cart_selector(menu), w["slot"], item, comps)
+        kw = "if" if active else "unless"
+        lines.append(f"execute {kw} score @s guigen_page matches {w['target_page']} run {cmd}")
+    return lines
+
+
 def emit_progress(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     width = w["progress_width"]
@@ -111,6 +134,10 @@ def generate_page_fills(menu: dict[str, Any], out: dict[str, str]) -> None:
                 lines.extend(emit_toggle(menu, w))
             elif w["kind"] == "cycle":
                 lines.extend(emit_cycle(menu, w))
+            elif w["kind"] == "radio":
+                lines.extend(emit_radio(menu, w))
+            elif w["kind"] == "tab":
+                lines.extend(emit_tab(menu, w))
             elif w["kind"] == "progress":
                 lines.extend(emit_progress(menu, w))
             else:

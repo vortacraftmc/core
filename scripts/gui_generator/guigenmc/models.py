@@ -21,6 +21,8 @@ VALID_WIDGET_KINDS = [
     "random",
     "link",
     "cycle",
+    "radio",
+    "tab",
 ]
 
 WIDGET_KIND_ALIASES = {
@@ -46,7 +48,27 @@ VALID_CONDITION_TYPES = [
     "has_tag",
     "gamemode",
     "has_advancement",
+    "dimension",
+    "weather",
 ]
+
+VALID_WEATHER_VALUES = ["clear", "rain", "thunder"]
+
+
+def validate_dimension_id(value: Any, field_name: str = "dimension") -> str:
+    """Validate a dimension id like `minecraft:the_nether`.
+
+    Bare ids ('overworld') are accepted and normalized to the minecraft
+    namespace. Raises ValueError with a clear message otherwise.
+    """
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"Invalid {field_name}: must be a non-empty string")
+    ns, sep, path = value.partition(":")
+    if not sep:
+        ns, path = "minecraft", value
+    validate_identifier(ns, f"{field_name} namespace")
+    validate_identifier(path, f"{field_name} path")
+    return f"{ns}:{path}"
 
 CONTAINER_TYPES: dict[str, tuple[str, int]] = {
     "chest_minecart": ("chest_minecart", 27),
@@ -163,6 +185,62 @@ def components_for_cycle(w: dict[str, Any], index: int) -> tuple[str, dict[str, 
     )
 
 
+def components_for_radio(w: dict[str, Any], selected: bool) -> tuple[str, dict[str, Any]]:
+    """Radio button: one option of an exclusive group sharing a score."""
+    from .components import mk_item_components
+
+    r = w["radio"]
+    data = gui_custom_data(w)
+    if not selected:
+        return (
+            r["off_item"],
+            mk_item_components(
+                custom_name=r["off_name"],
+                lore=list(r.get("off_lore") or []),
+                custom_data=data,
+                enchanted=bool(r.get("off_enchanted", w.get("enchanted"))),
+                custom_model_data=r.get("off_custom_model_data", w.get("custom_model_data")),
+            ),
+        )
+    return (
+        r["on_item"],
+        mk_item_components(
+            custom_name=r["on_name"],
+            lore=list(r.get("on_lore") or []),
+            custom_data=data,
+            enchanted=bool(r.get("on_enchanted", True)),
+            custom_model_data=r.get("on_custom_model_data", w.get("custom_model_data")),
+        ),
+    )
+
+
+def components_for_tab(w: dict[str, Any], active: bool) -> tuple[str, dict[str, Any]]:
+    """Page tab: nav that highlights itself while its page is open."""
+    from .components import mk_item_components
+
+    t = w["tab"]
+    data = gui_custom_data(w)
+    if not active:
+        return (
+            t["off_item"],
+            mk_item_components(
+                custom_name=t.get("off_name") or w.get("name"),
+                lore=list(t.get("off_lore") or w.get("lore") or []),
+                custom_data=data,
+                enchanted=bool(t.get("off_enchanted", False)),
+            ),
+        )
+    return (
+        t["on_item"],
+        mk_item_components(
+            custom_name=t.get("on_name") or w.get("name"),
+            lore=list(t.get("on_lore") or w.get("lore") or []),
+            custom_data=data,
+            enchanted=bool(t.get("on_enchanted", True)),
+        ),
+    )
+
+
 def is_interactive(w: dict[str, Any]) -> bool:
     return w["kind"] not in ("label", "separator", "progress")
 
@@ -216,6 +294,8 @@ def mk_widget(**fields: Any) -> dict[str, Any]:
         "url": None,
         "link_text": None,
         "cycle": None,
+        "radio": None,
+        "tab": None,
         "clickable": True,
         "enchanted": False,
         "custom_model_data": None,
@@ -329,7 +409,15 @@ def interactive_widgets(m: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def collect_scores(m: dict[str, Any]) -> list[str]:
-    scores = ["guigen_menu_timer", "guigen_click", "guigen_page", "guigen_tmp", "guigen_rand"]
+    scores = [
+        "guigen_menu_timer",
+        "guigen_click",
+        "guigen_page",
+        "guigen_tmp",
+        "guigen_rand",
+        # guikit-datapack v5 port: world-saved "last opened menu" memory
+        "guigen_opened",
+    ]
     for s in m.get("extra_scores") or []:
         if s not in scores:
             scores.append(s)
@@ -342,6 +430,8 @@ def collect_scores(m: dict[str, Any]) -> list[str]:
             scores.append(w["progress_score"])
         if w.get("cycle") and w["cycle"]["score"] not in scores:
             scores.append(w["cycle"]["score"])
+        if w.get("radio") and w["radio"]["score"] not in scores:
+            scores.append(w["radio"]["score"])
     return scores
 
 
@@ -407,6 +497,22 @@ def loader_condition(raw: Any) -> dict[str, Any] | None:
     ctype = raw.get("type")
     if ctype not in VALID_CONDITION_TYPES:
         raise ValueError(f"Unknown condition type: {ctype}")
+
+    dimension = raw.get("dimension", raw.get("dim"))
+    weather = raw.get("weather")
+    if ctype == "dimension":
+        if not dimension:
+            raise ValueError(
+                "dimension condition requires 'dimension' "
+                "(e.g. \"minecraft:the_nether\")"
+            )
+        dimension = validate_dimension_id(dimension)
+    if ctype == "weather":
+        if weather not in VALID_WEATHER_VALUES:
+            raise ValueError(
+                f"weather must be one of: {', '.join(VALID_WEATHER_VALUES)}"
+            )
+
     return {
         "type": ctype,
         "item": raw.get("item"),
@@ -417,6 +523,8 @@ def loader_condition(raw: Any) -> dict[str, Any] | None:
         "tag": raw.get("tag"),
         "gamemode": raw.get("gamemode"),
         "advancement": raw.get("advancement"),
+        "dimension": dimension,
+        "weather": weather,
         "fail_message": loader_text(raw.get("fail_message")),
     }
 
@@ -458,6 +566,54 @@ def loader_toggle_state(raw: Any) -> dict[str, Any]:
         "on_enchanted": bool(raw.get("on_enchanted", True)),
         "off_custom_model_data": raw.get("off_custom_model_data"),
         "on_custom_model_data": raw.get("on_custom_model_data"),
+    }
+
+
+def loader_radio_option(raw: Any) -> dict[str, Any]:
+    """One radio button of an exclusive group. All options share `score`;
+    selecting an option sets the score to that option's `value`."""
+    if not isinstance(raw, dict):
+        raise TypeError("radio must be an object")
+    for key in ("score", "value", "off_item", "on_item", "off_name", "on_name"):
+        if key not in raw:
+            raise ValueError(f"radio missing required field: {key}")
+    try:
+        value = int(raw["value"])
+    except (TypeError, ValueError):
+        raise ValueError("radio.value must be an integer") from None
+    return {
+        "score": str(raw["score"]),
+        "value": value,
+        "off_item": str(raw["off_item"]),
+        "on_item": str(raw["on_item"]),
+        "off_name": loader_text(raw["off_name"]),
+        "on_name": loader_text(raw["on_name"]),
+        "off_lore": loader_text_list(raw.get("off_lore")),
+        "on_lore": loader_text_list(raw.get("on_lore")),
+        "on_commands": list(raw.get("on_commands") or []),
+        "off_enchanted": bool(raw.get("off_enchanted", False)),
+        "on_enchanted": bool(raw.get("on_enchanted", True)),
+        "off_custom_model_data": raw.get("off_custom_model_data"),
+        "on_custom_model_data": raw.get("on_custom_model_data"),
+    }
+
+
+def loader_tab_state(raw: Any) -> dict[str, Any]:
+    """Visual states of a page tab: inactive (off) / active (on)."""
+    if not isinstance(raw, dict):
+        raise TypeError("tab must be an object")
+    for key in ("off_item", "on_item"):
+        if key not in raw:
+            raise ValueError(f"tab missing required field: {key}")
+    return {
+        "off_item": str(raw["off_item"]),
+        "on_item": str(raw["on_item"]),
+        "off_name": loader_text(raw.get("off_name")),
+        "on_name": loader_text(raw.get("on_name")),
+        "off_lore": loader_text_list(raw.get("off_lore")),
+        "on_lore": loader_text_list(raw.get("on_lore")),
+        "off_enchanted": bool(raw.get("off_enchanted", False)),
+        "on_enchanted": bool(raw.get("on_enchanted", True)),
     }
 
 
@@ -642,6 +798,34 @@ def loader_widget(raw: Any) -> dict[str, Any]:
             w["name"] = first["name"]
         if not w["action_id"]:
             w["action_id"] = w["cycle"]["score"]
+
+    if kind == "radio":
+        radio_raw = raw.get("radio")
+        if radio_raw is None and ("value" in raw and "score" in raw):
+            # allow flat form: { kind: "radio", score: "...", value: 0, ... }
+            radio_raw = dict(raw)
+        if radio_raw is None:
+            raise ValueError("radio widget requires 'radio' object (or score + value)")
+        w["radio"] = loader_radio_option(radio_raw)
+        if not w["item"] or w["item"] == "minecraft:stone":
+            w["item"] = w["radio"]["off_item"]
+        if w["name"] is None:
+            w["name"] = w["radio"]["off_name"]
+        if not w["action_id"]:
+            w["action_id"] = f"{w['radio']['score']}_v{w['radio']['value']}"
+
+    if kind == "tab":
+        if raw.get("tab") is None:
+            raise ValueError("tab widget requires 'tab' object (off_item + on_item)")
+        w["tab"] = loader_tab_state(raw["tab"])
+        if w["target_page"] is None:
+            raise ValueError("tab widget requires target_page")
+        if not w["item"] or w["item"] == "minecraft:stone":
+            w["item"] = w["tab"]["off_item"]
+        if w["name"] is None:
+            w["name"] = w["tab"].get("off_name") or mk_text("Tab", color="white")
+        if not w["action_id"]:
+            w["action_id"] = f"tab_{slot}"
 
     if kind == "nav" and w["target_page"] is None:
         raise ValueError("nav widget requires target_page")

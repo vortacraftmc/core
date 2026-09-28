@@ -596,6 +596,46 @@ function componentsForCycle(w, index) {
   })];
 }
 
+function componentsForRadio(w, selected) {
+  const r = w.radio;
+  const data = guiCustomData(w);
+  if (!selected) {
+    return [r.off_item, mkItemComponents({
+      custom_name: r.off_name,
+      lore: (r.off_lore || []).slice(),
+      custom_data: data,
+      enchanted: !!r.off_enchanted,
+      custom_model_data: r.off_custom_model_data,
+    })];
+  }
+  return [r.on_item, mkItemComponents({
+    custom_name: r.on_name,
+    lore: (r.on_lore || []).slice(),
+    custom_data: data,
+    enchanted: r.on_enchanted !== false,
+    custom_model_data: r.on_custom_model_data,
+  })];
+}
+
+function componentsForTab(w, active) {
+  const t = w.tab;
+  const data = guiCustomData(w);
+  if (!active) {
+    return [t.off_item, mkItemComponents({
+      custom_name: t.off_name || w.name,
+      lore: (t.off_lore || w.lore || []).slice(),
+      custom_data: data,
+      enchanted: !!t.off_enchanted,
+    })];
+  }
+  return [t.on_item, mkItemComponents({
+    custom_name: t.on_name || w.name,
+    lore: (t.on_lore || w.lore || []).slice(),
+    custom_data: data,
+    enchanted: t.on_enchanted !== false,
+  })];
+}
+
 function isInteractive(w) {
   return !["label", "separator", "progress"].includes(w.kind);
 }
@@ -709,6 +749,7 @@ function collectScores(m) {
     if (w.counter_score && !scores.includes(w.counter_score)) scores.push(w.counter_score);
     if (w.progress_score && !scores.includes(w.progress_score)) scores.push(w.progress_score);
     if (w.cycle && !scores.includes(w.cycle.score)) scores.push(w.cycle.score);
+    if (w.radio && !scores.includes(w.radio.score)) scores.push(w.radio.score);
   }
   return scores;
 }
@@ -740,13 +781,24 @@ function loaderTextList(raw) {
   return out;
 }
 
-const VALID_CONDITION_TYPES = ["item_count_lt", "item_count_gte", "score", "has_tag", "gamemode", "has_advancement"];
+const VALID_CONDITION_TYPES = ["item_count_lt", "item_count_gte", "score", "has_tag", "gamemode", "has_advancement", "dimension", "weather"];
+const VALID_WEATHER_VALUES = ["clear", "rain", "thunder"];
 
 function loaderCondition(raw) {
   if (raw == null) return null;
   if (typeof raw !== "object") throw new TypeError("condition must be an object");
   const ctype = raw.type;
   if (!VALID_CONDITION_TYPES.includes(ctype)) throw new Error(`Unknown condition type: ${ctype}`);
+  if (ctype === "weather" && raw.weather != null && !VALID_WEATHER_VALUES.includes(raw.weather)) {
+    throw new Error(`weather must be one of: ${VALID_WEATHER_VALUES.join(", ")}`);
+  }
+  let dim = raw.dimension ?? raw.dim ?? null;
+  if (ctype === "dimension") {
+    if (typeof dim !== "string" || dim === "") {
+      throw new Error("dimension condition requires 'dimension' (e.g. \"minecraft:the_nether\")");
+    }
+    if (!dim.includes(":")) dim = `minecraft:${dim}`;
+  }
   return {
     type: ctype,
     item: raw.item ?? null,
@@ -757,6 +809,8 @@ function loaderCondition(raw) {
     tag: raw.tag ?? null,
     gamemode: raw.gamemode ?? null,
     advancement: raw.advancement ?? null,
+    dimension: dim,
+    weather: raw.weather ?? null,
     fail_message: loaderText(raw.fail_message),
   };
 }
@@ -813,7 +867,7 @@ const WIDGET_KIND_ALIASES = {
 
 const VALID_WIDGET_KINDS = [
   "button", "label", "separator", "toggle", "counter", "nav", "progress", "close", "confirm", "random",
-  "link", "cycle",
+  "link", "cycle", "radio", "tab",
 ];
 
 function loaderRandomReward(raw, index) {
@@ -880,9 +934,11 @@ function loaderWidget(raw) {
     progress_max: parseInt(raw.progress_max ?? raw.max ?? raw.max_v ?? 10, 10),
     progress_width: parseInt(raw.progress_width ?? raw.width ?? 5, 10),
     progress_full_item: String(raw.progress_full_item ?? raw.full_item ?? "minecraft:lime_stained_glass_pane"),
-    progress_empty_item: String(raw.progress_empty_item ?? raw.empty_item ?? "minecraft:gray_stained_glass_pane"),
-    clickable,
-  });
+      progress_empty_item: String(raw.progress_empty_item ?? raw.empty_item ?? "minecraft:gray_stained_glass_pane"),
+      clickable,
+      radio: null,
+      tab: null,
+    });
 
   if (kind === "toggle") {
     if (!("toggle" in raw)) throw new Error("toggle widget requires 'toggle' object");
@@ -939,6 +995,59 @@ function loaderWidget(raw) {
     if (!w.item || w.item === "minecraft:stone") w.item = first.item;
     if (w.name == null) w.name = first.name;
     if (!w.action_id) w.action_id = w.cycle.score;
+  }
+
+  if (kind === "radio") {
+    let radioRaw = raw.radio;
+    if (radioRaw == null && ("value" in raw && "score" in raw)) radioRaw = raw;
+    if (radioRaw == null) throw new Error("radio widget requires 'radio' object (or score + value)");
+    if (typeof radioRaw !== "object") throw new TypeError("radio must be an object");
+    for (const key of ["score", "value", "off_item", "on_item", "off_name", "on_name"]) {
+      if (!(key in radioRaw)) throw new Error(`radio missing required field: ${key}`);
+    }
+    const value = parseInt(radioRaw.value, 10);
+    if (Number.isNaN(value)) throw new Error("radio.value must be an integer");
+    w.radio = {
+      score: String(radioRaw.score),
+      value,
+      off_item: String(radioRaw.off_item),
+      on_item: String(radioRaw.on_item),
+      off_name: loaderText(radioRaw.off_name),
+      on_name: loaderText(radioRaw.on_name),
+      off_lore: loaderTextList(radioRaw.off_lore),
+      on_lore: loaderTextList(radioRaw.on_lore),
+      on_commands: (radioRaw.on_commands || []).slice(),
+      off_enchanted: !!radioRaw.off_enchanted,
+      on_enchanted: radioRaw.on_enchanted !== false,
+      off_custom_model_data: radioRaw.off_custom_model_data ?? null,
+      on_custom_model_data: radioRaw.on_custom_model_data ?? null,
+    };
+    if (!w.item || w.item === "minecraft:stone") w.item = w.radio.off_item;
+    if (w.name == null) w.name = w.radio.off_name;
+    if (!w.action_id) w.action_id = `${w.radio.score}_v${w.radio.value}`;
+  }
+
+  if (kind === "tab") {
+    if (raw.tab == null) throw new Error("tab widget requires 'tab' object (off_item + on_item)");
+    const t = raw.tab;
+    if (typeof t !== "object") throw new TypeError("tab must be an object");
+    for (const key of ["off_item", "on_item"]) {
+      if (!(key in t)) throw new Error(`tab missing required field: ${key}`);
+    }
+    w.tab = {
+      off_item: String(t.off_item),
+      on_item: String(t.on_item),
+      off_name: loaderText(t.off_name),
+      on_name: loaderText(t.on_name),
+      off_lore: loaderTextList(t.off_lore),
+      on_lore: loaderTextList(t.on_lore),
+      off_enchanted: !!t.off_enchanted,
+      on_enchanted: t.on_enchanted !== false,
+    };
+    if (w.target_page == null) throw new Error("tab widget requires target_page");
+    if (!w.item || w.item === "minecraft:stone") w.item = w.tab.off_item;
+    if (w.name == null) w.name = w.tab.off_name || mkText("Tab", { color: "white" });
+    if (!w.action_id) w.action_id = `tab_${slot}`;
   }
 
   if (kind === "nav" && w.target_page == null) throw new Error("nav widget requires target_page");
@@ -1081,6 +1190,29 @@ function emitCycle(menu, w) {
   return lines;
 }
 
+function emitRadio(menu, w) {
+  const lines = [];
+  const r = w.radio;
+  for (const selected of [false, true]) {
+    const [item, comps] = componentsForRadio(w, selected);
+    const cmd = itemReplaceCommand(cartSelector(menu), w.slot, item, comps);
+    const kw = selected ? "if" : "unless";
+    lines.push(`execute ${kw} score @s ${r.score} matches ${r.value} run ${cmd}`);
+  }
+  return lines;
+}
+
+function emitTab(menu, w) {
+  const lines = [];
+  for (const active of [false, true]) {
+    const [item, comps] = componentsForTab(w, active);
+    const cmd = itemReplaceCommand(cartSelector(menu), w.slot, item, comps);
+    const kw = active ? "if" : "unless";
+    lines.push(`execute ${kw} score @s guigen_page matches ${w.target_page} run ${cmd}`);
+  }
+  return lines;
+}
+
 function emitProgress(menu, w) {
   const lines = [];
   const width = w.progress_width;
@@ -1122,6 +1254,8 @@ function generatePageFills(menu, out) {
       lines.push(`# slot ${w.slot}: ${resolvedActionId(w)} (${w.kind})`);
       if (w.kind === "toggle") lines.push(...emitToggle(menu, w));
       else if (w.kind === "cycle") lines.push(...emitCycle(menu, w));
+      else if (w.kind === "radio") lines.push(...emitRadio(menu, w));
+      else if (w.kind === "tab") lines.push(...emitTab(menu, w));
       else if (w.kind === "progress") lines.push(...emitProgress(menu, w));
       else lines.push(...emitStatic(menu, w));
       lines.push("");
@@ -1250,6 +1384,25 @@ function handlerFor(menu, w) {
     lines.push(`function ${menuFunctionPrefix(menu)}/fill`);
     const msg = w.success_message || mkText("Confirm?", { color: "gold" });
     lines.push(tellrawLine(msg));
+    return lines;
+  }
+
+  if (w.kind === "radio") {
+    const r = w.radio;
+    lines.push(...playsound(w.sound));
+    lines.push(`scoreboard players set @s ${r.score} ${r.value}`);
+    for (const c of r.on_commands) lines.push(c);
+    lines.push("");
+    lines.push(tellrawLine(w.success_message || r.on_name));
+    lines.push(`function ${menuFunctionPrefix(menu)}/fill`);
+    return lines;
+  }
+
+  if (w.kind === "tab") {
+    lines.push(...playsound(w.sound));
+    lines.push(`scoreboard players set @s guigen_page ${w.target_page}`);
+    lines.push(`function ${menuFunctionPrefix(menu)}/fill`);
+    if (w.success_message) lines.push(tellrawLine(w.success_message));
     return lines;
   }
 
@@ -1402,6 +1555,23 @@ function handlerFor(menu, w) {
       const ok = `execute if entity @s[advancements={${adv}=true}] run `;
       lines.push(...successBlock(ok));
       lines.push(`execute unless entity @s[advancements={${adv}=true}] run ${tellrawLine(fail)}`);
+    } else if (cond.type === "dimension") {
+      // guikit-datapack v5 port (cond/t_dimension): `at @s` moves execution
+      // to the player so the check works regardless of caller context.
+      const dim = cond.dimension || "minecraft:overworld";
+      const ok = `execute at @s if dimension ${dim} run `;
+      lines.push(...successBlock(ok));
+      lines.push(`execute at @s unless dimension ${dim} run ${tellrawLine(fail)}`);
+    } else if (cond.type === "weather") {
+      // Java Edition has no `execute if weather` subcommand (guikit v5's
+      // cond/t_weather was invalid syntax). The real generator emits
+      // minecraft:weather_check predicate files and references them here;
+      // `at @s` reads the weather where the player stands.
+      const wx = cond.weather || "clear";
+      const pred = `${menu.namespace}:guigen/weather_${wx}`;
+      const ok = `execute at @s if predicate ${pred} run `;
+      lines.push(...successBlock(ok));
+      lines.push(`execute at @s unless predicate ${pred} run ${tellrawLine(fail)}`);
     } else {
       lines.push(...emitActions(w));
       if (w.success_message) lines.push(tellrawLine(w.success_message));
@@ -1469,6 +1639,7 @@ function generateOpen(menu, out) {
     if (w.counter_score) scoresToInit.push(w.counter_score);
     if (w.progress_score) scoresToInit.push(w.progress_score);
     if (w.cycle) scoresToInit.push(w.cycle.score);
+    if (w.radio) scoresToInit.push(w.radio.score);
     for (const sc of scoresToInit) {
       if (inited.has(sc)) continue;
       inited.add(sc);

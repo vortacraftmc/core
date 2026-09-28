@@ -153,6 +153,13 @@ def cmd_generate(args: argparse.Namespace) -> int:
     print(f"  2. Run  {C.CYAN}/reload{C.RESET}")
     print(f"  3. Run  {C.CYAN}{summary['open_command']}{C.RESET}")
     print()
+    # guikit-datapack v5 port: permission-0 player triggers
+    info("Player triggers (no operator needed — guikit v5 port):")
+    print(f"  {C.CYAN}/trigger guigen.open{C.RESET}   open the menu")
+    print(f"  {C.CYAN}/trigger guigen.last{C.RESET}   reopen it (remembered across /reload)")
+    print(f"  {C.CYAN}/trigger guigen.close{C.RESET}  close your own menu immediately")
+    print(f"  {C.CYAN}/function {summary['namespace']}:core/close_all{C.RESET}   close every open menu (ops)")
+    print()
     return 0
 
 

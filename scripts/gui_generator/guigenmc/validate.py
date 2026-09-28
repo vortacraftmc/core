@@ -64,9 +64,9 @@ def validate_menu(menu: dict[str, Any]) -> list[str]:
 
     valid_indices = {p["index"] for p in menu["pages"]}
     for w in all_widgets(menu):
-        if w["kind"] == "nav" and w.get("target_page") not in valid_indices:
+        if w["kind"] in ("nav", "tab") and w.get("target_page") not in valid_indices:
             warnings.append(
-                f'Widget "{resolved_action_id(w)}" (nav) targets page {w.get("target_page")}, '
+                f'Widget "{resolved_action_id(w)}" ({w["kind"]}) targets page {w.get("target_page")}, '
                 f"which does not exist. Valid pages: {', '.join(str(i) for i in sorted(valid_indices))}."
             )
         if w["kind"] == "confirm" and w.get("confirm_page") not in valid_indices:
@@ -88,6 +88,25 @@ def validate_menu(menu: dict[str, Any]) -> list[str]:
                 warnings.append(
                     f'Widget "{resolved_action_id(w)}" (cycle) needs at least 2 options.'
                 )
+
+    radio_groups: dict[str, list[dict[str, Any]]] = {}
+    for w in all_widgets(menu):
+        if w["kind"] == "radio":
+            radio_groups.setdefault(w["radio"]["score"], []).append(w)
+    for score, widgets in radio_groups.items():
+        values = [w["radio"]["value"] for w in widgets]
+        if len(set(values)) < 2:
+            names = ", ".join(resolved_action_id(w) for w in widgets)
+            warnings.append(
+                f'Radio group "{score}" has fewer than 2 distinct values ({names}) — '
+                f"a radio group with one option is just a button."
+            )
+        dups = sorted({v for v in values if values.count(v) > 1})
+        if dups:
+            warnings.append(
+                f'Radio group "{score}" has duplicate value(s) {dups} — '
+                f"multiple options would appear selected at once."
+            )
 
     seen_action_ids: dict[str, list[dict[str, Any]]] = {}
     for w in interactive_widgets(menu):

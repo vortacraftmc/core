@@ -33,6 +33,14 @@ def generate_load(menu: dict[str, Any], out: dict[str, str]) -> None:
 
     for score in scores:
         lines.append(f"scoreboard objectives add {score} dummy")
+    # guikit-datapack v5 port: permission-0 player triggers
+    lines.extend(
+        [
+            "scoreboard objectives add guigen.open trigger",
+            "scoreboard objectives add guigen.last trigger",
+            "scoreboard objectives add guigen.close trigger",
+        ]
+    )
     cart = f"@e[type={container_entity_id(menu['container'])},tag={menu_tag(menu)}]"
     lines.extend(
         [
@@ -82,6 +90,9 @@ def generate_open(menu: dict[str, Any], out: dict[str, str]) -> None:
             scores_to_init.append(w["progress_score"])
         if w.get("cycle"):
             scores_to_init.append(w["cycle"]["score"])
+        if w.get("radio"):
+            # default: the option with value 0 starts selected
+            scores_to_init.append(w["radio"]["score"])
         for sc in scores_to_init:
             if sc in inited:
                 continue
@@ -94,8 +105,15 @@ def generate_open(menu: dict[str, Any], out: dict[str, str]) -> None:
             f"function {menu_function_prefix(menu)}/fill",
             f"scoreboard players set @s guigen_menu_timer {menu['timer_ticks']}",
             "",
+            "# guikit-datapack v5 port: world-saved memory of the last opened",
+            "# menu — dummy scores persist across /reload, which powers",
+            "# /trigger guigen.last.",
+            "scoreboard players set @s guigen_opened 1",
+            "",
             'tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},'
             '{"text":"Menu opened. Right-click the cart, then SHIFT-click buttons.","color":"yellow"}]',
+            'tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},'
+            '{"text":"Tip: /trigger guigen.close closes instantly, /trigger guigen.last reopens.","color":"gray","italic":true}]',
             "",
         ]
     )
@@ -126,6 +144,86 @@ def generate_close(menu: dict[str, Any], out: dict[str, str]) -> None:
 
 
 
+WEATHER_PREDICATE_FIELDS = {
+    # Java Edition has no `execute if weather` subcommand; the supported
+    # check is the minecraft:weather_check predicate. raining=true also
+    # passes during thunderstorms, so `rain` pins thundering=false.
+    "clear": {"raining": False, "thundering": False},
+    "rain": {"raining": True, "thundering": False},
+    "thunder": {"raining": True, "thundering": True},
+}
+
+
+def generate_weather_predicates(menu: dict[str, Any], out: dict[str, str]) -> None:
+    """Emit minecraft:weather_check predicate files for every weather value used."""
+    used: set[str] = set()
+    for w in all_widgets(menu):
+        cond = w.get("condition")
+        if cond and cond["type"] == "weather":
+            used.add(cond["weather"])
+    ns = menu["namespace"]
+    for wx in sorted(used):
+        data = {"type": "minecraft:weather_check", **WEATHER_PREDICATE_FIELDS[wx]}
+        out[f"data/{ns}/predicate/guigen/weather_{wx}.json"] = (
+            json.dumps(data, indent=2) + "\n"
+        )
+
+
+def generate_triggers(menu: dict[str, Any], out: dict[str, str]) -> None:
+    """guikit-datapack v5 port: permission-0 player triggers.
+
+    Mirrors guikit v5's play/open_trigger, play/last_trigger,
+    play/close_trigger and api/close_all — adapted to guigenmc's
+    single-static-menu model (the remembered state is the world-saved
+    ``guigen_opened`` dummy score instead of guikit's pid-keyed storage).
+    """
+    open_fn = f"function {menu_function_prefix(menu)}/open"
+    close_fn = f"function {menu_function_prefix(menu)}/close"
+
+    out[f"{core_dir_path(menu)}/open_trigger.mcfunction"] = "\n".join(
+        [
+            "# Auto-generated — /trigger guigen.open (guikit v5 port)",
+            "scoreboard players set @s guigen.open 0",
+            "scoreboard players enable @s guigen.open",
+            open_fn,
+            "",
+        ]
+    )
+    out[f"{core_dir_path(menu)}/last_trigger.mcfunction"] = "\n".join(
+        [
+            "# Auto-generated — /trigger guigen.last (guikit v5 port: play/last_trigger)",
+            "# Reopens the menu if this player ever opened it. The remembered state",
+            "# (guigen_opened) is world-saved, so it survives /reload — same property",
+            "# guikit v5 gets from storage guikit:mem last.m<pid>.",
+            "scoreboard players set @s guigen.last 0",
+            "scoreboard players enable @s guigen.last",
+            'execute unless score @s guigen_opened matches 1.. run tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},{"text":"You have not opened this menu yet.","color":"red"}]',
+            "execute unless score @s guigen_opened matches 1.. run return 0",
+            open_fn,
+            "",
+        ]
+    )
+    out[f"{core_dir_path(menu)}/close_trigger.mcfunction"] = "\n".join(
+        [
+            "# Auto-generated — /trigger guigen.close (guikit v5 port: play/close_trigger)",
+            "# Instant self-close — no operator permission needed.",
+            "scoreboard players set @s guigen.close 0",
+            "scoreboard players enable @s guigen.close",
+            'execute unless score @s guigen_menu_timer matches 1.. run tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},{"text":"No open menu to close.","color":"red"}]',
+            "execute unless score @s guigen_menu_timer matches 1.. run return 0",
+            close_fn,
+            "",
+        ]
+    )
+    out[f"{core_dir_path(menu)}/close_all.mcfunction"] = "\n".join(
+        [
+            "# Auto-generated — guikit v5 port (api/close_all): closes every open menu (ops)",
+            f"execute as @a[scores={{guigen_menu_timer=1..}}] run {close_fn}",
+            "",
+        ]
+    )
+
+
 def generate_tags(menu: dict[str, Any], out: dict[str, str]) -> None:
     out["data/minecraft/tags/function/load.json"] = (
         json.dumps({"values": [f"{menu_core_prefix(menu)}/load"]}, indent=2) + "\n"
@@ -136,5 +234,6 @@ def generate_tags(menu: dict[str, Any], out: dict[str, str]) -> None:
 
 
 def generate_pack_mcmeta(out: dict[str, str], description: str) -> None:
-    data = {"pack": {"description": description, "min_format": 119, "max_format": 119}}
+    # guikit-datapack commit 6a0b2f6 port: pack format 119 → 122
+    data = {"pack": {"description": description, "min_format": 122, "max_format": 122}}
     out["pack.mcmeta"] = json.dumps(data, indent=2) + "\n"
