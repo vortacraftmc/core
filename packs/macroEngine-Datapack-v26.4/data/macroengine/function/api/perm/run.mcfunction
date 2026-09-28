@@ -12,4 +12,3 @@ execute if data storage macroengine:engine _pr_tmp{result:0b} run return 0
 $execute as @a if score @s macroengine.pid = $pr_pid macroengine.tmp at @s run $(cmd)
 
 data remove storage macroengine:engine _pr_tmp
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"perm/run ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" [","color":"#555555"},{"text":"$(perm)","color":"green"},{"text":"] → ","color":"#555555"},{"text":"$(cmd)","color":"aqua"}]

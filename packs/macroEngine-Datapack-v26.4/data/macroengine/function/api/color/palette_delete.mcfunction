@@ -7,5 +7,5 @@
 # Output → none
 #
 # Usage:
-#   function macroengine:api/color/palette_delete {key:"brand"}$data remove storage macroengine:engine color.palette.$(key)
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"color/palette_delete ","color":"aqua"},{"text":"$(key)","color":"white"}]
+#   function macroengine:api/color/palette_delete {key:"brand"}
+$data remove storage macroengine:engine color.palette.$(key)

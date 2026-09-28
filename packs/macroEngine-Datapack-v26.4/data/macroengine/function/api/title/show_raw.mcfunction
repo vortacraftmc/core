@@ -19,4 +19,3 @@
 #     fade_in:10,stay:70,fade_out:20}$title @a[name=$(player),limit=1] times $(fade_in) $(stay) $(fade_out)
 $title @a[name=$(player),limit=1] title $(title_json)
 $title @a[name=$(player),limit=1] subtitle $(subtitle_json)
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"title/show_raw ","color":"aqua"},{"text":"$(player)","color":"white"}]

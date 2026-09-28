@@ -31,5 +31,3 @@ $data modify storage macroengine:output result set value "$(high_color)"
 # Override with low or mid if score is below threshold
 $execute if score $(player) $(objective) matches ..$(low_threshold) run data modify storage macroengine:output result set value "$(low_color)"
 $execute if score $(player) $(objective) matches $(low_threshold)..$(mid_threshold) run data modify storage macroengine:output result set value "$(mid_color)"
-
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"color/from_score ","color":"aqua"},{"text":"$(player) ","color":"white"},{"text":"→ ","color":"#555555"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"green"}]
