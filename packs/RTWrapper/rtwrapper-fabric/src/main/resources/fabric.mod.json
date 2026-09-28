@@ -9,7 +9,7 @@
     "Runtoolkit (original source)"
   ],
   "contact": {
-    "homepage": "https://modrinth.com/datapack/rtwrapper",
+    "homepage": "https://github.com/vortacraftmc/core",
     "issues": "https://github.com/vortacraftmc/core/issues",
     "sources": "https://github.com/vortacraftmc/core"
   },
@@ -34,10 +34,7 @@
   },
   "custom": {
     "modmenu": {
-      "update_checker": false,
-      "links": {
-        "modmenu.modrinth": "https://modrinth.com/datapack/rtwrapper"
-      }
+      "update_checker": false
     }
   }
 }

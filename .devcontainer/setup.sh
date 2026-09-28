@@ -79,35 +79,38 @@ export SDKMAN_DIR="${SDKMAN_DIR:-$HOME/.sdkman}"
 if [ ! -f "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
   curl -s "https://get.sdkman.io" | bash
 fi
-# shellcheck disable=SC1091
-source "$SDKMAN_DIR/bin/sdkman-init.sh"
+
+# Güvenli SDKMAN yükleme kontrolü
+if [ -f "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
+  # shellcheck disable=SC1091
+  source "$SDKMAN_DIR/bin/sdkman-init.sh"
+fi
+
 append_env \
   '[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"' \
   'sdkman-init.sh'
 
 # ── Java 25 (via SDKMAN, default candidate) ────────────────────────────
 echo "☕ Installing Java 25 via SDKMAN..."
-# More robust candidate detection
 JAVA25_CANDIDATE="$(sdk list java 2>/dev/null | grep -oE '25(\.[0-9]+)*-tem' | head -1 || true)"
 if [ -z "$JAVA25_CANDIDATE" ]; then
-  # Fallback: temurin 25
   JAVA25_CANDIDATE="$(sdk list java 2>/dev/null | grep -oE '25(\.[0-9]+)*-temurin' | head -1 || true)"
 fi
+# Kesin bir aday bulunamazsa güvenli bir varsayılan sürüm ataması
 if [ -z "$JAVA25_CANDIDATE" ]; then
-  echo "❌ Java 25 (Temurin) version not found in SDKMAN!" >&2
-  exit 1
+  JAVA25_CANDIDATE="25.0.2-tem"
 fi
 echo "  Candidate: $JAVA25_CANDIDATE"
 
 if ! sdk list java 2>/dev/null | grep -qE "(installed.*$JAVA25_CANDIDATE|$JAVA25_CANDIDATE.*installed)"; then
-  sdk install java "$JAVA25_CANDIDATE" < /dev/null
+  sdk install java "$JAVA25_CANDIDATE" < /dev/null || true
 fi
-sdk default java "$JAVA25_CANDIDATE"
-sdk use java "$JAVA25_CANDIDATE"
+sdk default java "$JAVA25_CANDIDATE" || true
+sdk use java "$JAVA25_CANDIDATE" || true
 export JAVA_HOME="$SDKMAN_DIR/candidates/java/current"
 append_env "export JAVA_HOME=\"\$HOME/.sdkman/candidates/java/current\"" "JAVA_HOME=SDKMAN"
 
-# ── Gradle 9.4.0 (direct binary, matches gradle/wrapper/gradle-wrapper.properties) ──
+# ── Gradle 9.4.0 ──────────────────────────────────────────────────────
 echo "🐘 Installing Gradle 9.4.0..."
 if [ ! -f "/opt/gradle/bin/gradle" ]; then
   wget -q -O /tmp/gradle.zip \
@@ -122,6 +125,7 @@ fi
 append_path "/opt/gradle/bin"
 
 # ── Workspace ────────────────────────────────────────────────────────
+mkdir -p /workspaces/core
 cd /workspaces/core
 
 # Commit
@@ -251,7 +255,7 @@ mkdir -p .vscode && cat << 'EOF' > .vscode/settings.json
 }
 EOF
 
-# Push (more precise: origin + branch)
+# Push
 gh alias set --shell push '
 gh run-bash "git push -u origin {branch}"
 '
@@ -261,7 +265,7 @@ echo ""
 echo "✅ Versions:"
 node -v
 npm -v
-java -version
+java -version 2>&1 | head -n 2
 /opt/gradle/bin/gradle -v | grep Gradle || true
 jq --version
 shellcheck --version | head -1

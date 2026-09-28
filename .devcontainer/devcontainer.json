@@ -6,16 +6,16 @@
       "configureZshAsDefaultShell": true
     }
   },
-  "remoteEnv": {
-    "GITHUB_TOKEN": "${localEnv:RT_CONSOLIDATE_TOKEN}"
-  },
   "postCreateCommand": "bash setup.sh",
   "postStartCommand": "bash start.sh",
   "customizations": {
     "vscode": {
       "extensions": [
-        "eamodio.gitlens",
-        "github.copilot"
+        "misode.vscode-datapack-helper",
+        "SPGoding.datapack-language-server",
+        "redhat.java",
+        "vscjava.vscode-java-pack",
+        "vscjava.vscode-gradle"
       ]
     }
   }
