@@ -26,5 +26,3 @@ data modify storage macroengine:engine color._names set value {\
   yellow:1b,\
   white:1b\
 }
-
-# # tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"color/init ","color":"aqua"},{"text":"named color table loaded (16 entries)","color":"gray"}]

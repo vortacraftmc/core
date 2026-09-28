@@ -10,5 +10,4 @@ $execute if data storage macroengine:engine _pex_tmp{result:0b} run execute as @
 execute if data storage macroengine:engine _pex_tmp{result:0b} run return 0
 
 $execute as @a if score @s macroengine.pid = $pex_pid macroengine.tmp at @s run $(cmd)
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"perm/exec ","color":"aqua"},{"text":"$(player)","color":"white"},{"text":" [","color":"#555555"},{"text":"$(perm)","color":"aqua"},{"text":"] → ","color":"#555555"},{"text":"$(cmd)","color":"green"}]
 data remove storage macroengine:engine _pex_tmp

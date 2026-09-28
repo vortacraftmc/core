@@ -26,5 +26,3 @@ execute if data storage macroengine:input on_leave run data modify storage macro
 # on_enter_cmd / on_leave_cmd
 execute if data storage macroengine:input on_enter_cmd run data modify storage macroengine:engine region_watches[-1].on_enter_cmd set from storage macroengine:input on_enter_cmd
 execute if data storage macroengine:input on_leave_cmd run data modify storage macroengine:engine region_watches[-1].on_leave_cmd set from storage macroengine:input on_leave_cmd
-
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"geo/region_watch/register ","color":"aqua"},{"text":"$(id)","color":"white"},{"text":" ($(x1),$(y1),$(z1))→($(x2),$(y2),$(z2))","color":"#555555"}]

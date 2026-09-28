@@ -8,5 +8,3 @@ $execute unless data storage macroengine:engine fibers.$(id){alive:1b} run retur
 # Run via central dispatch
 $data modify storage macroengine:engine _dispatch.func set value "$(func)"
 function #macroengine:internal/dispatch
-
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"lib/fiber/resume ","color":"aqua"},{"text":"[run] ","color":"green"},{"text":"$(id)","color":"white"},{"text":" → ","color":"#555555"},{"text":"$(func)","color":"aqua"}]

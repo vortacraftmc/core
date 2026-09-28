@@ -17,5 +17,3 @@ scoreboard players operation $vdax macroengine.tmp += $vday macroengine.tmp
 scoreboard players operation $vdax macroengine.tmp += $vdaz macroengine.tmp
 
 execute store result storage macroengine:output result int 1 run scoreboard players get $vdax macroengine.tmp
-
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"math/vec/dot ","color":"aqua"},{"text":"($(ax),$(ay),$(az))·($(bx),$(by),$(bz)) → ","color":"gray"},{"plain":true ,"storage":"macroengine:output","nbt":"result","color":"yellow"}]

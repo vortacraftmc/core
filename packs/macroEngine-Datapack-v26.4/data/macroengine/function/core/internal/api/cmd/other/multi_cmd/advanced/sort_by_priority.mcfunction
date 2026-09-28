@@ -34,5 +34,3 @@ data remove storage macroengine:engine _sort_zero
 data remove storage macroengine:engine _sort_pos
 data remove storage macroengine:engine _sort_tmp
 data remove storage macroengine:engine _sort_cur
-
-# # tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"multi_cmd/sort ","color":"aqua"},{"text":"✔ sorted by priority","color":"green"}]

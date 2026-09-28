@@ -13,7 +13,4 @@
 #   function macroengine:api/title/actionbar {player:"Steve",json:'{"text":"HP: 20/20","color":"red"}'}
 #   function macroengine:api/title/actionbar {player:"Steve",\
 #     json:'[{"text":"Kills: "},{"score":{"name":"@s","objective":"kills"},"color":"gold"}]'}
-
-
 $title @a[name=$(player),limit=1] actionbar $(json)
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"title/actionbar ","color":"aqua"},{"text":"$(player)","color":"white"}]

@@ -4,8 +4,6 @@
 # (macroengine:core/internal/load/force) applies immediately, no confirmation
 # gate (that gate system has been removed).
 
-function macroengine:config
-
 # Archive banner (score-controlled)
 execute if score #vortacraftmc.archivedpacks.macroengine macroengine.meta matches 1 run tellraw @s {"text":"[macroengine] This pack is marked archived (#vortacraftmc.archivedpacks.macroengine=1).","color":"red"}
 
@@ -14,4 +12,5 @@ execute if data storage macroengine:engine global{loaded:1b} if data storage mac
 
 execute if data storage macroengine:engine global{loaded:1b} run return 0
 
-schedule function macroengine:core/internal/load/all 2s
+function macroengine:config
+function macroengine:core/internal/load/all
