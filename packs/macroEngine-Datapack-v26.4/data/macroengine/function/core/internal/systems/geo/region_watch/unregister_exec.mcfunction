@@ -13,5 +13,3 @@ data modify storage macroengine:engine region_watches set from storage macroengi
 data remove storage macroengine:engine _rw_new
 data remove storage macroengine:engine _rw_src
 data remove storage macroengine:engine _rw_unbind_id
-
-# # $tellraw @a[tag=macroengine.debug] ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"geo/region_watch/unregister ","color":"aqua"},{"text":"$(id)","color":"white"},{"text":" removed","color":"#555555"}]
