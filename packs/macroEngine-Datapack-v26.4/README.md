@@ -41,7 +41,7 @@
 2. Run `/reload` or restart the server.
 3. macroEngine initializes automatically via `#macroengine:events/on_load`.
 
-To manually check load state or configuration, see `data/macroengine/function/config/` and `data/macroengine/function/debug/`.
+To check the default tick configuration, see `data/macroengine/function/config/`.
 
 ---
 

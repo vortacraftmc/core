@@ -18,14 +18,13 @@ execute unless data storage macroengine:engine config run data modify storage ma
 
 # Feature toggles (override via /data modify storage macroengine:engine config.*)
 execute unless data storage macroengine:engine config.enabled run data modify storage macroengine:engine config.enabled set value 1b
-execute unless data storage macroengine:engine config.debug_default run data modify storage macroengine:engine config.debug_default set value 0b
 execute unless data storage macroengine:engine config.log_level run data modify storage macroengine:engine config.log_level set value 1
 execute unless data storage macroengine:engine config.reload_warn run data modify storage macroengine:engine config.reload_warn set value 1b
 execute unless data storage macroengine:engine config.namespace_allowlist run data modify storage macroengine:engine config.namespace_allowlist set value ["macroengine:"]
 
 # No permission gate exists in this pack (see core/internal/load/loader/storages
 # for the remaining, non-gate security. fields: sandbox_allowlist,
-# multi_type_allowlist, auto_debug_tag).
+# multi_type_allowlist).
 execute unless data storage macroengine:engine security run data modify storage macroengine:engine security set value {}
 
 # ── Experimental feature flags (systems/flag/experimental/*) ──────

@@ -116,13 +116,7 @@ execute unless data storage macroengine:engine wand_cooldowns run data modify st
 #
 # Remaining fields:
 #   multi_type_allowlist  compound of permitted multiCommands.type values
-#   auto_debug_tag        1b = macroengine.admin tag auto-grants macroengine.debug
-#                          every tick (default, legacy behavior). 0b =
-#                          admins must be given macroengine.debug explicitly
-#                          via /function macroengine:debug/tools/admin/debug_tag/*
-#                          (see admin_systems.mcfunction)
 # ─────────────────────────────────────────────────────────────────
-execute unless data storage macroengine:engine security.auto_debug_tag run data modify storage macroengine:engine security.auto_debug_tag set value 1b
 
 # ─────────────────────────────────────────────────────────────────
 # Module toggle init (macroengine:api/toggle)
