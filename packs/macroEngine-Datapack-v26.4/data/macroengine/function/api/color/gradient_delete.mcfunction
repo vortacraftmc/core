@@ -6,4 +6,4 @@
 #
 # Usage:
 #   function macroengine:api/color/gradient_delete {name:"health"}
-$data remove storage macroengine:engine color.gradients.$(name
+$data remove storage macroengine:engine color.gradients.$(name)
