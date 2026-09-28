@@ -140,7 +140,7 @@ Minimal `config.json`:
 | `link` | Clickable external URL (tellraw `open_url`) |
 | `cycle` | Cycle through options (score-based selector) |
 
-Also supports: cost, cooldown, conditions (`item_count_*`, `score`, `has_tag`, `gamemode`, **`has_advancement`**), sounds, multi-page menus, hopper/chest minecart containers.
+Also supports: cost, cooldown, conditions (`item_count_*`, `score`, `has_tag`, `gamemode`, **`has_advancement`**, **`dimension`**, **`weather`**), sounds, multi-page menus, hopper/chest minecart containers, and permission-0 **player triggers** (`/trigger guigen.open|last|close`) ported from guikit-datapack v5.
 
 ### New widget examples
 
@@ -190,6 +190,63 @@ Also supports: cost, cooldown, conditions (`item_count_*`, `score`, `has_tag`, `
   }
 }
 ```
+
+**dimension condition** *(ported from guikit-datapack v5)*
+
+Passes when the player currently is in that dimension (any dimension id;
+bare ids are normalized to the `minecraft:` namespace). The check runs in the
+player's execution context, so it is correct no matter where the caller was
+running.
+
+```json
+{
+  "kind": "button",
+  "slot": 10,
+  "item": "minecraft:obsidian",
+  "name": { "text": "Nether-only Warp" },
+  "commands": ["tp @s 0 80 0"],
+  "condition": {
+    "type": "dimension",
+    "dimension": "minecraft:the_nether",
+    "fail_message": { "text": "Only works in the Nether.", "color": "red" }
+  }
+}
+```
+
+**weather condition** *(ported from guikit-datapack v5)*
+
+Passes when the weather in the player's dimension matches: `clear` | `rain` |
+`thunder`.
+
+```json
+{
+  "kind": "button",
+  "slot": 12,
+  "item": "minecraft:water_bucket",
+  "name": { "text": "Rain Dance" },
+  "commands": ["weather rain"],
+  "condition": {
+    "type": "weather",
+    "weather": "clear",
+    "fail_message": { "text": "It is already raining.", "color": "gray" }
+  }
+}
+```
+
+### Player triggers *(ported from guikit-datapack v5)*
+
+Every generated pack registers three **permission-0** triggers, so players can
+operate the menu without being operators — the same v5 ergonomics as
+`guikit.last` / `guikit.close`:
+
+| Command | Effect |
+| --- | --- |
+| `/trigger guigen.open` | Opens this pack's menu |
+| `/trigger guigen.last` | Reopens it if the player ever opened it — the memory is world-saved and survives `/reload` |
+| `/trigger guigen.close` | Closes the player's own open menu immediately (no operator, no waiting for the timeout) |
+| `/function <namespace>:core/close_all` | Operator helper: closes every open menu at once (map resets, minigame rounds…) |
+
+`/function <namespace>:menu/<menu_id>/open` keeps working as before.
 
 ---
 

@@ -46,7 +46,27 @@ VALID_CONDITION_TYPES = [
     "has_tag",
     "gamemode",
     "has_advancement",
+    "dimension",
+    "weather",
 ]
+
+VALID_WEATHER_VALUES = ["clear", "rain", "thunder"]
+
+
+def validate_dimension_id(value: Any, field_name: str = "dimension") -> str:
+    """Validate a dimension id like `minecraft:the_nether`.
+
+    Bare ids ('overworld') are accepted and normalized to the minecraft
+    namespace. Raises ValueError with a clear message otherwise.
+    """
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"Invalid {field_name}: must be a non-empty string")
+    ns, sep, path = value.partition(":")
+    if not sep:
+        ns, path = "minecraft", value
+    validate_identifier(ns, f"{field_name} namespace")
+    validate_identifier(path, f"{field_name} path")
+    return f"{ns}:{path}"
 
 CONTAINER_TYPES: dict[str, tuple[str, int]] = {
     "chest_minecart": ("chest_minecart", 27),
@@ -329,7 +349,15 @@ def interactive_widgets(m: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def collect_scores(m: dict[str, Any]) -> list[str]:
-    scores = ["guigen_menu_timer", "guigen_click", "guigen_page", "guigen_tmp", "guigen_rand"]
+    scores = [
+        "guigen_menu_timer",
+        "guigen_click",
+        "guigen_page",
+        "guigen_tmp",
+        "guigen_rand",
+        # guikit-datapack v5 port: world-saved "last opened menu" memory
+        "guigen_opened",
+    ]
     for s in m.get("extra_scores") or []:
         if s not in scores:
             scores.append(s)
@@ -407,6 +435,22 @@ def loader_condition(raw: Any) -> dict[str, Any] | None:
     ctype = raw.get("type")
     if ctype not in VALID_CONDITION_TYPES:
         raise ValueError(f"Unknown condition type: {ctype}")
+
+    dimension = raw.get("dimension", raw.get("dim"))
+    weather = raw.get("weather")
+    if ctype == "dimension":
+        if not dimension:
+            raise ValueError(
+                "dimension condition requires 'dimension' "
+                "(e.g. \"minecraft:the_nether\")"
+            )
+        dimension = validate_dimension_id(dimension)
+    if ctype == "weather":
+        if weather not in VALID_WEATHER_VALUES:
+            raise ValueError(
+                f"weather must be one of: {', '.join(VALID_WEATHER_VALUES)}"
+            )
+
     return {
         "type": ctype,
         "item": raw.get("item"),
@@ -417,6 +461,8 @@ def loader_condition(raw: Any) -> dict[str, Any] | None:
         "tag": raw.get("tag"),
         "gamemode": raw.get("gamemode"),
         "advancement": raw.get("advancement"),
+        "dimension": dimension,
+        "weather": weather,
         "fail_message": loader_text(raw.get("fail_message")),
     }
 

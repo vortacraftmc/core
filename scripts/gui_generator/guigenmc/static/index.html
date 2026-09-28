@@ -740,13 +740,24 @@ function loaderTextList(raw) {
   return out;
 }
 
-const VALID_CONDITION_TYPES = ["item_count_lt", "item_count_gte", "score", "has_tag", "gamemode", "has_advancement"];
+const VALID_CONDITION_TYPES = ["item_count_lt", "item_count_gte", "score", "has_tag", "gamemode", "has_advancement", "dimension", "weather"];
+const VALID_WEATHER_VALUES = ["clear", "rain", "thunder"];
 
 function loaderCondition(raw) {
   if (raw == null) return null;
   if (typeof raw !== "object") throw new TypeError("condition must be an object");
   const ctype = raw.type;
   if (!VALID_CONDITION_TYPES.includes(ctype)) throw new Error(`Unknown condition type: ${ctype}`);
+  if (ctype === "weather" && raw.weather != null && !VALID_WEATHER_VALUES.includes(raw.weather)) {
+    throw new Error(`weather must be one of: ${VALID_WEATHER_VALUES.join(", ")}`);
+  }
+  let dim = raw.dimension ?? raw.dim ?? null;
+  if (ctype === "dimension") {
+    if (typeof dim !== "string" || dim === "") {
+      throw new Error("dimension condition requires 'dimension' (e.g. \"minecraft:the_nether\")");
+    }
+    if (!dim.includes(":")) dim = `minecraft:${dim}`;
+  }
   return {
     type: ctype,
     item: raw.item ?? null,
@@ -757,6 +768,8 @@ function loaderCondition(raw) {
     tag: raw.tag ?? null,
     gamemode: raw.gamemode ?? null,
     advancement: raw.advancement ?? null,
+    dimension: dim,
+    weather: raw.weather ?? null,
     fail_message: loaderText(raw.fail_message),
   };
 }
@@ -1402,6 +1415,20 @@ function handlerFor(menu, w) {
       const ok = `execute if entity @s[advancements={${adv}=true}] run `;
       lines.push(...successBlock(ok));
       lines.push(`execute unless entity @s[advancements={${adv}=true}] run ${tellrawLine(fail)}`);
+    } else if (cond.type === "dimension") {
+      // guikit-datapack v5 port (cond/t_dimension): `at @s` moves execution
+      // to the player so the check works regardless of caller context.
+      const dim = cond.dimension || "minecraft:overworld";
+      const ok = `execute at @s if dimension ${dim} run `;
+      lines.push(...successBlock(ok));
+      lines.push(`execute at @s unless dimension ${dim} run ${tellrawLine(fail)}`);
+    } else if (cond.type === "weather") {
+      // guikit-datapack v5 port (cond/t_weather): weather is read in the
+      // player's dimension. clear | rain | thunder.
+      const wx = cond.weather || "clear";
+      const ok = `execute at @s if weather ${wx} run `;
+      lines.push(...successBlock(ok));
+      lines.push(`execute at @s unless weather ${wx} run ${tellrawLine(fail)}`);
     } else {
       lines.push(...emitActions(w));
       if (w.success_message) lines.push(tellrawLine(w.success_message));

@@ -336,6 +336,23 @@ def handler_for(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
             lines.append(
                 f"execute unless entity @s[advancements={{{adv}=true}}] run {tellraw_line(fail)}"
             )
+        elif cond["type"] == "dimension":
+            # guikit-datapack v5 port (cond/t_dimension): `at @s` moves the
+            # execution context to the player, so the check is correct no
+            # matter where the caller was running.
+            dim = cond["dimension"]
+            lines.append(f"# condition: player is in dimension {dim}")
+            ok = f"execute at @s if dimension {dim} run "
+            lines.extend(success_block(ok))
+            lines.append(f"execute at @s unless dimension {dim} run {tellraw_line(fail)}")
+        elif cond["type"] == "weather":
+            # guikit-datapack v5 port (cond/t_weather): weather is read in the
+            # player's dimension (`at @s`), clear | rain | thunder.
+            wx = cond["weather"]
+            lines.append(f"# condition: weather is {wx} in the player's dimension")
+            ok = f"execute at @s if weather {wx} run "
+            lines.extend(success_block(ok))
+            lines.append(f"execute at @s unless weather {wx} run {tellraw_line(fail)}")
         else:
             lines.extend(emit_actions(w))
             if w.get("success_message"):
