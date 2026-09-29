@@ -1,14 +1,6 @@
 # ============================================================================
-# WARNING (detected during the port, behavior NOT CHANGED):
-# This function calls the following internal helper function(s), which
-# were already missing in the original runtoolkit/macroEngine repo: zprivate/to_lowercase/main_fast
-# These files could not be found on disk (the embedded StringLib copy was
-# already incomplete / the true upstream StringLib source could not be
-# located). As it stands, this function will fail with a
-# "function not found" error.
-# The port only moved the namespace — it did NOT invent the missing logic.
-# To fix this, locate the true StringLib source (CMDred) and add the
-# missing zprivate/* helper functions.
+# FIXED: zprivate/to_lowercase/main_fast is now implemented macroEngine-native
+# (algorithm after CMDred's StringLib, macroengine storage paths).
 # ============================================================================
 
 
@@ -28,8 +20,9 @@
 $data modify storage macroengine:core/internal/string/temp data.Input set value "$(String)"
 execute store result score #StringLib.CharsLeft StringLib run data get storage macroengine:core/internal/string/temp data.Input
 data modify storage macroengine:core/internal/string/temp data.Char set string storage macroengine:core/internal/string/temp data.Input 0 1
+data modify storage macroengine:core/internal/string/temp data.CharList set value []
 
-# Capitalize each character
+# Lowercase each character
 function macroengine:core/internal/string/zprivate/to_lowercase/main_fast with storage macroengine:core/internal/string/temp data
 
 # Combine the characters again

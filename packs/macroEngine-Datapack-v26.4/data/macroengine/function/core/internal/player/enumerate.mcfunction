@@ -1,7 +1,8 @@
+# macroEngine player module — module marker (load step 1 of 3).
+# macroEngine targets a single Minecraft version per pack, so instead of
+# probing for installed library versions we simply pin the module marker
+# that other parts of the pack may read from the 'load.status' objective.
 
-scoreboard players add #player_action.major load.status 0
-scoreboard players add #player_action.minor load.status 0
-
-execute if score #player_action.major load.status matches ..0 run scoreboard players set #player_action.minor load.status 7
-execute if score #player_action.major load.status matches ..0 run scoreboard players set #player_action.major load.status 1
-execute if score #player_action.major load.status matches 1 if score #player_action.minor load.status matches ..7 run scoreboard players set #player_action.minor load.status 7
+scoreboard objectives add load.status dummy
+scoreboard players set #player_action.major load.status 1
+scoreboard players set #player_action.minor load.status 7
