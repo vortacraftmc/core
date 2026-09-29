@@ -1,14 +1,8 @@
 # ============================================================================
-# WARNING (detected during the port, behavior NOT CHANGED):
-# This function calls the following internal helper function(s), which
-# were already missing in the original runtoolkit/macroEngine repo: zprivate/split/fail, zprivate/split/last_segment, zprivate/split/main, zprivate/split/reversed/main, zprivate/split/setup, zprivate/split/split_chars/setup
-# These files could not be found on disk (the embedded StringLib copy was
-# already incomplete / the true upstream StringLib source could not be
-# located). As it stands, this function will fail with a
-# "function not found" error.
-# The port only moved the namespace — it did NOT invent the missing logic.
-# To fix this, locate the true StringLib source (CMDred) and add the
-# missing zprivate/* helper functions.
+# FIXED: The previously missing zprivate/split/* helpers are now implemented
+# macroEngine-native (same public interface, algorithm after CMDred's
+# StringLib): split/{main,main_next}, split/reversed/{main,step},
+# split/{last_segment,setup,fail}, split/split_chars/{setup,loop}.
 # ============================================================================
 
 
@@ -91,6 +85,8 @@ execute store result score #StringLib.KeepEmpty StringLib run data get storage m
 execute if data storage macroengine:core/internal/string/output {find:[-1]} run return run function macroengine:core/internal/string/zprivate/split/fail
 
 # Split
+    # Default n to 0 (= "all") so an unset split.n can't leave a stale score behind
+scoreboard players set #StringLib.FindAmount StringLib 0
 execute store result score #StringLib.FindAmount StringLib run data get storage macroengine:core/internal/string/input split.n
 
     # Split the part in front of every instance of the separator (Do the first iteration here)

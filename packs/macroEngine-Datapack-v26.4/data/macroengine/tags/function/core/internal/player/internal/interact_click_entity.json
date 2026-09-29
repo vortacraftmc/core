@@ -1,5 +1,5 @@
 {
   "values": [
-    "macroengine:core/internal/player/versioning/interact_click_entity"
+    "macroengine:core/internal/player/click_detection/interact_click_entity"
   ]
 }

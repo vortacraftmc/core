@@ -1,5 +1,5 @@
 {
   "values": [
-    "macroengine:core/internal/player/versioning/interact_furnace"
+    "macroengine:core/internal/player/interact/interact_furnace"
   ]
 }
