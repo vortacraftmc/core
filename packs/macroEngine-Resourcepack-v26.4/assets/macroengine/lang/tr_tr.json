@@ -25,5 +25,9 @@
   "macroengine.subtitle.perm_denied": "İzin reddedildi",
   "macroengine.subtitle.unfreeze": "Çözüldü",
   "trim_material.macroengine.overload": "Aşırı Yük",
-  "trim_pattern.macroengine.circuit": "Devre"
+  "trim_pattern.macroengine.circuit": "Devre",
+  "macroengine.msg.audit_header": "Denetim kaydı (son 10 girdi)",
+  "macroengine.msg.audit_empty": "Denetim kaydı boş.",
+  "macroengine.msg.audit_cleared": "Denetim kaydı temizlendi.",
+  "macroengine.msg.require_invalid": "Geçersiz yetki adı."
 }
