@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # backup-org.sh
 # GitHub organization backup: git (bare) + wiki + issues/PRs/releases/labels
-# + optional plain source clones + org metadata -> encrypted archive.
+# + optional plain source clones + org metadata -> archive (.tar.gz by default, optional 7z encryption).
 #
 # Usage:      bash ~/backup-org.sh
 # Settings (override with environment variables):
 #   ORG=vortacraftmc  BACKUP_DIR=~/backup/ORG  OUT_DIR=~/backup-out
-#   ENCRYPT=7z|none   INCLUDE_SOURCE=1|0   WITH_HOOKS=0|1   KEEP=7
+#   ENCRYPT=none|7z   INCLUDE_SOURCE=1|0   WITH_HOOKS=0|1   KEEP=7
 #
 # Token: uses VC_TOKEN or GH_TOKEN if set, otherwise prompts silently.
 # Keep this script OUTSIDE any git repository folder (e.g. ~/backup-org.sh).
@@ -17,7 +17,7 @@ umask 077
 ORG="${ORG:-vortacraftmc}"
 BACKUP_DIR="${BACKUP_DIR:-$HOME/backup/$ORG}"
 OUT_DIR="${OUT_DIR:-$HOME/backup-out}"
-ENCRYPT="${ENCRYPT:-7z}"
+ENCRYPT="${ENCRYPT:-none}"
 INCLUDE_SOURCE="${INCLUDE_SOURCE:-1}"
 WITH_HOOKS="${WITH_HOOKS:-0}"
 KEEP="${KEEP:-7}"
@@ -28,7 +28,7 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 # ---------------------------------------------------------------- token
 TOKEN="${VC_TOKEN:-${GH_TOKEN:-}}"
-cleanup() { unset TOKEN VC_TOKEN GH_TOKEN 2>/dev/null || true; }
+cleanup() { unset TOKEN VC_TOKEN GH_TOKEN PW1 PW2 2>/dev/null || true; }
 trap cleanup EXIT
 
 if [ -z "$TOKEN" ]; then
@@ -127,10 +127,19 @@ if [ "$ENCRYPT" = 7z ]; then
   fi
   ARCHIVE="$OUT_DIR/$ORG-$DATE.7z"
   rm -f "$ARCHIVE"
-  log "Creating encrypted archive. You will be asked for the password twice (use ASCII characters only)."
-  (cd "$PARENT" && 7z a -t7z -mhe=on -p -bd "$ARCHIVE" "$BASE")
-  log "Testing archive. Enter the password once more."
-  7z t -p -bd "$ARCHIVE" | tail -n 5
+  log "Set an archive password (ASCII characters only)."
+  while :; do
+    read -rsp "Archive password: " PW1; echo
+    read -rsp "Password (again): " PW2; echo
+    if [ -n "$PW1" ] && [ "$PW1" = "$PW2" ]; then break; fi
+    log "Passwords are empty or do not match, try again."
+  done
+  (cd "$PARENT" && 7z a -t7z -mhe=on -p"$PW1" -bd "$ARCHIVE" "$BASE" >/dev/null) \
+    || die "could not create archive"
+  log "Testing archive"
+  7z t -p"$PW1" -bd "$ARCHIVE" >/dev/null || die "archive test failed"
+  log "Archive test passed"
+  unset PW1 PW2
 else
   ARCHIVE="$OUT_DIR/$ORG-$DATE.tar.gz"
   log "WARNING: the archive is NOT encrypted. It contains private code; encrypt it before uploading anywhere."
