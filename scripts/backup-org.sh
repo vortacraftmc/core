@@ -116,6 +116,12 @@ for d in "$BACKUP_DIR"/repositories/*/; do
 done
 shopt -u dotglob nullglob
 
+if [ "$INCLUDE_SOURCE" = 1 ]; then
+  n="$(find "$BACKUP_DIR/repositories" -path '*/source/*' -not -path '*/.git/*' -type f | wc -l)"
+  log "Plain source files going into the archive: $n"
+  if [ "$n" -eq 0 ]; then log "WARNING: source/ folders are empty, source code will not be in the archive."; fi
+fi
+
 # -------------------------------------------------------------- archive
 PARENT="$(dirname "$BACKUP_DIR")"
 BASE="$(basename "$BACKUP_DIR")"
