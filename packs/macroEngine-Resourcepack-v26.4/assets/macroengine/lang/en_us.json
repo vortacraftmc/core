@@ -25,5 +25,9 @@
   "macroengine.subtitle.perm_denied": "Permission denied",
   "macroengine.subtitle.unfreeze": "Unfrozen",
   "trim_material.macroengine.overload": "Overload",
-  "trim_pattern.macroengine.circuit": "Circuit"
+  "trim_pattern.macroengine.circuit": "Circuit",
+  "macroengine.msg.audit_header": "Audit log (latest 10 entries)",
+  "macroengine.msg.audit_empty": "Audit log is empty.",
+  "macroengine.msg.audit_cleared": "Audit log cleared.",
+  "macroengine.msg.require_invalid": "Invalid permission name."
 }
