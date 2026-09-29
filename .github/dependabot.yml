@@ -1,0 +1,15 @@
+# Keeps GitHub Actions and Gradle dependencies up to date via PRs.
+# Packs under packs/ are locked by datapack-immutability.yml and contain no
+# ecosystem manifests Dependabot would touch.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

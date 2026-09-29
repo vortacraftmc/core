@@ -8,8 +8,8 @@ Consolidated monorepo for the vortacraftmc ecosystem.
 - `packs/`     — Datapacks / resource packs
 - `scripts/`   — Helper scripts and tools
 - `examples/`  — Templates, example Fabric mods, example datapacks, test files
-- `archived/`  — Reserved for projects no longer developed but kept for reference (not currently populated — nothing has been moved here yet)
-- `other/`     — Reserved for content that doesn't fit another category (not currently populated)
+- `archived/`  — Reserved for projects no longer developed but kept for reference (planned — this directory does not exist yet)
+- `other/`     — Reserved for content that doesn't fit another category (planned — this directory does not exist yet)
 
 ## Datapack maintenance status
 
@@ -66,8 +66,10 @@ The more accurate framing: datapacks are easier to **start** and easier to **rea
 
 ## Note: Moved from Datapacks to Fabric
 
-This project no longer ships or accepts vanilla datapacks (`.json` / `.mcfunction`
-files loaded via `/reload` or `world/datapacks/`). Development has moved to
+This project no longer accepts **new** vanilla datapacks (`.json` / `.mcfunction`
+files loaded via `/reload` or `world/datapacks/`). The existing packs under
+`packs/` are kept in maintenance mode (see "Datapack maintenance status" above)
+and are still published. Development of new functionality has moved to
 **Fabric mods** (Java, built with Gradle).
 
 ### Why
@@ -84,11 +86,13 @@ files loaded via `/reload` or `world/datapacks/`). Development has moved to
 
 ### What this means for contributors
 
-- New features should be implemented as a Fabric mod under `src/`.
-- Datapacks are no longer accepted as pull requests. If you have an existing
+- New features should be implemented as a Fabric mod under `mods/`.
+- New datapacks are no longer accepted as pull requests; fixes to existing packs
+  follow the maintenance-mode rules above. If you have an existing
   datapack you'd like ported, open an issue and we can help convert the
   logic to a Fabric mixin/command.
-- See `gradle-tasks/verifyMod.gradle` for the checks that run in CI, and
+- See `.github/workflows/build.yml` and the `lint` task in `build.gradle` for the
+  checks that run in CI, and
   `scripts/datapack_risk_scan.py` if you still need to audit a legacy
   datapack before removing it.
 
