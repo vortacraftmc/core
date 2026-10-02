@@ -3,12 +3,14 @@
 #         macroengine:input find    — substring to search
 #         macroengine:input n       — instance count (0=all, +n=first n, -n=last n)
 # Output: macroengine:output string.result — list of start indices, or [-1] if not found
-# Dep:    StringLib (CMDred)
-data modify storage macroengine:core/internal/string/input find.String set from storage macroengine:input string
-data modify storage macroengine:core/internal/string/input find.Find set from storage macroengine:input find
-data remove storage macroengine:core/internal/string/input find.n
-data modify storage macroengine:core/internal/string/input find.n set from storage macroengine:input n
-function macroengine:core/internal/string/util/find
-data modify storage macroengine:output string.result set from storage macroengine:core/internal/string/output find
-data remove storage macroengine:core/internal/string/input find
-data remove storage macroengine:core/internal/string/output find
+# Dep:    macroengine:core/internal/text (in-house)
+# Note:   no match (or an empty find string) gives [-1]
+data modify storage macroengine:text s set from storage macroengine:input string
+data modify storage macroengine:text needle set from storage macroengine:input find
+data remove storage macroengine:text n
+data modify storage macroengine:text n set from storage macroengine:input n
+function macroengine:core/internal/text/find
+data remove storage macroengine:output string.result
+data modify storage macroengine:output string.result set from storage macroengine:text idx
+execute unless data storage macroengine:text idx[0] run data modify storage macroengine:output string.result set value [-1]
+function macroengine:core/internal/text/reset

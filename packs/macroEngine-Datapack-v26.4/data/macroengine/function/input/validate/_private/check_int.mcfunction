@@ -1,39 +1,14 @@
 # ======================================================================================
 # macroengine:input/validate/_private/check_int  [INTERNAL]
 # ======================================================================================
-#
-# FAST METHOD (no per-character recursion):
-#   A string is "all digits, optional leading -" iff:
-#     1. stripping one leading '-' (if present) leaves a non-empty rest, AND
-#     2. the sum of how many times each of '0'..'9' occurs in that rest,
-#        via macroengine:core/internal/string/util/find, equals the rest's total length.
-#   If every character is one of the 10 digits, the counts must add up to
-#   the full length — any non-digit character breaks the sum by definition,
-#   without needing to inspect it directly.
-#
-# Reuses macroengine:core/internal/string/util/find (read-only substring search) — this never
-# executes the input, only counts characters via a library already
-# audited for the $$(command) macro-injection fix.
+# A whole number: optional leading '-', then one or more digits. Delegates to
+# macroengine:core/internal/text/num_check, which walks the string one character at a
+# time and never substitutes the input into a command line.
 # ======================================================================================
-
-data modify storage macroengine:input_validate scratch.rest set from storage macroengine:input_validate scratch.value
-
-# Strip one leading '-' if present (allowed once, at position 0 only).
-execute store result score #macroengine.Len macroengine.tmp run data get storage macroengine:input_validate scratch.rest
-execute if score #macroengine.Len macroengine.tmp matches 0 run data modify storage macroengine:input_validate result.error set value "empty input"
-execute if score #macroengine.Len macroengine.tmp matches 0 run return 0
-
-data modify storage macroengine:input_validate scratch.first set string storage macroengine:input_validate scratch.rest 0 1
-execute if data storage macroengine:input_validate {scratch:{first:"-"}} run data modify storage macroengine:input_validate scratch.rest set string storage macroengine:input_validate scratch.rest 1
-data remove storage macroengine:input_validate scratch.first
-
-execute store result score #macroengine.Len macroengine.tmp run data get storage macroengine:input_validate scratch.rest
-execute if score #macroengine.Len macroengine.tmp matches 0 run data modify storage macroengine:input_validate result.error set value "no digits after '-'"
-execute if score #macroengine.Len macroengine.tmp matches 0 run return 0
-
-function macroengine:input/validate/_private/count_digits
-
-execute if score #macroengine.DigitCount macroengine.tmp = #macroengine.Len macroengine.tmp run data modify storage macroengine:input_validate result.valid set value 1b
-execute unless score #macroengine.DigitCount macroengine.tmp = #macroengine.Len macroengine.tmp run data modify storage macroengine:input_validate result.error set value "contains a non-digit character"
-
-data remove storage macroengine:input_validate scratch.rest
+data modify storage macroengine:text s set from storage macroengine:input_validate scratch.value
+data modify storage macroengine:text allow_dot set value 0b
+execute store result score #macroengine.NumOk macroengine.tmp run function macroengine:core/internal/text/num_check
+execute if score #macroengine.NumOk macroengine.tmp matches 1 run data modify storage macroengine:input_validate result.valid set value 1b
+execute unless score #macroengine.NumOk macroengine.tmp matches 1 run data modify storage macroengine:input_validate result.error set from storage macroengine:text err
+data remove storage macroengine:text allow_dot
+function macroengine:core/internal/text/reset

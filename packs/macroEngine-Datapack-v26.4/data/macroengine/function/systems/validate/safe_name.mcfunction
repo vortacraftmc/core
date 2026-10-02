@@ -30,7 +30,7 @@
 #   execute if data storage macroengine:validate out{valid:1b} run ...
 #
 # ALWAYS remove 'in' first: if the next 'set from' fails, a stale value would be checked.
-# Requires the StringLib find function (macroengine:core/internal/string/util/find).
+# Uses macroengine:core/internal/text (safe, ctl, scan_deny with the deny_name table).
 # ======================================================================================
 
 data modify storage macroengine:validate out set value {valid:0b}
@@ -46,11 +46,19 @@ execute if score #macroengine.vs_len macroengine.tmp matches ..0 run return 0
 execute if score #macroengine.vs_len macroengine.tmp matches 65.. run data modify storage macroengine:validate out.error set value "too long (max 64)"
 execute if score #macroengine.vs_len macroengine.tmp matches 65.. run return 0
 
-data modify storage macroengine:core/internal/string/input find.String set from storage macroengine:validate tmp.value
-data modify storage macroengine:core/internal/string/input find.n set value 1
-scoreboard players set #macroengine.vs_hit macroengine.tmp 0
-function macroengine:core/internal/systems/validate/scan_chars
-
+data modify storage macroengine:validate tmp.bad set value 0b
+data modify storage macroengine:text s set from storage macroengine:validate tmp.value
+# Double quote and backslash first, then newline / carriage return / tab. Only a string
+# free of all of those goes on to the character table, which handles the rest.
+execute store result score #macroengine.vs_hit macroengine.tmp run function macroengine:core/internal/text/safe
+execute if score #macroengine.vs_hit macroengine.tmp matches 0 run data modify storage macroengine:validate tmp.bad set value 1b
+execute store result score #macroengine.vs_hit macroengine.tmp run function macroengine:core/internal/text/ctl
+execute if score #macroengine.vs_hit macroengine.tmp matches 1 run data modify storage macroengine:validate tmp.bad set value 1b
+data modify storage macroengine:text tbl set value "deny_name"
+execute unless data storage macroengine:validate tmp{bad:1b} store result score #macroengine.vs_hit macroengine.tmp run function macroengine:core/internal/text/scan_deny
+execute unless data storage macroengine:validate tmp{bad:1b} if score #macroengine.vs_hit macroengine.tmp matches 1 run data modify storage macroengine:validate tmp.bad set value 1b
+data remove storage macroengine:text tbl
+function macroengine:core/internal/text/reset
 execute if data storage macroengine:validate tmp{bad:1b} run data modify storage macroengine:validate out.error set value "contains a disallowed character"
 execute if data storage macroengine:validate tmp{bad:1b} run return 0
 
