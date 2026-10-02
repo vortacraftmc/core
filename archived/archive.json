@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "projects": [
+    {
+      "id": "runtoolkit-suite",
+      "name": "runtoolkit/suite (monorepo)",
+      "kind": "other",
+      "status": "archived",
+      "archived_on": "2026-09-21",
+      "reason": "The runtoolkit organization was retired in favor of vortacraftmc; the monorepo was archived (read-only) and its content continues in vortacraftmc/core.",
+      "last_version": "main",
+      "license": "unverified",
+      "deploy": "not_recommended",
+      "path": null,
+      "source_url": "https://github.com/runtoolkit/suite",
+      "successor": null,
+      "known_issues": [
+        "License is unverified: the origin watermark says MIT, this repo's LICENSE is Unlicense.",
+        "The per-project repos that were merged into it are private."
+      ]
+    }
+  ]
+}

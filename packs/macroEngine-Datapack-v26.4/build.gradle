@@ -10,7 +10,7 @@ def distDir = layout.buildDirectory.dir('dist')
 
 tasks.register('zipMacroEnginePack', Zip) {
     group = 'build'
-    description = 'Zips this datapack folder (data/, pack.mcmeta, pack.png, README.md) into a distributable archive.'
+    description = 'Zips this datapack folder (data/, pack.mcmeta, pack.png, README.md, LICENSE, THIRD_PARTY_LICENSES.md) into a distributable archive.'
     archiveFileName.set('macroEngine-Datapack-v26.4.zip')
     destinationDirectory.set(distDir)
 
@@ -19,5 +19,7 @@ tasks.register('zipMacroEnginePack', Zip) {
         include 'pack.mcmeta'
         include 'pack.png'
         include 'README.md'
+        include 'LICENSE'
+        include 'THIRD_PARTY_LICENSES.md'
     }
 }

@@ -2,7 +2,8 @@
 
 **macroEngine** is a macro/module framework datapack for Minecraft Java Edition, providing a large library of reusable command-based systems (math, string, NBT, geo, permissions, UUID cache, hooks, rate limiting, and more) plus a multi-source text/value input system (dialogs, books, signs, lecterns, name tags, command block minecarts).
 
-> Owner: [runtoolkit](https://github.com/runtoolkit)
+> Maintained by: [vortacraftmc](https://github.com/vortacraftmc) — repository [`vortacraftmc/core`](https://github.com/vortacraftmc/core), path `packs/macroEngine-Datapack-v26.4`
+> Former owner: Runtoolkit (`runtoolkit` organization and `runtoolkit/suite`, retired/archived; original source, not maintained)
 > Minecraft: **26.4-snapshot-1** (`pack_format` / `min_format`–`max_format` **122**)
 > 
 > License: Unlicense
@@ -74,11 +75,14 @@ execute as @a run function macroengine:systems/trim/scan
 
 ## Notes
 
-- This is the 26.4-snapshot-1 build of macroEngine (folder retains its original `v26.3` name), part of the `runtoolkit/suite` monorepo (`packs/macroEngine-Datapack-v26.3`).
+- This is the 26.4-snapshot-1 build of macroEngine, derived from the 26.3 pack of the archived `runtoolkit/suite` monorepo (`packs/macroEngine-Datapack-v26.3`). Development continues in `vortacraftmc/core`; do not file issues or PRs against `runtoolkit/*`.
 - Experimental features are opt-in via `api/toggle/experimental/true` and are not guaranteed stable between versions.
 
 ---
 
 ## License
 
-Unlicense — see the repository [LICENSE](https://github.com/vortacraftmc/core/blob/main/LICENSE). (This repo is archived.)
+- macroEngine original code: Unlicense (public domain) — see [`LICENSE`](LICENSE).
+- String module (`core/lib/string`, `core/internal/string`): derived from CMDred's StringLib, MIT — notice in [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).
+
+Both files ship inside the distributed zip.
