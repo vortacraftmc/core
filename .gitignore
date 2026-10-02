@@ -18,3 +18,4 @@ out/
 !packs/*/data/*/**/build
 !mods/*/src/*/**/run
 !mods/*/src/*/**/build
+*.patch
