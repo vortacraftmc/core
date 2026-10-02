@@ -1,4 +1,0 @@
-$tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.header.perms","color":"aqua"},{"text":"$(player)","color":"white","bold":true},{"translate":"macroengine.ui.sep14","color":"#555555"}]
-$execute if data storage macroengine:engine permissions.$(player) run tellraw @a[tag=macroengine.debug] ["",{"text":" ","color":"#555555"},{"plain":true ,"storage":"macroengine:engine","nbt":"permissions.$(player)","interpret":false,"color":"yellow"}]
-$execute unless data storage macroengine:engine permissions.$(player) run tellraw @a[tag=macroengine.debug] ["",{"text":" ","color":"#555555"},{"translate":"macroengine.debug.no_perms","color":"gray","italic":true}]
-tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.ui.sep32","color":"#555555"}]
