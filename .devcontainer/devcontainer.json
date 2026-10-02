@@ -6,8 +6,8 @@
       "configureZshAsDefaultShell": true
     }
   },
-  "postCreateCommand": "bash setup.sh",
-  "postStartCommand": "bash start.sh",
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "bash .devcontainer/start.sh",
   "customizations": {
     "vscode": {
       "extensions": [
