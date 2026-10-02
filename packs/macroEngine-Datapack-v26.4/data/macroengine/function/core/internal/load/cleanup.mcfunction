@@ -22,8 +22,6 @@
 # _pid_seq), further down where loader/storages is reversed.
 
 tag @s remove macroengine.admin
-# legacy tag from older versions (no longer granted by this pack)
-tag @s remove macroengine.debug
 
 kill @e[type=minecraft:command_block_minecart,tag=macroengine_input]
 
