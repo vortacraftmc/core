@@ -1,177 +1,382 @@
 #!/usr/bin/env bash
-# backup-org.sh
-# GitHub organization backup: git (bare) + wiki + issues/PRs/releases/labels
-# + optional plain source clones + org metadata -> archive (.tar.gz by default, optional 7z encryption).
+# backup-org.sh  v2.1
+# Advanced GitHub Organization Backup
+# git (bare/mirror) + wiki + issues/PRs/releases/labels/discussions + attachments
+# + optional plain source clones + org metadata → archive (.tar.gz or encrypted 7z)
 #
-# Usage:      bash ~/backup-org.sh
-# Settings (override with environment variables):
-#   ORG=vortacraftmc  BACKUP_DIR=~/backup/ORG  OUT_DIR=~/backup-out
-#   ENCRYPT=none|7z   INCLUDE_SOURCE=1|0   WITH_HOOKS=0|1   KEEP=7
+# Usage:
+#   bash ~/backup-org.sh
+#   ORG=myorg INCLUDE_SOURCE=0 ENCRYPT=7z KEEP=14 bash ~/backup-org.sh
+#   DRY_RUN=1 bash ~/backup-org.sh          # show what would be done
 #
-# Token: uses VC_TOKEN or GH_TOKEN if set, otherwise prompts silently.
-# Keep this script OUTSIDE any git repository folder (e.g. ~/backup-org.sh).
+# Environment variables (all optional):
+#   ORG                Organization name          (default: vortacraftmc)
+#   BACKUP_DIR         Working directory          ($HOME/backup/$ORG)
+#   OUT_DIR            Archive output directory   ($HOME/backup-out)
+#   ENCRYPT            none | 7z                  (none)
+#   INCLUDE_SOURCE     1|0  clone plain sources   (1)
+#   WITH_HOOKS         1|0  include webhooks      (0)
+#   WITH_LFS           1|0  Git LFS support       (0)
+#   KEEP               Number of archives to keep (7)
+#   SKIP_ARCHIVED      1|0                        (0)
+#   PARALLEL           parallel jobs              (1)
+#   DRY_RUN            1|0                        (0)
+#   VERBOSE            1|0                        (0)
+#   EXCLUDE            space-separated repo list to skip
+#
+# Token resolution order:
+#   1. VC_TOKEN / GH_TOKEN environment variable
+#   2. gh auth token (if gh CLI is available)
+#   3. Interactive hidden prompt
+#
+# Keep this script OUTSIDE any git repository (e.g. ~/backup-org.sh).
 
 set -euo pipefail
 umask 077
+IFS=$'\n\t'
 
+# ---------------------------------------------------------------- defaults
 ORG="${ORG:-vortacraftmc}"
 BACKUP_DIR="${BACKUP_DIR:-$HOME/backup/$ORG}"
 OUT_DIR="${OUT_DIR:-$HOME/backup-out}"
 ENCRYPT="${ENCRYPT:-none}"
 INCLUDE_SOURCE="${INCLUDE_SOURCE:-1}"
 WITH_HOOKS="${WITH_HOOKS:-0}"
+WITH_LFS="${WITH_LFS:-0}"
 KEEP="${KEEP:-7}"
+SKIP_ARCHIVED="${SKIP_ARCHIVED:-0}"
+PARALLEL="${PARALLEL:-1}"
+DRY_RUN="${DRY_RUN:-0}"
+VERBOSE="${VERBOSE:-0}"
+EXCLUDE="${EXCLUDE:-}"
 DATE="$(date +%F)"
+LOG_FILE="${OUT_DIR}/backup-${ORG}-${DATE}.log"
 
-log() { printf '[%s] %s\n' "$(date +%T)" "$*"; }
-die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+# ---------------------------------------------------------------- logging
+mkdir -p "$OUT_DIR"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+RED=$'\e[31m'; GREEN=$'\e[32m'; YELLOW=$'\e[33m'; CYAN=$'\e[36m'; BOLD=$'\e[1m'; RESET=$'\e[0m'
+
+log()   { printf '%s[%s]%s %s\n' "$CYAN" "$(date +%T)" "$RESET" "$*"; }
+ok()    { printf '%s[%s]%s %s%s%s\n' "$GREEN" "$(date +%T)" "$RESET" "$GREEN" "$*" "$RESET"; }
+warn()  { printf '%s[%s]%s %s%s%s\n' "$YELLOW" "$(date +%T)" "$RESET" "$YELLOW" "WARNING: $*" "$RESET"; }
+die()   { printf '%s[%s]%s %sERROR: %s%s\n' "$RED" "$(date +%T)" "$RESET" "$RED" "$*" "$RESET" >&2; exit 1; }
+debug() { [ "$VERBOSE" = 1 ] && printf '%s[%s]%s %s\n' "$CYAN" "$(date +%T)" "$RESET" "DEBUG: $*"; }
+
+# ---------------------------------------------------------------- cleanup
+TOKEN=""
+PW1="" PW2=""
+cleanup() {
+  unset TOKEN VC_TOKEN GH_TOKEN PW1 PW2 2>/dev/null || true
+  rm -f /tmp/github-backup-$$.* 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
 
 # ---------------------------------------------------------------- token
-TOKEN="${VC_TOKEN:-${GH_TOKEN:-}}"
-cleanup() { unset TOKEN VC_TOKEN GH_TOKEN PW1 PW2 2>/dev/null || true; }
-trap cleanup EXIT
-
-if [ -z "$TOKEN" ]; then
-  read -rsp "GitHub token (input is hidden): " TOKEN
-  echo
-fi
-[ -n "$TOKEN" ] || die "token is empty"
-
-# ---------------------------------------------------------------- tools
-command -v git >/dev/null || die "git not found"
-if ! command -v github-backup >/dev/null; then
-  log "installing github-backup"
-  pip install --quiet github-backup
-fi
-case "$ENCRYPT" in 7z|none) ;; *) die "ENCRYPT must be 7z or none" ;; esac
-
-mkdir -p "$BACKUP_DIR" "$OUT_DIR"
-
-# ------------------------------------------- pick supported CLI flags
-# Flag names can vary between versions; unsupported ones are skipped.
-HELP="$(github-backup --help 2>&1 || true)"
-WANT=(--repositories --wikis --issues --issue-comments --issue-events
-      --pulls --pull-comments --pull-commits --pull-details
-      --labels --milestones --releases --assets)
-if [ "$WITH_HOOKS" = 1 ]; then WANT+=(--hooks); fi
-
-FLAGS=()
-for f in "${WANT[@]}"; do
-  if grep -q -- "$f" <<<"$HELP"; then
-    FLAGS+=("$f")
-  else
-    log "warning: $f is not available in this version, skipped"
+resolve_token() {
+  if [ -n "${VC_TOKEN:-}" ]; then
+    TOKEN="$VC_TOKEN"
+    log "Token taken from VC_TOKEN environment variable"
+  elif [ -n "${GH_TOKEN:-}" ]; then
+    TOKEN="$GH_TOKEN"
+    log "Token taken from GH_TOKEN environment variable"
+  elif command -v gh >/dev/null 2>&1; then
+    if TOKEN="$(gh auth token 2>/dev/null)"; then
+      log "Token taken from gh CLI"
+    fi
   fi
-done
 
-# --------------------------------------------------------------- backup
-log "Starting backup: $ORG -> $BACKUP_DIR"
-github-backup "$ORG" --organization -t "$TOKEN" -o "$BACKUP_DIR" \
-  --private --fork --bare --incremental "${FLAGS[@]}"
+  if [ -z "${TOKEN:-}" ]; then
+    read -rsp "GitHub token (input is hidden): " TOKEN
+    echo
+  fi
+  [ -n "$TOKEN" ] || die "Token is empty"
+}
 
-# ------------------------------------------------- org-level metadata
-if command -v gh >/dev/null; then
+# ---------------------------------------------------------------- tool checks
+check_tools() {
+  command -v git >/dev/null || die "git not found"
+  command -v tar >/dev/null || die "tar not found"
+  command -v sha256sum >/dev/null || die "sha256sum not found"
+
+  if ! command -v github-backup >/dev/null; then
+    log "Installing github-backup..."
+    pip install --quiet --upgrade github-backup || die "Failed to install github-backup"
+  fi
+
+  if [ "$ENCRYPT" = "7z" ] && ! command -v 7z >/dev/null; then
+    log "Installing p7zip..."
+    if command -v apt-get >/dev/null; then
+      sudo apt-get update -qq && sudo apt-get install -y -qq p7zip-full
+    elif command -v brew >/dev/null; then
+      brew install p7zip
+    else
+      die "7z not found and could not be installed automatically"
+    fi
+  fi
+
+  if [ "$WITH_LFS" = 1 ] && ! command -v git-lfs >/dev/null; then
+    warn "git-lfs not found, disabling LFS support"
+    WITH_LFS=0
+  fi
+}
+
+# ---------------------------------------------------------------- dynamic flag selection
+build_flags() {
+  local HELP
+  HELP="$(github-backup --help 2>&1 || true)"
+
+  local WANT=(
+    --repositories --wikis
+    --issues --issue-comments --issue-events --issue-timeline
+    --pulls --pull-comments --pull-commits --pull-details --pull-reviews
+    --labels --milestones --releases --assets --attachments
+    --discussions --security-advisories
+  )
+
+  [ "$WITH_HOOKS" = 1 ] && WANT+=(--hooks)
+  [ "$WITH_LFS"   = 1 ] && WANT+=(--lfs)
+
+  FLAGS=()
+  for f in "${WANT[@]}"; do
+    if grep -q -- "$f" <<<"$HELP"; then
+      FLAGS+=("$f")
+    else
+      warn "$f is not available in this version, skipped"
+    fi
+  done
+
+  # extra safety / rate-limit options
+  if grep -q -- "--throttle-limit" <<<"$HELP"; then
+    FLAGS+=(--throttle-limit 50 --throttle-pause 15)
+  fi
+  if grep -q -- "--retries" <<<"$HELP"; then
+    FLAGS+=(--retries 5)
+  fi
+  if [ "$SKIP_ARCHIVED" = 1 ] && grep -q -- "--skip-archived" <<<"$HELP"; then
+    FLAGS+=(--skip-archived)
+  fi
+}
+
+# ---------------------------------------------------------------- org-level metadata
+backup_org_meta() {
+  if ! command -v gh >/dev/null; then
+    warn "gh CLI not found → skipping org metadata"
+    return
+  fi
+
   mkdir -p "$BACKUP_DIR/org-meta"
-  for ep in teams members rulesets; do
+  local endpoints=(teams members rulesets projects invitations)
+
+  for ep in "${endpoints[@]}"; do
     if GH_TOKEN="$TOKEN" gh api --paginate "/orgs/$ORG/$ep" \
          > "$BACKUP_DIR/org-meta/$ep.json" 2>/dev/null; then
-      log "saved org-meta/$ep.json"
+      ok "saved org-meta/$ep.json"
     else
       rm -f "$BACKUP_DIR/org-meta/$ep.json"
-      log "warning: could not fetch $ep (missing permission?)"
+      debug "could not fetch $ep (missing permission or endpoint)"
     fi
   done
 
+  # org overview
+  GH_TOKEN="$TOKEN" gh api "/orgs/$ORG" > "$BACKUP_DIR/org-meta/org.json" 2>/dev/null \
+    && ok "saved org-meta/org.json" || true
+
+  # repository count sanity check
+  local EXPECTED ACTUAL
   EXPECTED="$(GH_TOKEN="$TOKEN" gh api "/orgs/$ORG" \
-    --jq '.public_repos + .total_private_repos' 2>/dev/null || true)"
-  ACTUAL="$(find "$BACKUP_DIR/repositories" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)"
+    --jq '.public_repos + .total_private_repos' 2>/dev/null || echo "")"
+  ACTUAL="$(find "$BACKUP_DIR/repositories" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
+
   if [ -n "$EXPECTED" ] && [ "$EXPECTED" != "$ACTUAL" ]; then
-    log "WARNING: the org shows $EXPECTED repositories, the backup has $ACTUAL folders. Check for missing ones."
+    warn "Org reports $EXPECTED repositories, backup has $ACTUAL folders → some may be missing"
   else
-    log "Repository count: $ACTUAL"
+    ok "Repository count matches: $ACTUAL"
   fi
-else
-  log "gh not found, skipping org metadata and repository count check"
-fi
+}
 
-# ------------------------------------ integrity check + plain source clones
-shopt -s dotglob nullglob
-for d in "$BACKUP_DIR"/repositories/*/; do
-  r="${d%/}"
-  if [ -d "$r/repository" ]; then
-    git --git-dir="$r/repository" fsck --no-progress >/dev/null 2>&1 \
-      || log "WARNING: git fsck failed: $r/repository"
-  fi
-  rm -rf "$r/source" "$r/wiki-source"
-  if [ "$INCLUDE_SOURCE" = 1 ]; then
+# ---------------------------------------------------------------- integrity check + plain source clones
+process_repos() {
+  shopt -s nullglob
+  local repos=("$BACKUP_DIR"/repositories/*/)
+  local total=${#repos[@]}
+  local i=0
+
+  log "Processing repositories ($total total)..."
+
+  for d in "${repos[@]}"; do
+    ((i++)) || true
+    local r="${d%/}"
+    local name
+    name="$(basename "$r")"
+
+    # exclude list
+    if [ -n "$EXCLUDE" ]; then
+      for ex in $EXCLUDE; do
+        if [ "$name" = "$ex" ]; then
+          log "[$i/$total] $name → excluded"
+          continue 2
+        fi
+      done
+    fi
+
+    printf '\r%s[%s]%s [%d/%d] %s' "$CYAN" "$(date +%T)" "$RESET" "$i" "$total" "$name"
+
+    # git fsck
     if [ -d "$r/repository" ]; then
-      git clone --quiet "$r/repository" "$r/source" 2>/dev/null \
-        || log "warning: could not clone $r/source (empty repository?)"
+      if ! git --git-dir="$r/repository" fsck --no-progress >/dev/null 2>&1; then
+        warn "git fsck failed: $name"
+      fi
     fi
-    if [ -d "$r/wiki" ]; then
-      git clone --quiet "$r/wiki" "$r/wiki-source" 2>/dev/null \
-        || log "warning: could not clone $r/wiki-source (empty wiki?)"
+
+    # clean previous source clones
+    rm -rf "$r/source" "$r/wiki-source" 2>/dev/null || true
+
+    if [ "$INCLUDE_SOURCE" = 1 ]; then
+      if [ -d "$r/repository" ]; then
+        local obj_count
+        obj_count="$(git --git-dir="$r/repository" rev-list --all --count 2>/dev/null || echo 0)"
+        if [ "$obj_count" -gt 0 ]; then
+          git clone --quiet "$r/repository" "$r/source" 2>/dev/null \
+            || warn "could not clone source: $name"
+        else
+          debug "$name is empty, skipping source clone"
+        fi
+      fi
+      if [ -d "$r/wiki" ]; then
+        git clone --quiet "$r/wiki" "$r/wiki-source" 2>/dev/null || true
+      fi
     fi
-  fi
-done
-shopt -u dotglob nullglob
-
-if [ "$INCLUDE_SOURCE" = 1 ]; then
-  n="$(find "$BACKUP_DIR/repositories" -path '*/source/*' -not -path '*/.git/*' -type f | wc -l)"
-  log "Plain source files going into the archive: $n"
-  if [ "$n" -eq 0 ]; then log "WARNING: source/ folders are empty, source code will not be in the archive."; fi
-fi
-
-# -------------------------------------------------------------- archive
-PARENT="$(dirname "$BACKUP_DIR")"
-BASE="$(basename "$BACKUP_DIR")"
-
-if [ "$ENCRYPT" = 7z ]; then
-  if ! command -v 7z >/dev/null; then
-    log "installing p7zip"
-    sudo apt-get update -qq && sudo apt-get install -y -qq p7zip-full
-  fi
-  ARCHIVE="$OUT_DIR/$ORG-$DATE.7z"
-  rm -f "$ARCHIVE"
-  log "Set an archive password (ASCII characters only)."
-  while :; do
-    read -rsp "Archive password: " PW1; echo
-    read -rsp "Password (again): " PW2; echo
-    if [ -n "$PW1" ] && [ "$PW1" = "$PW2" ]; then break; fi
-    log "Passwords are empty or do not match, try again."
   done
-  (cd "$PARENT" && 7z a -t7z -mhe=on -p"$PW1" -bd "$ARCHIVE" "$BASE" >/dev/null) \
-    || die "could not create archive"
-  log "Testing archive"
-  7z t -p"$PW1" -bd "$ARCHIVE" >/dev/null || die "archive test failed"
-  log "Archive test passed"
-  unset PW1 PW2
-else
-  ARCHIVE="$OUT_DIR/$ORG-$DATE.tar.gz"
-  log "WARNING: the archive is NOT encrypted. It contains private code; encrypt it before uploading anywhere."
-  tar -czf "$ARCHIVE" -C "$PARENT" "$BASE"
-  tar -tzf "$ARCHIVE" >/dev/null || die "archive verification failed"
-fi
+  echo
+  shopt -u nullglob
 
-(cd "$OUT_DIR" && sha256sum "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256")
+  if [ "$INCLUDE_SOURCE" = 1 ]; then
+    local n
+    n="$(find "$BACKUP_DIR/repositories" -path '*/source/*' -not -path '*/.git/*' -type f 2>/dev/null | wc -l | tr -d ' ')"
+    ok "Plain source files that will go into the archive: $n"
+    [ "$n" -eq 0 ] && warn "source/ folders are empty → source code will not be in the archive"
+  fi
+}
 
-# ------------------------------------------------- prune old archives
-find "$OUT_DIR" -maxdepth 1 -type f \( -name "$ORG-*.7z" -o -name "$ORG-*.tar.gz" \) \
-  -printf '%T@ %p\n' | sort -rn | tail -n +"$((KEEP + 1))" | cut -d' ' -f2- |
+# ---------------------------------------------------------------- archive creation
+create_archive() {
+  local PARENT BASE ARCHIVE
+  PARENT="$(dirname "$BACKUP_DIR")"
+  BASE="$(basename "$BACKUP_DIR")"
+
+  if [ "$ENCRYPT" = "7z" ]; then
+    ARCHIVE="$OUT_DIR/$ORG-$DATE.7z"
+    rm -f "$ARCHIVE"
+
+    log "Set an archive password (ASCII characters recommended)."
+    while :; do
+      read -rsp "Archive password: " PW1; echo
+      read -rsp "Password (again): " PW2; echo
+      if [ -n "$PW1" ] && [ "$PW1" = "$PW2" ]; then break; fi
+      warn "Passwords are empty or do not match, try again."
+    done
+
+    log "Creating 7z archive (AES-256 + header encryption)..."
+    (cd "$PARENT" && 7z a -t7z -m0=lzma2 -mx=9 -mhe=on -p"$PW1" -bd "$ARCHIVE" "$BASE" >/dev/null) \
+      || die "Failed to create 7z archive"
+
+    log "Testing archive..."
+    7z t -p"$PW1" -bd "$ARCHIVE" >/dev/null || die "Archive test failed"
+    ok "Archive test passed"
+    unset PW1 PW2
+  else
+    ARCHIVE="$OUT_DIR/$ORG-$DATE.tar.gz"
+    warn "The archive is NOT encrypted. It contains private code; encrypt it before uploading anywhere."
+    tar -czf "$ARCHIVE" -C "$PARENT" "$BASE"
+    tar -tzf "$ARCHIVE" >/dev/null || die "Archive verification failed"
+  fi
+
+  # checksum
+  (cd "$OUT_DIR" && sha256sum "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256")
+  ARCHIVE_PATH="$ARCHIVE"
+}
+
+# ---------------------------------------------------------------- prune old archives
+prune_old() {
+  find "$OUT_DIR" -maxdepth 1 -type f \( -name "$ORG-*.7z" -o -name "$ORG-*.tar.gz" \) \
+    -printf '%T@ %p\n' 2>/dev/null | sort -rn | tail -n +"$((KEEP + 1))" | cut -d' ' -f2- |
   while IFS= read -r old; do
-    log "removing old archive: $old"
+    log "Removing old archive: $old"
     rm -f -- "$old" "$old.sha256"
   done
+}
 
-# -------------------------------------------------------------- summary
-echo
-log "Done."
-echo "  Archive: $ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"
-echo "  SHA256 : $(cut -d' ' -f1 "$ARCHIVE.sha256")"
-echo
-echo "Next steps:"
-echo "  1. File > Open Folder > $OUT_DIR, right-click the archive > Download"
-echo "  2. Verify the hash locally and open the archive (7-Zip); try cloning one repository"
-echo "  3. Revoke the token on GitHub (Settings > Developer settings)"
-echo "  4. Delete the Codespace only after verifying the download"
-echo "  Note: the unencrypted backup folder is still in the Codespace: $BACKUP_DIR"
+# ---------------------------------------------------------------- summary
+print_summary() {
+  local size hash
+  size="$(du -h "$ARCHIVE_PATH" | cut -f1)"
+  hash="$(cut -d' ' -f1 "$ARCHIVE_PATH.sha256")"
+
+  echo
+  ok "Backup completed successfully."
+  echo
+  echo "  Archive : $ARCHIVE_PATH ($size)"
+  echo "  SHA256  : $hash"
+  echo "  Log     : $LOG_FILE"
+  echo
+  echo "Next steps:"
+  echo "  1. Download the archive from $OUT_DIR"
+  echo "  2. Verify the SHA256 hash locally and open the archive"
+  echo "  3. Try cloning one repository from the backup to confirm integrity"
+  echo "  4. Revoke the token on GitHub (Settings → Developer settings)"
+  echo "  5. Delete the temporary environment only after verification"
+  echo
+  echo "Note: the unencrypted working directory is still present at:"
+  echo "      $BACKUP_DIR"
+  echo
+}
+
+# ---------------------------------------------------------------- main
+main() {
+  log "=== GitHub Organization Backup v2.1 ==="
+  log "Organization : $ORG"
+  log "Backup dir   : $BACKUP_DIR"
+  log "Output dir   : $OUT_DIR"
+  log "Encrypt      : $ENCRYPT"
+  log "Include source: $INCLUDE_SOURCE"
+  log "Keep archives: $KEEP"
+
+  case "$ENCRYPT" in 7z|none) ;; *) die "ENCRYPT must be '7z' or 'none'" ;; esac
+  [[ "$KEEP" =~ ^[0-9]+$ ]] || die "KEEP must be a positive integer"
+
+  if [ "$DRY_RUN" = 1 ]; then
+    log "DRY-RUN mode – no changes will be made"
+    resolve_token
+    check_tools
+    build_flags
+    log "Would run: github-backup $ORG --organization -t *** -o $BACKUP_DIR --private --fork --bare --incremental ${FLAGS[*]}"
+    exit 0
+  fi
+
+  resolve_token
+  check_tools
+  build_flags
+
+  mkdir -p "$BACKUP_DIR" "$OUT_DIR"
+
+  log "Starting backup: $ORG → $BACKUP_DIR"
+  github-backup "$ORG" \
+    --organization \
+    -t "$TOKEN" \
+    -o "$BACKUP_DIR" \
+    --private \
+    --fork \
+    --bare \
+    --incremental \
+    "${FLAGS[@]}"
+
+  backup_org_meta
+  process_repos
+  create_archive
+  prune_old
+  print_summary
+}
+
+main "$@"
