@@ -83,6 +83,6 @@ execute as @a run function macroengine:systems/trim/scan
 ## License
 
 - macroEngine original code: Unlicense (public domain) — see [`LICENSE`](LICENSE).
-- String module (`core/lib/string`, `core/internal/string`): derived from CMDred's StringLib, MIT — notice in [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).
+- String module (`core/lib/string`, `core/internal/text`): macroEngine original code. Earlier releases used a module derived from CMDred's StringLib (MIT); see [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).
 
 Both files ship inside the distributed zip.

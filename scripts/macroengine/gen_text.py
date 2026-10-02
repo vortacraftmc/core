@@ -49,6 +49,20 @@ data remove storage {T} nl
 data remove storage {T} cl
 data remove storage {T} win
 data remove storage {T} cmp
+data remove storage {T} sf
+data remove storage {T} sc
+data remove storage {T} sq
+data remove storage {T} cf
+data remove storage {T} out
+data remove storage {T} err
+data remove storage {T} list
+data remove storage {T} ins
+data remove storage {T} at
+data remove storage {T} sep
+data remove storage {T} keep_empty
+data remove storage {T} in
+data remove storage {T} tbl
+data remove storage {T} allow_dot
 data remove storage {T} arg
 data remove storage {T} jarg
 data remove storage {T} jout
@@ -163,6 +177,36 @@ execute if score #tx_qq {S} matches 0 run return 0
 scoreboard players remove #tx_sn {S} 1
 execute if score #tx_sn {S} matches 1.. run return run function {NS}/safe_loop
 return 1
+""")
+
+w("ctl", f"""
+# {NS}/ctl
+# RETURN 1 when {T} s contains a newline, a carriage return or a tab, else 0.
+# Such characters cannot be substituted into a macro line, so validators reject them.
+# Static comparisons only, no macros. Touches only cf, sc, sq.
+data modify storage {T} cf set from storage {T} s
+execute store result score #tx_sn {S} run data get storage {T} cf
+execute if score #tx_sn {S} matches 0 run return 0
+return run function {NS}/ctl_loop
+""")
+
+w("ctl_loop", f"""
+# {NS}/ctl_loop [INTERNAL]
+# Pops the first character of cf and compares it with \\n, \\r and \\t.
+data modify storage {T} sc set string storage {T} cf 0 1
+data modify storage {T} cf set string storage {T} cf 1
+data modify storage {T} sq set from storage {T} sc
+execute store success score #tx_qq {S} run data modify storage {T} sq set value '\\n'
+execute if score #tx_qq {S} matches 0 run return 1
+data modify storage {T} sq set from storage {T} sc
+execute store success score #tx_qq {S} run data modify storage {T} sq set value '\\r'
+execute if score #tx_qq {S} matches 0 run return 1
+data modify storage {T} sq set from storage {T} sc
+execute store success score #tx_qq {S} run data modify storage {T} sq set value '\\t'
+execute if score #tx_qq {S} matches 0 run return 1
+scoreboard players remove #tx_sn {S} 1
+execute if score #tx_sn {S} matches 1.. run return run function {NS}/ctl_loop
+return 0
 """)
 
 # ---------------------------------------------------------------- join

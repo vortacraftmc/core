@@ -23,6 +23,9 @@
 
 tag @s remove macroengine.admin
 
+# text module: working buffers and lookup tables
+function macroengine:core/internal/text/unload
+
 kill @e[type=minecraft:command_block_minecart,tag=macroengine_input]
 
 execute if score #sys_admin macroengine.tick_flags matches 1.. run scoreboard players reset #sys_admin macroengine.tick_flags

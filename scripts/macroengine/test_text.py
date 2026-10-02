@@ -61,6 +61,9 @@ def run():
     # ---------- safe
     for s, ok in (("plain", 1), ('with "q"', 0), ("with \\ b", 0), ("", 1), ("$(x) {}", 1)):
         mc = fresh(); S(mc, s=s); check(f"safe({s!r})", mc.call(f"{NS}/safe")[0], ok)
+    # ---------- ctl
+    for s_, want in (("plain", 0), ("", 0), ("a\nb", 1), ("a\rb", 1), ("a\tb", 1), ("\t", 1), ("x y", 0), ('q"', 0), ("end\n", 1)):
+        mc = fresh(); S(mc, s=s_); check(f"ctl({s_!r})", mc.call(f"{NS}/ctl")[0], want)
     # ---------- replace
     rcases = [("a b c", " ", "_", 0), ("a b c", " ", "_", 1), ("a b c", " ", "_", -1), ("a b c d", " ", "_", -2),
               ("none", "x", "y", 0), ("aaaa", "aa", "b", 0), ("x.y.z", ".", "", 0), ("", "a", "b", 0),

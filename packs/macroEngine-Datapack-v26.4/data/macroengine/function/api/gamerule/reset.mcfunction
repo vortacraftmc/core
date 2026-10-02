@@ -10,13 +10,10 @@
 #   function macroengine:api/gamerule/reset with storage macroengine:input {}
 
 
-# Normalize
-data modify storage macroengine:core/internal/string/input replace.String set from storage macroengine:input rule
-data modify storage macroengine:core/internal/string/input replace.Find set value " "
-data modify storage macroengine:core/internal/string/input replace.Replace set value "_"
-function macroengine:core/internal/string/util/replace
-data modify storage macroengine:input _gamerule_norm set from storage macroengine:core/internal/string/output replace
-data remove storage macroengine:core/internal/string/input replace
+# Normalize key (spaces -> underscores, lowercase). Leaves _gamerule_norm unset when
+# the name cannot be normalized safely (contains a quote or a backslash).
+data remove storage macroengine:input _gamerule_norm
+function macroengine:core/internal/api/gamerule/normalize
 
 function macroengine:core/internal/api/gamerule/remove with storage macroengine:input {}
 

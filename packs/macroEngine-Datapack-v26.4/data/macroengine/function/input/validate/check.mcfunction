@@ -29,17 +29,13 @@
 # OUTPUT (written to storage macroengine:input_validate result):
 #   result.valid    — 1b if input matches the requested type, else 0b
 #   result.error    — human-readable reason when invalid (unset when valid)
-#   result.value    — for "int"/"float": the raw string, unchanged (caller
-#                     still owns turning it into a real number via
-#                     macroengine:core/internal/string/util/to_number AFTER checking result.valid —
-#                     this function never calls to_number itself, since
-#                     to_number has no failure mode of its own: feeding it
-#                     a non-numeric string produces a raw SNBT parse error
-#                     instead of a clean invalid result, which is exactly
-#                     the gap this function exists to close upstream of it)
+#   result.value    — for "int"/"float": the raw string, unchanged (the caller still
+#                     owns turning it into a real number, via
+#                     macroengine:core/lib/string/to_number, after checking result.valid)
 #
-# THIS FUNCTION NEVER $$(...) MACRO-EXECUTES THE INPUT STRING. It only
-# calls macroengine:core/internal/string/util/find (read-only string search) against it.
+# THIS FUNCTION NEVER $$(...) MACRO-EXECUTES THE INPUT STRING. The checks run in
+# macroengine:core/internal/text, which looks at one character at a time and never
+# substitutes the input as a whole into a command line.
 # ======================================================================================
 
 data remove storage macroengine:input_validate result

@@ -99,6 +99,8 @@ def parse_path(s, i=0):
     while i < len(s):
         if s[i] == ".":
             k, i = _path_key(s, i + 1); nodes.append(("k", k))
+        elif s[i] == "{" and nodes:
+            p = Snbt(s, i); d = p.compound(); nodes.append(("f", d)); i = p.i
         elif s[i] == "[":
             j = s.index("]", i); body = s[i + 1:j]
             if re.fullmatch(r"-?\d+", body): nodes.append(("i", int(body))); i = j + 1
