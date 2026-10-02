@@ -1,6 +1,6 @@
 plugins {
 	// Pinned to match the version used elsewhere in vortacraftmc/core
-	// (mods/datapack-blocker, examples/itemExampleMod). 1.15.5 is also the
+	// (mods/datapack-blocker). 1.15.5 is also the
 	// minimum Loom version with unobfuscated-jar support (needed for MC 26.x,
 	// which ships without Yarn mappings) via MinecraftJarProcessor.isUnobfuscated().
 	id 'fabric-loom' version '1.15.5'

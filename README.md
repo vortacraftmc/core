@@ -135,8 +135,7 @@ Pushes and pull requests trigger the `build.yml` workflow (Build & Lint), which 
 
 This monorepo consolidates projects that were previously scattered across
 individual repositories under the `runtoolkit` GitHub organization
-(TunnelScript, LeftClickDetection, dp-depman, RTWrapper, datapack-fixer,
-itemExampleMod, template-datapack, InteractionClickDetection,
+(TunnelScript, LeftClickDetection, dp-depman, RTWrapper, datapack-fixer, template-datapack, InteractionClickDetection,
 cmdTunnel-datapack, dpgen, TEMPLATE-MOD, inv_gui, macroEngine, guigen). That
 organization has since been retired in favor of `vortacraftmc`; the old repos
 are archived with a pointer to this monorepo, and are not otherwise

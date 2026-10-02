@@ -23,7 +23,7 @@
 //
 // This file only factors out the parts that were previously copy-pasted
 // identically across mods/datapack-blocker, mods/rtwrapper-mod,
-// mods/opmod-example, mods/TEMPLATE-MOD, and
+// examples/opmod-example, mods/TEMPLATE-MOD, and
 // packs/RTWrapper/rtwrapper-fabric's build.gradle (the last one is excluded
 // from the actual Gradle build by settings.gradle's EXCLUDED_PROJECT_DIRS -
 // "superseded by mods/rtwrapper-mod; kept only for historical reference" -
@@ -74,7 +74,7 @@ publishing {
             // deliberately, it does not fall back to archivesBaseName. This
             // reads base.archivesName explicitly instead, which resolves to
             // whatever each consumer already configured: for
-            // mods/opmod-example (which sets
+            // examples/opmod-example (which sets
             // `base { archivesName = project.archives_base_name }`) that's
             // "opmod", not the directory name "opmod-example"; for
             // mods/datapack-blocker, mods/rtwrapper-mod and mods/TEMPLATE-MOD
