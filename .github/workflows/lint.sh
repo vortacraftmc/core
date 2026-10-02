@@ -7,10 +7,7 @@ python -m pip install mecha
 echo "::endgroup::"
 
 IGNORE_PATHS=(
-    "packs/inv_gui"
     "packs/cmdTunnel-datapack/data/*/functions/init.mcfunction"
-    "packs/macroEngine-Datapack-v26.3/data/macroengine/function/world/get_time.mcfunction"
-    "packs/macroEngine-Datapack-v26.3/data/macroengine/function/world/time_phase.mcfunction"
     "packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/time_phase.mcfunction"
     "packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/get_time.mcfunction"
 )

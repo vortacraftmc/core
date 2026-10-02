@@ -1,4 +1,0 @@
-tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.header.config_values","color":"aqua"},{"translate":"macroengine.ui.sep11","color":"#555555"}]
-execute if data storage macroengine:engine config run tellraw @a[tag=macroengine.debug] ["",{"text":" ","color":"#555555"},{"plain":true ,"storage":"macroengine:engine","nbt":"config","interpret":false,"color":"green"}]
-execute unless data storage macroengine:engine config run tellraw @a[tag=macroengine.debug] ["",{"text":" ","color":"#555555"},{"translate":"macroengine.debug.no_config","color":"gray","italic":true}]
-tellraw @a[tag=macroengine.debug] ["",{"translate":"macroengine.prefix","color":"#00AAAA","bold":true},{"translate":"macroengine.ui.sep29","color":"#555555"}]
