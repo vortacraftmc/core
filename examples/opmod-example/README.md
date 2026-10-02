@@ -15,8 +15,7 @@ Both require permission level 3 to run, same as vanilla `/op`.
 ## ⚠️ Known risk: Loom is pinned to 1.15.5
 
 This subproject is deliberately pinned to `fabric-loom` **1.15.5** to match
-the other subprojects in this monorepo (`mods/datapack-blocker`,
-`examples/itemExampleMod`) and the root CI's Gradle 9.4.0. This was chosen
+the other subprojects in this monorepo (`mods/datapack-blocker`) and the root CI's Gradle 9.4.0. This was chosen
 over bumping to a newer Loom for consistency — **but it means MC 26.3
 support is not guaranteed** and needs verifying:
 
@@ -81,8 +80,7 @@ jar.
 ## ⚠️ Known risk: Loom is pinned to 1.15.5
 
 This subproject is deliberately pinned to `fabric-loom` **1.15.5** to match
-the other subprojects in this monorepo (`mods/datapack-blocker`,
-`examples/itemExampleMod`) and the root CI's Gradle 9.4.0. This was chosen
+the other subprojects in this monorepo (`mods/datapack-blocker`) and the root CI's Gradle 9.4.0. This was chosen
 over bumping to a newer Loom for consistency — **but it means MC 26.3
 support is not guaranteed** and needs verifying:
 
