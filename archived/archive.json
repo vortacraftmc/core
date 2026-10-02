@@ -2,24 +2,6 @@
   "schema_version": 1,
   "projects": [
     {
-      "id": "macroapi-datapack",
-      "name": "macroAPI",
-      "kind": "datapack",
-      "status": "archived",
-      "archived_on": "2026-04-18",
-      "reason": "Superseded by macroEngine; upstream repo archived read-only.",
-      "last_version": "v1.0.0",
-      "minecraft": "1.20.3-1.21.6",
-      "license": "Unlicense",
-      "deploy": "not_recommended",
-      "path": null,
-      "source_url": "https://github.com/runtoolkit/macroAPI-datapack",
-      "successor": "macroEngine-Datapack-v26.4",
-      "known_issues": [
-        "Load errors on 26.1.x: scoreboard objective names prefixed with '#' are rejected by the stricter name validation."
-      ]
-    },
-    {
       "id": "runtoolkit-suite",
       "name": "runtoolkit/suite (monorepo)",
       "kind": "other",
