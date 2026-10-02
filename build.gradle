@@ -26,6 +26,8 @@
 //   7. clean task extension - also wipes build/packs-dist and packs-remap
 //   8. Root 'build'/'check' lifecycle tasks - 'build' runs mergeDatapacks
 //      and copies its output into build/dist/
+//   9. checkArchive / printArchiveList - archived/archive.json registry
+//      validation; zipPacks, mergeDatapacks and 'check' depend on it
 //
 // Logging convention: every task prefixes its own output with "[taskName]"
 // so `gradle buildAll` (which runs several of these back to back) never
@@ -2195,3 +2197,161 @@ tasks.maybeCreate('build').configure {
         }
     }
 }
+
+// -----------------------------------------------------------------------
+// 9. Archived-project registry (archived/archive.json)
+//
+// archived/ is deliberately OUTSIDE packs/, so zipPacks / checkPacks /
+// mergeDatapacks never see archived projects. This section keeps the
+// registry honest and makes the other tasks depend on it:
+//   - checkArchive: validates archived/archive.json (shape, enums, unique
+//     ids, date format, path existence), and fails if an archived project
+//     is still present under packs/ or still listed in the merge manifest's
+//     "include". Read-only: never writes, never runs anything.
+//     -PcheckArchiveStrict=true also fails on warnings.
+//   - printArchiveList: prints the registry (read-only, lenient).
+// Wiring: zipPacks, mergeDatapacks and 'check' depend on checkArchive.
+// If neither archived/ nor archive.json exists the check is skipped (not an
+// error), so the build still works without the archive system.
+// Same rules as above: everything doLast needs is captured at
+// configuration time (no Project access during execution).
+// -----------------------------------------------------------------------
+def vcArchiveKinds = ['datapack', 'mod', 'resourcepack', 'script', 'other'] as Set
+def vcArchiveStatuses = ['archived', 'frozen', 'superseded'] as Set
+def vcArchiveDeploy = ['not_recommended', 'review_required', 'ok'] as Set
+def vcArchiveRequired = ['id', 'name', 'kind', 'status', 'archived_on', 'reason', 'last_version', 'license', 'deploy', 'successor']
+def vcArchiveAllowed = (vcArchiveRequired + ['minecraft', 'path', 'source_url', 'known_issues']) as Set
+
+def vcValidateArchive = { File rootDir, File registryFile, File packsRoot, File manifestFile ->
+    def errors = []
+    def warnings = []
+    def count = 0
+    def fail = { String msg -> errors << msg; return [errors: errors, warnings: warnings, count: count] }
+
+    def data
+    try {
+        data = new groovy.json.JsonSlurper().parse(registryFile)
+    } catch (Exception e) {
+        return fail("cannot parse ${registryFile.name}: ${e.message}")
+    }
+    if (!(data instanceof Map)) return fail("${registryFile.name}: top level must be an object")
+    if (data.schema_version != 1) errors << "schema_version must be 1"
+    if (!(data.projects instanceof List)) return fail("'projects' must be an array")
+
+    // ids / folder names that must NOT be live in packs/ or in the merge manifest
+    def liveDirs = (packsRoot.listFiles()?.findAll { it.isDirectory() }?.collect { it.name.toLowerCase() } ?: []) as Set
+    def included = [] as Set
+    if (manifestFile != null && manifestFile.exists()) {
+        try {
+            def m = new groovy.json.JsonSlurper().parse(manifestFile)
+            (m?.include ?: []).each { included << it.toString().toLowerCase() }
+        } catch (Exception e) {
+            warnings << "merge manifest unreadable, include-list check skipped: ${e.message}"
+        }
+    }
+
+    def rootPath = rootDir.canonicalFile.toPath()
+    def packsPath = packsRoot.canonicalFile.toPath()
+    def seen = [] as Set
+
+    data.projects.eachWithIndex { p, i ->
+        if (!(p instanceof Map)) { errors << "projects[${i}]: must be an object"; return }
+        count++
+        def tag = "projects[${i}] (${p.id ?: '?'})"
+        vcArchiveRequired.each { k -> if (!p.containsKey(k)) errors << "${tag}: missing '${k}'" }
+        p.keySet().each { k -> if (!vcArchiveAllowed.contains(k)) errors << "${tag}: unknown field '${k}'" }
+
+        def id = p.id?.toString()
+        if (id == null || !(id ==~ /[a-z0-9][a-z0-9._-]*/)) errors << "${tag}: bad id"
+        else if (!seen.add(id)) errors << "${tag}: duplicate id"
+        if (!vcArchiveKinds.contains(p.kind)) errors << "${tag}: bad kind '${p.kind}'"
+        if (!vcArchiveStatuses.contains(p.status)) errors << "${tag}: bad status '${p.status}'"
+        if (!vcArchiveDeploy.contains(p.deploy)) errors << "${tag}: bad deploy '${p.deploy}'"
+        if (!(p.archived_on?.toString() ==~ /\d{4}-\d{2}-\d{2}/)) errors << "${tag}: archived_on must be YYYY-MM-DD"
+        if (p.known_issues != null && !(p.known_issues instanceof List)) errors << "${tag}: known_issues must be an array"
+
+        def names = [id?.toLowerCase()] as Set
+        def pathVal = p.path
+        if (pathVal != null && !(pathVal instanceof String)) {
+            errors << "${tag}: path must be a string or null"
+        } else if (pathVal) {
+            def rp = new File(rootDir, pathVal).canonicalFile
+            if (!rp.toPath().startsWith(rootPath)) errors << "${tag}: path escapes the repo"
+            else if (!rp.exists()) errors << "${tag}: path '${pathVal}' does not exist"
+            else if (rp.toPath().startsWith(packsPath)) errors << "${tag}: archived project must not live under packs/"
+            names << rp.name.toLowerCase()
+        }
+        names.findAll { it }.each { n ->
+            if (liveDirs.contains(n)) errors << "${tag}: '${n}' is still present under packs/ (move or remove it)"
+            if (included.contains(n)) errors << "${tag}: '${n}' is still in merge-manifest include"
+        }
+
+        def succ = p.successor
+        if (succ != null && !(succ instanceof String)) {
+            errors << "${tag}: successor must be a string or null"
+        } else if (succ) {
+            if (succ == id) errors << "${tag}: successor cannot be itself"
+            else if (!new File(packsRoot, succ).exists()) warnings << "${tag}: successor '${succ}' not found under packs/"
+        }
+    }
+    [errors: errors, warnings: warnings, count: count]
+}
+
+tasks.register('checkArchive') {
+    group = 'verification'
+    description = 'Validates archived/archive.json and fails if an archived project is still under packs/ or in packs/merge-manifest.json include. Read-only. -PcheckArchiveStrict=true also fails on warnings. Skipped if neither archived/ nor archive.json exists.'
+    def rootDirCap = rootProject.projectDir
+    def archivedDir = rootProject.file('archived')
+    def registryFile = rootProject.file('archived/archive.json')
+    def packsRoot = rootProject.file('packs')
+    def manifestFile = rootProject.file('packs/merge-manifest.json')
+    def strictProp = project.findProperty('checkArchiveStrict')
+    doLast {
+        if (!registryFile.exists()) {
+            if (archivedDir.exists()) {
+                throw new GradleException("[checkArchive] failed: archived/ exists but archived/archive.json is missing.")
+            }
+            println "[checkArchive] no archived/ directory - skipped."
+            return
+        }
+        def strict = (strictProp?.toString()?.toLowerCase() == 'true')
+        def result = vcValidateArchive(rootDirCap, registryFile, packsRoot, manifestFile)
+        result.warnings.each { println "[checkArchive] WARN: ${it}" }
+        result.errors.each { println "[checkArchive] ERROR: ${it}" }
+        if (result.errors) {
+            throw new GradleException("[checkArchive] failed: ${result.errors.size()} error(s) in ${result.count} project(s).")
+        }
+        if (strict && result.warnings) {
+            throw new GradleException("[checkArchive] failed strict mode: ${result.warnings.size()} warning(s) (-PcheckArchiveStrict=true).")
+        }
+        println "[checkArchive] OK: ${result.count} archived project(s) valid."
+    }
+}
+
+tasks.register('printArchiveList') {
+    group = 'help'
+    description = 'Lists every project in archived/archive.json (read-only, no validation).'
+    def registryFile = rootProject.file('archived/archive.json')
+    doLast {
+        if (!registryFile.exists()) {
+            println "[printArchiveList] no archived/archive.json found."
+            return
+        }
+        def data = new groovy.json.JsonSlurper().parse(registryFile)
+        def projects = (data instanceof Map && data.projects instanceof List) ? data.projects : []
+        if (projects.isEmpty()) {
+            println "[printArchiveList] no archived projects."
+            return
+        }
+        println "[printArchiveList] ${projects.size()} archived project(s):"
+        projects.each { p ->
+            println "[printArchiveList]   - ${p.id} [${p.status}, deploy=${p.deploy}] ${p.name} ${p.last_version} (archived ${p.archived_on})" +
+                    (p.successor ? " -> ${p.successor}" : "")
+        }
+    }
+}
+
+// Wiring: archived projects must never leak into packaged/merged output.
+tasks.named('zipPacks') { dependsOn 'checkArchive' }
+tasks.named('mergeDatapacks') { dependsOn 'checkArchive' }
+tasks.named('check') { dependsOn 'checkArchive' }

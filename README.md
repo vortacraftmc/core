@@ -8,8 +8,8 @@ Consolidated monorepo for the vortacraftmc ecosystem.
 - `packs/`     — Datapacks / resource packs
 - `scripts/`   — Helper scripts and tools
 - `examples/`  — Templates, example Fabric mods, example datapacks, test files
-- `archived/`  — Reserved for projects no longer developed but kept for reference (planned — this directory does not exist yet)
-- `other/`     — Reserved for content that doesn't fit another category (planned — this directory does not exist yet)
+- `archived/`  — Reserved for projects no longer developed but kept for reference (registry: `archived/archive.json`, validate with `scripts/check_archive.py`)
+- `other/`     — Reserved for content that doesn't fit another category (registry: `archived/archive.json`, validate with `scripts/check_archive.py`)
 
 ## Datapack maintenance status
 

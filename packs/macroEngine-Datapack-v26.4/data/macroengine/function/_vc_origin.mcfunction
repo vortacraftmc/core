@@ -7,7 +7,8 @@
 #   This file serves as a permanent origin watermark for this datapack within
 #   the vortacraftmc/core monorepo repository.
 #
-#   Original source: Runtoolkit (runtoolkit/suite). This project is derived
+#   Original source: Runtoolkit (runtoolkit/suite, now archived; the
+#   organization was retired in favor of vortacraftmc). This project is derived
 #   from Runtoolkit's work; the original copyright notice is retained below.
 #
 # Build Workflow Rules:
