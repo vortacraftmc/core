@@ -6,9 +6,7 @@ echo "::group::📦 Installing Mecha"
 python -m pip install mecha
 echo "::endgroup::"
 
-IGNORE_PATHS=(
-   "archived/*"
-)
+IGNORE_PATHS=()
 
 echo "::group::🚫 Ignoring paths"
 
