@@ -1,0 +1,12 @@
+{
+  "pack": {
+    "description": "[ARCHIVED] guikit-demo - example menus for guikit: state widgets, command buttons, radio, meter, themed containers (requires the guikit core datapack)",
+    "min_format": 122,
+    "max_format": 122
+  },
+  "features": {
+    "enabled": [
+      "minecraft:vanilla"
+    ]
+  }
+}

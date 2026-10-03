@@ -17,6 +17,240 @@
       "known_issues": [
         "The per-project repos that were merged into it are private."
       ]
+    },
+    {
+      "id": "dailybonus",
+      "name": "DailyBonus",
+      "kind": "datapack",
+      "status": "archived",
+      "archived_on": "2026-10-03",
+      "reason": "Archived by the maintainer; kept as a frozen, reference-only project. Moved out of packs/ so it is no longer zipped or merged; loading requires explicit operator approval.",
+      "last_version": "main",
+      "minecraft": "pack format 122.1",
+      "license": "Unlicense",
+      "deploy": "review_required",
+      "path": "archived/DailyBonus",
+      "source_url": null,
+      "successor": null,
+      "known_issues": [
+        "Load/tick hooks are gated: the pack stays inactive until an operator runs /function vcm_archive_dailybonus:confirm (see ARCHIVED.md). Functions called directly by other packs or players are not blocked.",
+        "Targets pack format 122.1 and is not maintained against newer Minecraft versions."
+      ]
+    },
+    {
+      "id": "interactionclickdetection",
+      "name": "InteractionClickDetection",
+      "kind": "datapack",
+      "status": "archived",
+      "archived_on": "2026-10-03",
+      "reason": "Archived by the maintainer; kept as a frozen, reference-only project. Moved out of packs/ so it is no longer zipped or merged; loading requires explicit operator approval.",
+      "last_version": "v1.0.0",
+      "minecraft": "pack format 26",
+      "license": "Unlicense",
+      "deploy": "review_required",
+      "path": "archived/InteractionClickDetection",
+      "source_url": null,
+      "successor": null,
+      "known_issues": [
+        "No load/tick hooks, so loading cannot be gated; vcm_archive_interactionclickdetection only shows a one-time notice (see ARCHIVED.md).",
+        "Targets pack format 26 and is not maintained against newer Minecraft versions."
+      ]
+    },
+    {
+      "id": "leftclickdetection",
+      "name": "LeftClickDetection",
+      "kind": "datapack",
+      "status": "archived",
+      "archived_on": "2026-10-03",
+      "reason": "Archived by the maintainer; kept as a frozen, reference-only project. Moved out of packs/ so it is no longer zipped or merged; loading requires explicit operator approval.",
+      "last_version": "1.0.1",
+      "minecraft": "pack format 26-101",
+      "license": "Unlicense",
+      "deploy": "review_required",
+      "path": "archived/LeftClickDetection",
+      "source_url": null,
+      "successor": null,
+      "known_issues": [
+        "Load/tick hooks are gated: the pack stays inactive until an operator runs /function vcm_archive_leftclickdetection:confirm (see ARCHIVED.md). Functions called directly by other packs or players are not blocked.",
+        "Targets pack format 26-101 and is not maintained against newer Minecraft versions."
+      ]
+    },
+    {
+      "id": "quickshare",
+      "name": "QuickShare",
+      "kind": "datapack",
+      "status": "archived",
+      "archived_on": "2026-10-03",
+      "reason": "Archived by the maintainer; kept as a frozen, reference-only project. Moved out of packs/ so it is no longer zipped or merged; loading requires explicit operator approval.",
+      "last_version": "main",
+      "minecraft": "pack format 122.1",
+      "license": "Unlicense",
+      "deploy": "review_required",
+      "path": "archived/QuickShare",
+      "source_url": null,
+      "successor": null,
+      "known_issues": [
+        "Load/tick hooks are gated: the pack stays inactive until an operator runs /function vcm_archive_quickshare:confirm (see ARCHIVED.md). Functions called directly by other packs or players are not blocked.",
+        "Targets pack format 122.1 and is not maintained against newer Minecraft versions."
+      ]
+    },
+    {
+      "id": "rtwrapper",
+      "name": "RTWrapper (original datapack + historical fabric mod)",
+      "kind": "datapack",
+      "status": "archived",
+      "archived_on": "2026-10-03",
+      "reason": "Archived by the maintainer; kept as a frozen, reference-only project. Moved out of packs/ so it is no longer zipped or merged; loading requires explicit operator approval.",
+      "last_version": "main",
+      "minecraft": "pack format 107.1",
+      "license": "Unlicense",
+      "deploy": "review_required",
+      "path": "archived/RTWrapper",
+      "source_url": null,
+      "successor": null,
+      "known_issues": [
+        "Load/tick hooks are gated: the pack stays inactive until an operator runs /function vcm_archive_rtwrapper:confirm (see ARCHIVED.md). Functions called directly by other packs or players are not blocked.",
+        "Uses 345 macro lines; unvalidated player-controlled text in macros can alter command arguments (command injection). Macros are also slower in hot tick loops.",
+        "Targets pack format 107.1 and is not maintained against newer Minecraft versions."
+      ]
+    },
+    {
+      "id": "rtwrapper-1.21.1",
+      "name": "RTWrapper 1.21.1",
+      "kind": "datapack",
+      "status": "archived",
+      "archived_on": "2026-10-03",
+      "reason": "Archived by the maintainer; kept as a frozen, reference-only project. Moved out of packs/ so it is no longer zipped or merged; loading requires explicit operator approval.",
+      "last_version": "1.21.1",
+      "minecraft": "pack format 48",
+      "license": "Unlicense",
+      "deploy": "review_required",
+      "path": "archived/RTWrapper-1.21.1",
+      "source_url": null,
+      "successor": null,
+      "known_issues": [
+        "Load/tick hooks are gated: the pack stays inactive until an operator runs /function vcm_archive_rtwrapper_1_21_1:confirm (see ARCHIVED.md). Functions called directly by other packs or players are not blocked.",
+        "Uses 332 macro lines; unvalidated player-controlled text in macros can alter command arguments (command injection). Macros are also slower in hot tick loops.",
+        "Targets pack format 48 and is not maintained against newer Minecraft versions."
+      ]
+    },
+    {
+      "id": "rtwrapper-v1.0.1",
+      "name": "RTWrapper v1.0.1",
+      "kind": "datapack",
+      "status": "archived",
+      "archived_on": "2026-10-03",
+      "reason": "Archived by the maintainer; kept as a frozen, reference-only project. Moved out of packs/ so it is no longer zipped or merged; loading requires explicit operator approval.",
+      "last_version": "v1.0.1",
+      "minecraft": "pack format 122.1",
+      "license": "Unlicense",
+      "deploy": "review_required",
+      "path": "archived/RTWrapper-v1.0.1",
+      "source_url": null,
+      "successor": null,
+      "known_issues": [
+        "Load/tick hooks are gated: the pack stays inactive until an operator runs /function vcm_archive_rtwrapper_v1_0_1:confirm (see ARCHIVED.md). Functions called directly by other packs or players are not blocked.",
+        "Uses 345 macro lines; unvalidated player-controlled text in macros can alter command arguments (command injection). Macros are also slower in hot tick loops.",
+        "Targets pack format 122.1 and is not maintained against newer Minecraft versions."
+      ]
+    },
+    {
+      "id": "tunnelscript",
+      "name": "TunnelScript",
+      "kind": "datapack",
+      "status": "archived",
+      "archived_on": "2026-10-03",
+      "reason": "Archived by the maintainer; kept as a frozen, reference-only project. Moved out of packs/ so it is no longer zipped or merged; loading requires explicit operator approval.",
+      "last_version": "v1.1.0",
+      "minecraft": "pack format 10",
+      "license": "Unlicense",
+      "deploy": "review_required",
+      "path": "archived/TunnelScript",
+      "source_url": null,
+      "successor": null,
+      "known_issues": [
+        "Load/tick hooks are gated: the pack stays inactive until an operator runs /function vcm_archive_tunnelscript:confirm (see ARCHIVED.md). Functions called directly by other packs or players are not blocked.",
+        "Targets pack format 10 and is not maintained against newer Minecraft versions."
+      ]
+    },
+    {
+      "id": "cmdtunnel-datapack",
+      "name": "cmdTunnel",
+      "kind": "datapack",
+      "status": "archived",
+      "archived_on": "2026-10-03",
+      "reason": "Archived by the maintainer; kept as a frozen, reference-only project. Moved out of packs/ so it is no longer zipped or merged; loading requires explicit operator approval.",
+      "last_version": "main",
+      "minecraft": "pack format 12",
+      "license": "Unlicense",
+      "deploy": "review_required",
+      "path": "archived/cmdTunnel-datapack",
+      "source_url": null,
+      "successor": null,
+      "known_issues": [
+        "Load/tick hooks are gated: the pack stays inactive until an operator runs /function vcm_archive_cmdtunnel_datapack:confirm (see ARCHIVED.md). Functions called directly by other packs or players are not blocked.",
+        "Targets pack format 12 and is not maintained against newer Minecraft versions."
+      ]
+    },
+    {
+      "id": "guikit-datapack",
+      "name": "guikit",
+      "kind": "datapack",
+      "status": "archived",
+      "archived_on": "2026-10-03",
+      "reason": "Archived by the maintainer; kept as a frozen, reference-only project. Moved out of packs/ so it is no longer zipped or merged; loading requires explicit operator approval.",
+      "last_version": "v5",
+      "minecraft": "pack format 122",
+      "license": "Unlicense",
+      "deploy": "review_required",
+      "path": "archived/guikit-datapack",
+      "source_url": null,
+      "successor": null,
+      "known_issues": [
+        "Load/tick hooks are gated: the pack stays inactive until an operator runs /function vcm_archive_guikit_datapack:confirm (see ARCHIVED.md). Functions called directly by other packs or players are not blocked.",
+        "Uses 222 macro lines; unvalidated player-controlled text in macros can alter command arguments (command injection). Macros are also slower in hot tick loops.",
+        "Targets pack format 122 and is not maintained against newer Minecraft versions."
+      ]
+    },
+    {
+      "id": "guikit-demo",
+      "name": "guikit-demo",
+      "kind": "datapack",
+      "status": "archived",
+      "archived_on": "2026-10-03",
+      "reason": "Archived by the maintainer; kept as a frozen, reference-only project. Moved out of packs/ so it is no longer zipped or merged; loading requires explicit operator approval.",
+      "last_version": "main",
+      "minecraft": "pack format 122",
+      "license": "Unlicense",
+      "deploy": "review_required",
+      "path": "archived/guikit-demo",
+      "source_url": null,
+      "successor": null,
+      "known_issues": [
+        "No load/tick hooks, so loading cannot be gated; vcm_archive_guikit_demo only shows a one-time notice (see ARCHIVED.md).",
+        "No LICENSE file in the pack; the repository-level Unlicense is assumed. Requires the guikit core datapack.",
+        "Targets pack format 122 and is not maintained against newer Minecraft versions."
+      ]
+    },
+    {
+      "id": "macroengine-datapack-v26.4",
+      "name": "macroEngine v26.4",
+      "kind": "datapack",
+      "status": "archived",
+      "archived_on": "2026-10-03",
+      "reason": "Archived by the maintainer; kept as a frozen, reference-only project. Moved out of packs/ so it is no longer zipped or merged; loading requires explicit operator approval.",
+      "last_version": "v26.4",
+      "minecraft": "pack format 122.0",
+      "license": "Unlicense",
+      "deploy": "review_required",
+      "path": "archived/macroEngine-Datapack-v26.4",
+      "source_url": null,
+      "successor": null,
+      "known_issues": [
+        "Load/tick hooks are gated: the pack stays inactive until an operator runs /function vcm_archive_macroengine_datapack_v26_4:confirm (see ARCHIVED.md). Functions called directly by other packs or players are not blocked.",
+        "Uses 1055 macro lines; unvalidated player-controlled text in macros can alter command arguments (command injection). Macros are also slower in hot tick loops.",
+        "Targets pack format 122.0 and is not maintained against newer Minecraft versions."
+      ]
     }
   ]
 }

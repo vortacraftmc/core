@@ -7,10 +7,7 @@
     "min_format": 122,
     "max_format": 122
   },
-  "include": [
-    "guikit-datapack",
-    "macroEngine-Datapack-v26.4"
-  ],
+  "include": [],
   "exclude": [],
   "allowMismatchedFormats": false,
   "_gatedLoad": "true (default): route every pack's minecraft:load/tick hooks through a generated <namespace>:load/:tick gatekeeper with per-pack toggles, debug and status. false = legacy plain union-merge of the load/tick tags.",
