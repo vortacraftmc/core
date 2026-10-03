@@ -4,7 +4,8 @@
 #        3 lockdown | 4 reload breaker | 5 sink guard (inline in the macro-sink functions)
 
 # Gate 0: archive notice (console + chat)
-say [macroEngine] ARCHIVED datapack (vortacraftmc/core, 2026-10-03): unmaintained, deploy not recommended. It runs commands at server permission level and can lag, crash or alter your world - review the code and back up first. See ARCHIVED.md in the pack folder.
+say [macroEngine] ARCHIVED datapack (vortacraftmc/core, 2026-10-03): unmaintained, deploy not recommended. Runs commands at server permission level and can lag, crash or alter your world - review the code and back up first.
+say [macroEngine] See ARCHIVED.md in the pack folder.
 
 scoreboard objectives add macroengine.gate dummy
 execute unless data storage macroengine:gate/v26_4 state run data modify storage macroengine:gate/v26_4 state set value "pending"
@@ -29,5 +30,6 @@ execute if score #n macroengine.gate matches 6.. run data modify storage macroen
 # Result
 execute if data storage macroengine:gate/v26_4 {state:"active"} run return 1
 execute if data storage macroengine:gate/v26_4 {state:"locked"} run say [macroEngine] LOCKED. Reason is in storage macroengine:gate/v26_4 (reason). Operator: tag yourself macroengine.gate_admin, then run /function macroengine:gate/v26_4/unlock
-execute if data storage macroengine:gate/v26_4 {state:"pending"} run say [macroEngine] PENDING operator confirmation - the pack is inert. 1) /tag <you> add macroengine.gate_admin  2) /function macroengine:gate/v26_4/confirm {format:122}  (format = data pack version of your server, pack_version.data in its version.json; this build targets 122)
+execute if data storage macroengine:gate/v26_4 {state:"pending"} run say [macroEngine] PENDING operator confirmation - the pack is inert. 1) /tag <you> add macroengine.gate_admin  2) /function macroengine:gate/v26_4/confirm {format:122}
+execute if data storage macroengine:gate/v26_4 {state:"pending"} run say [macroEngine] format = data pack version of your server (pack_version.data in its version.json); this build targets 122.
 return fail
