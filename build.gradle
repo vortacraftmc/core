@@ -934,6 +934,8 @@ tasks.register('printModVersions') {
 // Manifest options (only "output" + "include" are required):
 //   output:  { description, pack_format? | min_format+max_format, name? }
 //   include: ["packA", "nested/dir/packB"], exclude: [...]
+//   allowEmpty: false  (default) - an empty 'include' fails the build; true
+//     makes it a logged no-op (use when every datapack is archived).
 //   allowMismatchedFormats: false  (default) - fail on format mismatch
 //   gatedLoad: true  (default) - route every pack's minecraft:load/tick
 //     hooks through a generated <namespace>:load / <namespace>:tick
@@ -1070,7 +1072,12 @@ tasks.register('mergeDatapacks') {
                 "strictLoadRefs=${strictLoadRefs}, zip=${zipEnabled}."
 
         if (include.isEmpty()) {
-            throw new GradleException("[mergeDatapacks] failed: manifest 'include' list is empty. Nothing to merge.")
+            if (manifest.allowEmpty == true) {
+                // All datapacks are archived (see archived/README.md): nothing to merge is expected.
+                println "[mergeDatapacks] manifest 'include' is empty and allowEmpty=true: nothing to merge, skipping (no output written)."
+                return
+            }
+            throw new GradleException("[mergeDatapacks] failed: manifest 'include' list is empty. Nothing to merge. (Set \"allowEmpty\": true in the manifest if that is intentional.)")
         }
 
         def packDirs = [:]
