@@ -4,6 +4,8 @@
 # ─────────────────────────────────────────────────────────────────
 
 # Pass raw command to pipeline input
+# vc-gate: sink guard, disabled unless macroengine:gate/v26_4 state is active
+execute unless data storage macroengine:gate/v26_4 {state:"active"} run return fail
 $data modify storage macroengine:input raw_command set value "$(cmd)"
 
 # Execute security pipeline (which sets up isolation, validates, checks canary)

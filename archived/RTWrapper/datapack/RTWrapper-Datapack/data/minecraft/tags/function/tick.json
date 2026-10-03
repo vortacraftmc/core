@@ -1,6 +1,9 @@
 {
   "values": [
-    "vortacraftmc:core/tick",
+    {
+      "id": "vortacraftmc:core/tick",
+      "required": false
+    },
     "rtwrapper:core/tick",
     "rtwrapper:core/trigger_tick"
   ]

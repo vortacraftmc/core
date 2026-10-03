@@ -1,5 +1,6 @@
 {
   "values": [
+    "guikit:gate/v5/load",
     "guikit:core/load"
   ]
 }

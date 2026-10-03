@@ -1,3 +1,5 @@
+# vc-gate: sink guard, disabled unless macroengine:gate/v26_4 state is active
+execute unless data storage macroengine:gate/v26_4 {state:"active"} run return fail
 scoreboard players set $pex_pid macroengine.tmp 0
 $execute store result score $pex_pid macroengine.tmp run data get storage macroengine:engine player_pids.$(player)
 execute if score $pex_pid macroengine.tmp matches 0 run return 0

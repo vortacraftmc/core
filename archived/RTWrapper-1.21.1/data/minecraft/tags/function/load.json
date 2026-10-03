@@ -1,5 +1,6 @@
 {
   "values": [
+    "rtwrapper:gate/r1_21_1/load",
     "vortacraftmc:core/load",
     "rtwrapper:core/load",
     "rtwrapper:core/trigger_load"

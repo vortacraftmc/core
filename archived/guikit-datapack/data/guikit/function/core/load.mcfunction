@@ -1,4 +1,6 @@
 # guikit :: load
+# vc-gate: inert until guikit:gate/v5 state is active
+execute unless data storage guikit:gate/v5 {state:"active"} run return 0
 scoreboard objectives add guikit.timer dummy
 scoreboard objectives add guikit.tmax dummy
 scoreboard objectives add guikit.click dummy
