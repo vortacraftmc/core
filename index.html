@@ -38,6 +38,14 @@
       margin: 0 auto;
       padding: 0 24px 80px;
     }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 16px;
+    }
+    .badges img { display: block; }
     h2 {
       font-size: 22px;
       font-weight: 600;
@@ -426,6 +434,9 @@
     <p class="lead">
       A consolidated monorepo for the vortacraftmc ecosystem:
       Fabric mods, datapacks, and helper scripts, all in one place.
+    </p>
+    <p class="badges">
+      <a href="https://codespaces.new/vortacraftmc/core" target="_blank" rel="noopener noreferrer"><img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces" /></a>
     </p>
     <p id="api-status"></p>
     <div id="refresh-control">
