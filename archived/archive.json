@@ -58,13 +58,15 @@
       "archived_on": "2026-10-03",
       "reason": "Datapacks are retired in favor of Fabric mods (see README 'Datapack maintenance status'); archived read-only for reference, no further fixes planned.",
       "last_version": "1.0.1",
-      "minecraft": "pack_format 26-101",
+      "minecraft": "pack_format 26-41",
       "license": "Unlicense",
       "deploy": "not_recommended",
       "path": "archived/LeftClickDetection",
       "source_url": null,
       "successor": null,
-      "known_issues": []
+      "known_issues": [
+        "Plural folder layout (functions/, tags/functions/): only loads up to pack_format 41 (1.20.6); pack.mcmeta range corrected from 26-101 to 26-41."
+      ]
     },
     {
       "id": "quickshare",
@@ -96,7 +98,9 @@
       "source_url": null,
       "successor": null,
       "known_issues": [
-        "Contains the rtwrapper-fabric Fabric mod sources; the maintained mod lives in mods/rtwrapper-mod."
+        "Contains the rtwrapper-fabric Fabric mod sources; the maintained mod lives in mods/rtwrapper-mod.",
+        "Load gate (see ARCHIVED.md): inert until an operator confirms with the pack's data pack format; lock/unlock kill switch, reload breaker and guarded command sinks. It is a safeguard, not a sandbox.",
+        "load/tick tags listed vortacraftmc:core/load and vortacraftmc:core/tick, which this build does not ship; a missing required tag entry makes the whole tag fail to load. Entries are now optional."
       ]
     },
     {
@@ -113,7 +117,9 @@
       "path": "archived/RTWrapper-1.21.1",
       "source_url": null,
       "successor": null,
-      "known_issues": []
+      "known_issues": [
+        "Load gate (see ARCHIVED.md): inert until an operator confirms with the pack's data pack format; lock/unlock kill switch, reload breaker and guarded command sinks. It is a safeguard, not a sandbox."
+      ]
     },
     {
       "id": "rtwrapper-v1.0.1",
@@ -129,7 +135,9 @@
       "path": "archived/RTWrapper-v1.0.1",
       "source_url": null,
       "successor": null,
-      "known_issues": []
+      "known_issues": [
+        "Load gate (see ARCHIVED.md): inert until an operator confirms with the pack's data pack format; lock/unlock kill switch, reload breaker and guarded command sinks. It is a safeguard, not a sandbox."
+      ]
     },
     {
       "id": "tunnelscript",
@@ -145,7 +153,9 @@
       "path": "archived/TunnelScript",
       "source_url": null,
       "successor": null,
-      "known_issues": []
+      "known_issues": [
+        "Targets Minecraft 1.19.x (old pack_format, plural folders); does not load on current versions."
+      ]
     },
     {
       "id": "cmdtunnel-datapack",
@@ -161,7 +171,9 @@
       "path": "archived/cmdTunnel-datapack",
       "source_url": null,
       "successor": null,
-      "known_issues": []
+      "known_issues": [
+        "Targets Minecraft 1.19.x (old pack_format, plural folders); does not load on current versions."
+      ]
     },
     {
       "id": "guikit-datapack",
@@ -179,7 +191,8 @@
       "successor": null,
       "known_issues": [
         "dialog/cmd.json saves a command that runs at datapack permission level (default 2) when any player clicks it; no apostrophe filtering, only a warning in the dialog text.",
-        "internal/btn/url embeds $(url) unescaped into a tellraw JSON component (JSON injection if the URL is player-controlled)."
+        "internal/btn/url embeds $(url) unescaped into a tellraw JSON component (JSON injection if the URL is player-controlled).",
+        "Load gate (see ARCHIVED.md): inert until an operator confirms with the pack's data pack format; lock/unlock kill switch, reload breaker and guarded command sinks. It is a safeguard, not a sandbox."
       ]
     },
     {
@@ -217,7 +230,8 @@
       "known_issues": [
         "Several macro sinks run $(cmd) with no permission gate (api/trigger/call2, systems/hook/run_cmd, api/wand/call_cmd, and others); admins are only notified or the call is only logged.",
         "api/cmd/ban, kick, gamerule, effect_give_all pass raw macro arguments into commands.",
-        "Pairs with macroEngine-Resourcepack-v26.4 (required for i18n, sounds, trim assets), which is still under packs/."
+        "Pairs with macroEngine-Resourcepack-v26.4 (required for i18n, sounds, trim assets), which is still under packs/.",
+        "Load gate (see ARCHIVED.md): inert until an operator confirms with the pack's data pack format; lock/unlock kill switch, reload breaker and guarded command sinks. It is a safeguard, not a sandbox."
       ]
     }
   ]

@@ -37,3 +37,15 @@ watermark/pack checks (`./gradlew checkOriginWatermarks checkPacks`).
 - Only fixes for significant issues; no feature PRs against archived projects (see `NOTICE.md`).
 - Keep each project's `LICENSE` and `THIRD_PARTY_LICENSES.md` intact.
 - Low-risk findings in archived projects are documented in `known_issues`, not necessarily fixed (see `SECURITY.md`).
+
+## Archive notes and load gates
+
+Every datapack here carries an `ARCHIVED.md` (risk reminder), an `[ARCHIVED]` prefix in its `pack.mcmeta`
+description and, where it has a load function, a `say` notice on load.
+
+The framework / API packs (`macroEngine-Datapack-v26.4`, `guikit-datapack`, the three `RTWrapper*` builds)
+additionally ship a load gate under `<namespace>:gate/<slug>/`: archive notice, version/format handshake,
+operator confirmation, lockdown kill switch, reload breaker and a guard on the macro command sinks.
+Details and operator steps are in each pack's `ARCHIVED.md`. The gate is a safeguard for operators, not a
+sandbox; the old 1.19.x packs (`TunnelScript`, `cmdTunnel-datapack`) only get the notice because the gate
+needs macro and `return` support from newer versions.
