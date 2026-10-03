@@ -983,6 +983,7 @@ tasks.register('mergeDatapacks') {
     // 'project.findProperty' can't be called from inside doLast itself.
     def dryRunProp = project.findProperty('mergeDryRun')
     def priorityProp = project.findProperty('mergePriority')
+    def strictIncludeProp = project.findProperty('mergeStrictInclude')
     def manifestPathProp = project.findProperty('mergeManifest')
     def reportPathProp = project.findProperty('mergeReport')
     def reportProjectDir = projectDir
@@ -1070,7 +1071,14 @@ tasks.register('mergeDatapacks') {
                 "strictLoadRefs=${strictLoadRefs}, zip=${zipEnabled}."
 
         if (include.isEmpty()) {
-            throw new GradleException("[mergeDatapacks] failed: manifest 'include' list is empty. Nothing to merge.")
+            // All datapacks were moved to archived/ (archived/ is never merged), so an empty
+            // 'include' is a valid state, not a misconfiguration: skip instead of failing.
+            // Use -PmergeStrictInclude=true to restore the old hard failure.
+            if (strictIncludeProp?.toString() == 'true') {
+                throw new GradleException("[mergeDatapacks] failed: manifest 'include' list is empty. Nothing to merge.")
+            }
+            println "[mergeDatapacks] SKIPPED: manifest 'include' is empty (all datapacks are archived). No merged datapack is produced."
+            return
         }
 
         def packDirs = [:]
