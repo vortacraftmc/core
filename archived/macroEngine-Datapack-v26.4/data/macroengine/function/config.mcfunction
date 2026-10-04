@@ -8,7 +8,7 @@ scoreboard players set #vortacraftmc.packs.macroengine.version macroengine.meta 
 
 # Archived flag: set to 1 to show archive warning on every /reload
 # scoreboard players set #vortacraftmc.archivedpacks.macroengine macroengine.meta 1
-execute unless score #vortacraftmc.archivedpacks.macroengine macroengine.meta matches -2147483648..2147483647 run scoreboard players set #vortacraftmc.archivedpacks.macroengine macroengine.meta 0
+execute unless score #vortacraftmc.archivedpacks.macroengine macroengine.meta matches -2147483648..2147483647 run scoreboard players set #vortacraftmc.archivedpacks.macroengine macroengine.meta 1
 
 # ── Engine defaults (only fill missing keys — preserves live data) ─
 execute unless data storage macroengine:engine global run data modify storage macroengine:engine global set value {}
@@ -41,6 +41,3 @@ execute unless data storage macroengine:engine flags.experimental.crafting_ui ru
 execute unless data storage macroengine:engine flags.experimental.waypoint run data modify storage macroengine:engine flags.experimental.waypoint set value 0b
 execute unless data storage macroengine:engine flags.experimental.combat_tag run data modify storage macroengine:engine flags.experimental.combat_tag set value 0b
 execute unless data storage macroengine:engine flags.experimental.scoreboard_hud run data modify storage macroengine:engine flags.experimental.scoreboard_hud set value 0b
-
-
-scoreboard players set #vortacraftmc.archivedpacks.macroengine macroengine.meta 1
