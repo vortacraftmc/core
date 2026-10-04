@@ -28,7 +28,11 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 # ---------------------------------------------------------------- token
 TOKEN="${VC_TOKEN:-${GH_TOKEN:-}}"
-cleanup() { unset TOKEN VC_TOKEN GH_TOKEN PW1 PW2 2>/dev/null || true; }
+TOKEN_FILE=""
+cleanup() {
+  [ -n "$TOKEN_FILE" ] && rm -f -- "$TOKEN_FILE"
+  unset TOKEN VC_TOKEN GH_TOKEN PW1 PW2 2>/dev/null || true
+}
 trap cleanup EXIT
 
 if [ -z "$TOKEN" ]; then
@@ -66,7 +70,19 @@ done
 
 # --------------------------------------------------------------- backup
 log "Starting backup: $ORG -> $BACKUP_DIR"
-github-backup "$ORG" --organization -t "$TOKEN" -o "$BACKUP_DIR" \
+# Keep the token out of argv: a command-line token is readable by every local
+# user via `ps`/`/proc/<pid>/cmdline` for the whole (long) backup run. Newer
+# github-backup versions accept a file:// path for -t; use a 0600 temp file
+# (umask 077 above) removed by the EXIT trap. Older versions fall back to argv.
+TOKEN_ARG="$TOKEN"
+if grep -q -- 'file://' <<<"$HELP"; then
+  TOKEN_FILE="$(mktemp)"
+  printf '%s' "$TOKEN" > "$TOKEN_FILE"
+  TOKEN_ARG="file://$TOKEN_FILE"
+else
+  log "warning: this github-backup has no file:// token support; token is passed on the command line (visible in ps)"
+fi
+github-backup "$ORG" --organization -t "$TOKEN_ARG" -o "$BACKUP_DIR" \
   --private --fork --bare --incremental "${FLAGS[@]}"
 
 # ------------------------------------------------- org-level metadata
