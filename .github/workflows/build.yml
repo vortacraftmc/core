@@ -1,184 +1,471 @@
-name: Build & Lint
+name: CI
+
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:
-# Least privilege: the build and lint jobs only read the repo. release-packs
-# overrides this with its own job-level `permissions: contents: write`.
+push:
+branches: [main, master, devlop, test]
+pull_request:
+workflow_dispatch:
+
+# Least privilege.
+
+#
+
+# The source-history archive is intentionally manual-only through the
+
+# archive-history step condition below. It never needs write access.
+
 permissions:
-  contents: read
-# Cancel older in-progress runs on the same branch when a new commit lands
+contents: read
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+group: ${{ github.workflow }}-${{ github.ref }}
+cancel-in-progress: true
+
 jobs:
-  build:
-    name: Build all subprojects
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Set up JDK 25
-        uses: actions/setup-java@v6
-        with:
-          distribution: 'temurin'
-          java-version: '25'
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-        # If gradlew isn't committed yet, generate the wrapper first:
-        # gradle wrapper --gradle-version 9.4.0
-      - name: Build all subprojects
-        # FIX: with --continue, this step can still report "success" even when
-        # part of the build failed (Gradle can mark a partial failure with a
-        # different signal in continue mode). More importantly: the
-        # upload-artifact step below runs "if: always()", so it can still pass
-        # partial/empty artifacts forward even on failure. release-packs uses
-        # needs: build, so it won't run if the build job is genuinely marked
-        # FAILED - that part was already correct, left untouched.
-        #
-        # FIX 2: buildAll depends on zipPacks (see build.gradle), and zipPacks
-        # now requires explicit confirmation before packaging (either an
-        # interactive 'yes' within a timeout, or -PconfirmZip=yes). CI has no
-        # interactive stdin, so without this flag the zipPacks step inside
-        # buildAll would always fail here. -PconfirmZip=yes is the sanctioned
-        # non-interactive path for CI, per build.gradle's own error message.
-        #
-        # FIX 3: buildAll never ran mergeDatapacks (they're independent
-        # aggregate tasks - see build.gradle section 2 vs section 6), so the
-        # merged datapack was never produced in CI and never reached the
-        # uploaded artifacts. The root 'build' task (section 8) already
-        # depends on mergeDatapacks and copies its output to build/dist/, so
-        # running it alongside buildAll produces that output here without
-        # duplicating any of build.gradle's own logic in this workflow.
-        run: ./gradlew buildAll build --continue -PconfirmZip=yes
-      - name: Upload build artifacts
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: build-outputs
-          path: |
-            mods/**/build/libs/*.jar
-            examples/**/build/libs/*.jar
-            build/packs-dist/*.zip
-            build/dist/**
-          if-no-files-found: ignore
-          retention-days: 93
-  lint:
-    name: Lint all subprojects
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Set up JDK 25
-        uses: actions/setup-java@v6
-        with:
-          distribution: 'temurin'
-          java-version: '25'
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-      - name: Run lint task
-        run: ./gradlew lint --continue
-      - name: Lint datapacks
-        # FIX: the script's presence and executable bit weren't guaranteed;
-        # if the file was missing or not executable, the failure mode was
-        # unclear. Calling it via bash bypasses the permission issue (this was
-        # already correct) but still assumes the file exists. Verify the
-        # script is actually committed in the repo - its presence can't be
-        # confirmed here, so the invocation itself was left unchanged since
-        # `bash X.sh` doesn't require +x anyway.
-        run: bash .github/workflows/lint.sh
-  release-packs:
-    name: Publish packs to a permanent release
-    needs: [ build, lint ]
-    # FIX: needs previously only listed 'build'. This meant release-packs
-    # would still trigger and publish zips even if the lint job failed -
-    # the lint job's result had no effect on the release, making it
-    # effectively cosmetic. Added 'lint' to needs.
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Set up JDK 25
-        uses: actions/setup-java@v6
-        with:
-          distribution: 'temurin'
-          java-version: '25'
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-      - name: Build pack zips
-        # FIX: zipPacks now requires confirmation before packaging (see
-        # build.gradle). CI has no interactive console/stdin, so the
-        # bounded-timeout prompt would just time out and fail every run.
-        # -PconfirmZip=yes is the flag build.gradle itself documents as the
-        # non-interactive path for CI.
-        run: ./gradlew zipPacks -PconfirmZip=yes
-      - name: Build merged datapack
-        # NEW: mergeDatapacks (build.gradle section 6, wired into the root
-        # 'build' task in section 8) is otherwise never invoked by this
-        # workflow, so the merged/gated datapack this repo generates from
-        # packs/merge-manifest.json never made it into a release asset.
-        # Run it directly rather than 'build' here: this job only needs the
-        # merge output, not a full buildAll pass, and mergeDatapacks already
-        # writes build/dist/ itself.
-        run: ./gradlew mergeDatapacks build
-      - name: Remove stale pack assets from release
-        # A pack can be renamed or deleted from packs/ (e.g. a version bump
-        # like macroEngine-Resourcepack-v26.2 -> v26.3). softprops/action-gh-release
-        # only uploads/overwrites the files it's given - it never removes an
-        # existing release asset that no longer has a matching zip, so without
-        # this step a renamed/removed pack's old zip stays attached forever,
-        # contradicting the "Always reflects the current contents of packs/"
-        # promise below.
-        #
-        # FIX: the merged-datapack zip is now a release asset too (see the
-        # "Publish" step's files: list below), so its filename must also be
-        # tracked here or a rename of manifest.output.name would leave a
-        # stale merged-datapack-*.zip attached forever, same as a stale pack
-        # zip would.
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if gh release view packs-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            current_files=$( { ls build/packs-dist/*.zip build/dist/*.zip 2>/dev/null || true; } | xargs -n1 basename 2>/dev/null || true)
-            existing_assets=$(gh release view packs-latest --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
-            for asset in $existing_assets; do
-              if ! printf '%s\n' "$current_files" | grep -qxF "$asset"; then
-                echo "Deleting stale release asset: $asset"
-                gh release delete-asset packs-latest "$asset" --repo "$GITHUB_REPOSITORY" --yes
-              fi
-            done
-          else
-            echo "Release packs-latest does not exist yet; nothing to clean."
-          fi
-      - name: Publish to permanent 'packs-latest' release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: packs-latest
-          name: Latest packs
-          body: Automatically updated on every push to main. Always reflects the current contents of packs/ and the merged datapack built from packs/merge-manifest.json.
-          # FIX: added build/dist/*.zip so the merged datapack (produced by
-          # mergeDatapacks in the step above) is published as a release
-          # asset alongside the individual pack zips, not just the
-          # per-pack files it published before.
-          files: |
-            build/packs-dist/*.zip
-            build/dist/*.zip
-          # FIX: was make_latest: false. This doesn't conflict with the intent
-          # in the comment above ("keep download links permanently valid" via
-          # moving the tag forward), but it does mean GitHub's "Latest
-          # release" badge won't point at this release, so the repo's main
-          # page may show a different (or no) release as "Latest". Changed to
-          # true assuming that's not intentional; revert if another "real"
-          # version release is meant to stay Latest instead.
-          make_latest: true
+ci:
+name: CI • ${{ matrix.os }} • Python ${{ matrix.python-version }}
+runs-on: ${{ matrix.os }}
+
+```
+strategy:
+  fail-fast: false
+  matrix:
+    os: [ubuntu-latest, macos-latest]
+    python-version: ["3.9", "3.12"]
+
+env:
+  FORCE_COLOR: "1"
+  PYTHONUNBUFFERED: "1"
+
+steps:
+  # ================================================================
+  # CHECKOUT
+  # ================================================================
+
+  - name: Checkout full repository
+    uses: actions/checkout@v7
+    with:
+      # Required for the optional source-with-history archive.
+      # This means every matrix worker has the full Git history.
+      fetch-depth: 0
+
+  # ================================================================
+  # ENVIRONMENT
+  # ================================================================
+
+  - name: Show environment
+    run: |
+      set -euo pipefail
+
+      echo "::group::🔧 Environment"
+      trap 'echo "::endgroup::"' EXIT
+
+      GREEN='\033[1;32m'
+      CYAN='\033[1;36m'
+      RESET='\033[0m'
+
+      printf "${CYAN}Runner:${RESET} %s\n" "$RUNNER_OS"
+      printf "${CYAN}Python:${RESET} %s\n" "${{ matrix.python-version }}"
+      printf "${CYAN}Repository:${RESET} %s\n" "$GITHUB_REPOSITORY"
+      printf "${CYAN}Ref:${RESET} %s\n" "$GITHUB_REF"
+      printf "${CYAN}Commit:${RESET} %s\n" "$GITHUB_SHA"
+
+      python --version
+      pip --version
+
+  # ================================================================
+  # INSTALL
+  # ================================================================
+
+  - name: Set up Python ${{ matrix.python-version }}
+    uses: actions/setup-python@v7
+    with:
+      python-version: ${{ matrix.python-version }}
+
+  - name: Install guigenmc
+    run: |
+      set -euo pipefail
+
+      echo "::group::📦 Install guigenmc"
+      trap 'echo "::endgroup::"' EXIT
+
+      pip install -e ./scripts/gui_generator
+
+  # ================================================================
+  # TEST CONFIGURATION
+  # ================================================================
+
+  - name: Write minimal config
+    run: |
+      set -euo pipefail
+
+      echo "::group::📝 Create Test Configuration"
+      trap 'echo "::endgroup::"' EXIT
+
+      cat > menu.json << 'JSON'
+      {
+        "namespace": "demo",
+        "menu_id": "shop",
+        "pages": [
+          {
+            "index": 0,
+            "name": "Main",
+            "widgets": [
+              {
+                "kind": "button",
+                "slot": 13,
+                "item": "minecraft:diamond",
+                "name": {
+                  "text": "Get Diamond",
+                  "color": "aqua"
+                },
+                "commands": [
+                  "give @s minecraft:diamond 1"
+                ]
+              },
+              {
+                "kind": "close",
+                "slot": 26
+              }
+            ]
+          }
+        ]
+      }
+      JSON
+
+      python -m json.tool menu.json >/dev/null
+
+      printf '\033[1;32m✔ menu.json created and validated\033[0m\n'
+
+  # ================================================================
+  # GUI GENERATION
+  # ================================================================
+
+  - name: Generate datapack folder
+    id: generate-folder
+    continue-on-error: true
+    run: |
+      set -uo pipefail
+
+      echo "::group::🎮 Generate Datapack Folder"
+      trap 'echo "::endgroup::"' EXIT
+
+      guigenmc generate menu.json -f
+      rc=$?
+
+      if [ "$rc" -ne 0 ]; then
+        printf '\033[1;31m✘ Folder generation failed\033[0m\n'
+        echo "::error title=Folder generation failed::guigenmc generate -f exited with code $rc"
+        exit "$rc"
+      fi
+
+      test -f shop_datapack/pack.mcmeta
+      test -f shop_datapack/data/demo/function/core/load.mcfunction
+
+      printf '\033[1;32m✔ Datapack folder generated and checked\033[0m\n'
+
+  # ================================================================
+  # ZIP / VALIDATION / TREE
+  # ================================================================
+
+  - name: Generate zip and validate
+    id: validate
+    continue-on-error: true
+    run: |
+      set -uo pipefail
+
+      echo "::group::📦 Generate ZIP + Validate + Tree"
+      trap 'echo "::endgroup::"' EXIT
+
+      GREEN='\033[1;32m'
+      RED='\033[1;31m'
+      RESET='\033[0m'
+
+      guigenmc generate menu.json -z -f -o shop.zip
+      rc=$?
+
+      if [ "$rc" -ne 0 ]; then
+        printf "${RED}✘ ZIP generation failed${RESET}\n"
+        echo "::error title=ZIP generation failed::guigenmc generate -z failed."
+        exit "$rc"
+      fi
+
+      test -f shop.zip
+
+      guigenmc validate menu.json
+      rc=$?
+
+      if [ "$rc" -ne 0 ]; then
+        printf "${RED}✘ Validation failed${RESET}\n"
+        echo "::error title=GUI validation failed::guigenmc validate failed."
+        exit "$rc"
+      fi
+
+      echo "::group::🌳 Generated Tree"
+      guigenmc tree menu.json
+      echo "::endgroup::"
+
+      printf "${GREEN}✔ ZIP generation and validation passed${RESET}\n"
+
+  # ================================================================
+  # STATIC UI
+  # ================================================================
+
+  - name: Verify UI static files
+    id: static-ui
+    continue-on-error: true
+    run: |
+      set -uo pipefail
+
+      echo "::group::🖥️ UI Static Files"
+      trap 'echo "::endgroup::"' EXIT
+
+      static_file="$(
+        python -c \
+          "import guigenmc, pathlib; print(pathlib.Path(guigenmc.__file__).parent / 'static' / 'index.html')"
+      )"
+
+      echo "Expected: $static_file"
+
+      if [ ! -f "$static_file" ]; then
+        echo "::error title=Missing UI static file::static/index.html was not found."
+        exit 1
+      fi
+
+      printf '\033[1;32m✔ UI static index.html exists\033[0m\n'
+
+  # ================================================================
+  # PACKAGE BUILD
+  # ================================================================
+
+  - name: Build sdist and wheel
+    id: package
+    continue-on-error: true
+    working-directory: ./scripts/gui_generator
+    run: |
+      set -uo pipefail
+
+      echo "::group::🐍 Python Package :: sdist + wheel"
+      trap 'echo "::endgroup::"' EXIT
+
+      pip install build twine
+
+      python -m build
+      python -m twine check dist/*
+
+      printf '\033[1;32m✔ sdist/wheel build and twine check passed\033[0m\n'
+
+  # ================================================================
+  # NORMAL TEST ARTIFACT
+  # ================================================================
+
+  - name: Upload generated datapack
+    if: always()
+    uses: actions/upload-artifact@v7
+    with:
+      name: datapack-${{ matrix.os }}-py${{ matrix.python-version }}
+      path: shop.zip
+      if-no-files-found: ignore
+      retention-days: 3
+
+  # ================================================================
+  # SOURCE + GIT HISTORY ARCHIVE
+  #
+  # IMPORTANT:
+  # This is deliberately restricted to manual workflow_dispatch runs
+  # and ONE matrix combination. It is never automatically published
+  # on push/pull_request.
+  # ================================================================
+
+  - name: Create source archive with Git history
+    id: source-archive
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      matrix.os == 'ubuntu-latest' &&
+      matrix.python-version == '3.12'
+    run: |
+      set -euo pipefail
+
+      echo "::group::📚 Source Archive :: full Git history"
+      trap 'echo "::endgroup::"' EXIT
+
+      RED='\033[1;31m'
+      YELLOW='\033[1;33m'
+      GREEN='\033[1;32m'
+      RESET='\033[0m'
+
+      printf "${YELLOW}⚠ Creating an archive containing .git history.${RESET}\n"
+      printf "${YELLOW}⚠ This may contain historical secrets that were removed later.${RESET}\n"
+
+      mkdir -p archive
+
+      rsync -a \
+        --exclude=archive \
+        --exclude=.github \
+        --exclude=.git \
+        ./ archive/
+
+      cp -a .git archive/
+
+      printf "${GREEN}✔ Source tree copied${RESET}\n"
+      printf "${GREEN}✔ .git history copied${RESET}\n"
+
+  - name: Create source ZIP
+    id: source-zip
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      matrix.os == 'ubuntu-latest' &&
+      matrix.python-version == '3.12'
+    shell: bash
+    run: |
+      set -euo pipefail
+
+      echo "::group::🗜️ Source ZIP"
+      trap 'echo "::endgroup::"' EXIT
+
+      cd archive
+      zip -r ../source-with-history.zip .
+
+      cd ..
+
+      test -s source-with-history.zip
+
+      printf '\033[1;32m✔ source-with-history.zip created\033[0m\n'
+      ls -lh source-with-history.zip
+
+  - name: Upload source archive
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      matrix.os == 'ubuntu-latest' &&
+      matrix.python-version == '3.12'
+    uses: actions/upload-artifact@v7
+    with:
+      name: source-code-with-history
+      path: source-with-history.zip
+      retention-days: 3
+
+  # ================================================================
+  # DIAGNOSTICS
+  # ================================================================
+
+  - name: Diagnostics
+    if: always()
+    shell: bash
+    run: |
+      set +e
+
+      echo "::group::🔎 Diagnostics"
+      trap 'echo "::endgroup::"' EXIT
+
+      GREEN='\033[1;32m'
+      RED='\033[1;31m'
+      YELLOW='\033[1;33m'
+      CYAN='\033[1;36m'
+      RESET='\033[0m'
+
+      generate_result="${{ steps.generate-folder.outcome }}"
+      validate_result="${{ steps.validate.outcome }}"
+      static_result="${{ steps.static-ui.outcome }}"
+      package_result="${{ steps.package.outcome }}"
+
+      printf "${CYAN}Folder generation:${RESET} %s\n" "$generate_result"
+      printf "${CYAN}Validation:${RESET} %s\n" "$validate_result"
+      printf "${CYAN}Static UI:${RESET} %s\n" "$static_result"
+      printf "${CYAN}Package build:${RESET} %s\n" "$package_result"
+
+      echo "::group::Generated files"
+      find . \
+        -maxdepth 4 \
+        -type f \
+        \( -name '*.zip' -o -name '*.whl' -o -name '*.tar.gz' \) \
+        -print 2>/dev/null | sort
+      echo "::endgroup::"
+
+      echo "::group::Git status"
+      git status --short
+      echo "::endgroup::"
+
+      if [ "$generate_result" = "success" ] &&
+         [ "$validate_result" = "success" ] &&
+         [ "$static_result" = "success" ] &&
+         [ "$package_result" = "success" ]; then
+        printf "${GREEN}✔ All CI checks passed${RESET}\n"
+      else
+        printf "${RED}✘ One or more CI checks failed${RESET}\n"
+      fi
+
+  # ================================================================
+  # SUMMARY
+  # ================================================================
+
+  - name: Write CI summary
+    if: always()
+    shell: bash
+    run: |
+      set +e
+
+      echo "::group::📊 CI Summary"
+      trap 'echo "::endgroup::"' EXIT
+
+      generate_result="${{ steps.generate-folder.outcome }}"
+      validate_result="${{ steps.validate.outcome }}"
+      static_result="${{ steps.static-ui.outcome }}"
+      package_result="${{ steps.package.outcome }}"
+
+      if [ "$generate_result" = "success" ]; then
+        generate_icon="✅"
+      else
+        generate_icon="❌"
+      fi
+
+      if [ "$validate_result" = "success" ]; then
+        validate_icon="✅"
+      else
+        validate_icon="❌"
+      fi
+
+      if [ "$static_result" = "success" ]; then
+        static_icon="✅"
+      else
+        static_icon="❌"
+      fi
+
+      if [ "$package_result" = "success" ]; then
+        package_icon="✅"
+      else
+        package_icon="❌"
+      fi
+
+      {
+        echo "# 🧪 CI Summary"
+        echo ""
+        echo "| Check | Result |"
+        echo "|---|---|"
+        echo "| Datapack generation | $generate_icon \`$generate_result\` |"
+        echo "| ZIP + validation | $validate_icon \`$validate_result\` |"
+        echo "| UI static files | $static_icon \`$static_result\` |"
+        echo "| Python package | $package_icon \`$package_result\` |"
+        echo ""
+        echo "## Environment"
+        echo ""
+        echo "| Property | Value |"
+        echo "|---|---|"
+        echo "| OS | \`${{ matrix.os }}\` |"
+        echo "| Python | \`${{ matrix.python-version }}\` |"
+        echo "| Ref | \`$GITHUB_REF\` |"
+        echo "| Commit | \`$GITHUB_SHA\` |"
+        echo ""
+        echo "## Artifacts"
+        echo ""
+        echo "- \`datapack-${{ matrix.os }}-py${{ matrix.python-version }}\`"
+      } >> "$GITHUB_STEP_SUMMARY"
+
+      if [ "$generate_result" != "success" ] ||
+         [ "$validate_result" != "success" ] ||
+         [ "$static_result" != "success" ] ||
+         [ "$package_result" != "success" ]; then
+
+        echo "::error title=CI failed::One or more CI checks failed."
+        exit 1
+      fi
+```
