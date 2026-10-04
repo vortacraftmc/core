@@ -5,6 +5,10 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
+# Least privilege: the build and lint jobs only read the repo. release-packs
+# overrides this with its own job-level `permissions: contents: write`.
+permissions:
+  contents: read
 # Cancel older in-progress runs on the same branch when a new commit lands
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

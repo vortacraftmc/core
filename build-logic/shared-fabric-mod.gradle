@@ -65,6 +65,16 @@ java {
     withSourcesJar()
 }
 
+// Reproducible archives: identical sources must produce byte-identical
+// jars (and sources jars), independent of file mtimes or filesystem
+// iteration order. Makes release artifacts checksum-verifiable by anyone
+// who rebuilds from the same commit, which fits the repo's provenance /
+// watermark approach.
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
 publishing {
     publications {
         create("mavenJava", MavenPublication) {
