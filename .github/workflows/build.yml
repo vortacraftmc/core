@@ -166,7 +166,10 @@ jobs:
         with:
           tag_name: packs-latest
           name: Latest packs
-          body: Automatically updated on every push to main. Always reflects the current contents of packs/ and the merged datapack built from packs/merge-manifest.json.
+          body: |
+            MAINTENANCE PAUSED (not permanently archived). Since 2026-10-04 the maintainer is expected to be inactive until at least 2027-2028; no fixes or releases are planned and issues may go unanswered. All datapacks are archived reference copies (see archived/README.md); do not deploy them on a live server without review.
+
+            Automatically updated on every push to main. Always reflects the current contents of packs/ and the merged datapack built from packs/merge-manifest.json.
           # FIX: added build/dist/*.zip so the merged datapack (produced by
           # mergeDatapacks in the step above) is published as a release
           # asset alongside the individual pack zips, not just the

@@ -3,8 +3,11 @@ name: CODEOWNERS Sync
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 6 * * 1" # Weekly, Monday
+  # Maintenance pause (2026-10-04, expected until at least 2027-2028): the weekly schedule is
+  # off so no unattended bot PRs are opened and no ORG_READ_TOKEN use is needed. Run it by hand
+  # (workflow_dispatch) or restore the lines below when maintenance resumes.
+  # schedule:
+  #   - cron: "0 6 * * 1" # Weekly, Monday
 
 permissions: {}
 

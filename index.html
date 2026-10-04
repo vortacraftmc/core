@@ -405,6 +405,17 @@
       padding: 0;
     }
 
+    .pause-notice {
+      margin: 0;
+      padding: 10px 16px;
+      background: rgba(210, 153, 34, 0.15);
+      border-bottom: 1px solid var(--warning);
+      color: var(--text);
+      font-size: 0.92rem;
+      text-align: center;
+    }
+    .pause-notice a { color: var(--warning); }
+
     @media (prefers-reduced-motion: reduce) {
       .spinner, .skeleton-line { animation: none; }
     }
@@ -427,6 +438,12 @@
     <div class="toast-body" id="dl-toast-body"></div>
     <button type="button" class="toast-close" id="dl-toast-close" aria-label="Dismiss">&times;</button>
   </div>
+
+  <aside class="pause-notice" role="note">
+    <strong>⚠️ Maintenance paused (not permanently archived).</strong>
+    The maintainer is expected to be inactive on GitHub until at least 2027–2028; issues and security reports may go unanswered and no fixes or releases are planned. Datapacks are archived reference copies.
+    <a href="https://github.com/vortacraftmc/core#project-status-maintenance-paused" target="_blank" rel="noopener noreferrer">Details</a>
+  </aside>
 
   <img class="banner" src="banner.png" alt="vortacraftmc/core" onerror="this.style.display='none'">
 

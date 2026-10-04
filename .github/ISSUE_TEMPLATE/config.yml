@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
+  - name: "Project status: maintenance paused"
+    url: https://github.com/vortacraftmc/core#project-status-maintenance-paused
+    about: Maintainer expected to be inactive until at least 2027-2028; issues and security reports may go unanswered. Read before opening anything.
   - name: Security vulnerability (private reporting)
     url: https://github.com/vortacraftmc/core/security/advisories/new
     about: Use GitHub's private vulnerability reporting instead of a public issue — see SECURITY.md
