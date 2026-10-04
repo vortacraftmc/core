@@ -3,8 +3,7 @@
 # load-time file. Undoes every init action from those three, in reverse order
 # (last-loaded first, so nothing here depends on something already torn down).
 #
-# ASSUMPTIONS I had to make (no cleanup.mcfunction / unschedule / color cleanup
-# was in the uploaded files, so these are best-guess vanilla equivalents):
+# Caveats for the best-guess vanilla equivalents used below:
 #   - "schedule clear <fn>" cancels the sync_tick schedule set via
 #     core/lib/schedule — correct IF that lib wraps vanilla `schedule function`.
 #     If it uses its own queue/storage instead, this line does nothing and the
