@@ -1,5 +1,7 @@
 # Datapack Blocker
 
+> **⚠️ Maintenance paused** since 2026-10-04 (expected until at least 2027–2028): no fixes or Minecraft-version updates are planned and issues may go unanswered. See [Project status](https://github.com/vortacraftmc/core#project-status-maintenance-paused).
+
 A Fabric mod (1.21.1) that locks a world's `datapacks/` folder instead of leaving it open to arbitrary drop-in changes.
 
 ## What it does

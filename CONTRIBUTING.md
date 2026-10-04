@@ -1,5 +1,7 @@
 # Contributing to vortacraftmc/core
 
+> **⚠️ Maintenance paused (not permanently archived).** Since 2026-10-04 the maintainer is expected to be inactive on GitHub until at least 2027–2028. Issues, pull requests and security reports may go unanswered, and no fixes or releases are planned. See [Project status](https://github.com/vortacraftmc/core#project-status-maintenance-paused).
+
 Thanks for your interest in contributing to this project.
 
 **Read [NOTICE.md](NOTICE.md) before opening a PR.** It covers the
