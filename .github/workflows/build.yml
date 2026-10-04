@@ -22,7 +22,7 @@ jobs:
           distribution: 'temurin'
           java-version: '25'
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
       - name: Make gradlew executable
         run: chmod +x ./gradlew
         # If gradlew isn't committed yet, generate the wrapper first:
@@ -75,7 +75,7 @@ jobs:
           distribution: 'temurin'
           java-version: '25'
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
       - name: Make gradlew executable
         run: chmod +x ./gradlew
       - name: Run lint task
@@ -109,7 +109,7 @@ jobs:
           distribution: 'temurin'
           java-version: '25'
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
       - name: Make gradlew executable
         run: chmod +x ./gradlew
       - name: Build pack zips
