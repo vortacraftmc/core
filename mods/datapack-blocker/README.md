@@ -1,22 +1,20 @@
 # Datapack Blocker
 
-A Fabric mod (1.21.1) that locks a world's `datapacks/` folder instead of
-leaving it open to arbitrary drop-in changes.
+A Fabric mod (1.21.1) that locks a world's `datapacks/` folder instead of leaving it open to arbitrary drop-in changes.
 
 ## What it does
 
-On server start:
+1. **First run on a world** - every pack in `datapacks/` (a directory or a `.zip`) is recorded in `<world>/datapack_blocker/allowlist.txt` with a SHA-256 fingerprint of its contents. Nothing is blocked yet (trust on first use).
+2. **Every later start** - a pack is accepted only if its name is on the allowlist **and** its fingerprint still matches. A new pack, or an approved pack whose contents changed, is moved to `<world>/datapack_blocker/quarantine/<timestamp>/`. Nothing is deleted.
+3. Accepted packs have their write bits removed recursively (owner/group/other), so they cannot be edited in place without `unlock`.
 
-1. **First run on a world** - every top-level entry currently in
-   `datapacks/` (a folder or a `.zip`) is recorded as the allowlist for
-   that world. Nothing is blocked yet; this just establishes a baseline.
-2. **Every run after that** - the folder is compared against the
-   allowlist:
-   - Anything **not** on the allowlist is moved out into
-     `<world>/datapack_blocker/quarantine/<timestamp>/` instead of being
-     left for the server to load. It is not deleted.
-   - Everything that **is** on the allowlist has its write permission
-     stripped recursively, so it can't be edited or deleted in place.
+### When quarantining really prevents loading
+
+The server reads `datapacks/` *before* `SERVER_STARTING` fires, so version 1.0.0 (which moved packs there) could not stop a pack from loading in that run. From 1.1.0:
+
+- **Dedicated server:** a Fabric `preLaunch` entrypoint quarantines before any Minecraft code runs. The world folder comes from `level-name` in `server.properties`.
+- **`SERVER_STARTING`** only captures the baseline (new world), re-locks and logs an `ERROR` for violations it could not prevent; it never moves anything.
+- Integrated servers (singleplayer) are not enforced early.
 
 ## Commands
 
@@ -24,32 +22,26 @@ All under `/datapackblocker`, op-only (permission level 4):
 
 | Command | What it does |
 |---|---|
-| `status` | Lists what's currently sitting in quarantine. |
-| `approve <name>` | Moves a quarantined pack back into `datapacks/`, adds it to the allowlist, and locks it. Run `/reload` afterward to actually load it. |
-| `unlock` | Temporarily restores write access to every allowlisted pack, for maintenance. |
-| `lock` | Re-locks everything after a maintenance window. |
+| `status` | Allowlist size and what sits in quarantine (with batch timestamp). |
+| `verify` | Read-only audit: unreviewed, modified and missing packs. Use it before a `/reload` or to see what a restart would quarantine. |
+| `approve <name>` | Moves the newest quarantined copy back, fingerprints, allowlists and locks it. Tab-completes quarantined names. Refuses to overwrite a pack already in the folder. Run `/reload` afterwards. |
+| `unlock` | Restores owner write access on allowlisted packs for maintenance. |
+| `lock` | Re-locks and **records the current contents as the new trusted fingerprint**. If you edit while unlocked and restart without `lock`, the edited pack is quarantined. |
+
+## Upgrading from 1.0.0
+
+A names-only allowlist is migrated in place on the first start: each present pack's *current* contents are fingerprinted and trusted. Verify them first if you doubt them.
 
 ## Scope and limitations
 
-This is a tripwire for the common case - someone drops a new pack in the
-folder and the server restarts - not a hard security boundary:
+This is a tripwire for "someone drops a new pack in and the server restarts", not a security boundary:
 
-- Enforcement runs at **server start**. A pack added mid-session and
-  picked up by a live `/reload` is not caught until the next restart.
-- "Read-only" is best-effort via `File#setWritable`. On POSIX filesystems
-  this also strips the directory's write bit (blocking adds/removes
-  inside it); on Windows it maps to the read-only file attribute, which
-  behaves differently. It does nothing against anyone with direct
-  filesystem/shell access to the host - that's outside what a Fabric mod
-  can enforce from inside the game.
-- Comparison is by file/folder **name** only, not content hashing. A pack
-  that was already edited before this mod's first run on that world gets
-  allowlisted as-is.
+- Anyone with shell/FTP access to the host (or root) can edit the allowlist or the packs.
+- A pack present on the first run is trusted as-is.
+- A pack added mid-session and picked up by `/reload` is only caught by `verify` or the next restart.
+- Locking is best-effort: POSIX permission bits, or the read-only attribute on non-POSIX filesystems.
+- Only directories and `.zip` files are treated as packs; hidden directories only if they contain `pack.mcmeta` (so `.git` is left alone).
 
 ## Why this exists
 
-This complements the `packs/` maintenance-mode policy described in the
-repo root README: for servers that want to keep running existing
-datapacks but stop accepting new ones without review, this mod enforces
-that boundary automatically instead of relying on an operator remembering
-to check the folder by hand.
+This complements the `packs/` maintenance-mode policy described in the repo root README: for servers that want to keep running existing datapacks but stop accepting new ones without review, this mod enforces that boundary automatically instead of relying on an operator remembering to check the folder by hand.

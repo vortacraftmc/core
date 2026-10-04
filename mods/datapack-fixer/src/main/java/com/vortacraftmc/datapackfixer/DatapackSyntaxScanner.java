@@ -1,40 +1,69 @@
 package com.vortacraftmc.datapackfixer;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import java.io.IOException;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public final class DatapackSyntaxScanner {
-    private static final long MAX_FILE_SIZE = 2_000_000L;
-    private static final int MAX_FILES = 10_000;
-    private static final Set<String> PLURAL_DIRECTORIES = Set.of(
-            "advancements", "functions", "item_modifiers", "loot_tables", "predicates", "recipes", "structures",
-            "tags/blocks", "tags/entity_types", "tags/fluids", "tags/functions", "tags/game_events", "tags/items"
-    );
+    static final long MAX_FILE_SIZE = 2_000_000L;
+    static final int MAX_FILES = 20_000;
+    static final long MAX_TOTAL_BYTES = 256L * 1024 * 1024;
+    static final int MAX_DIAGNOSTICS = 500;
+    private static final Pattern LEGACY_RECIPE_INGREDIENT = Pattern.compile("\"(?:item|tag)\"\\s*:\\s*\"[^\"]+\"");
+
+    private final FixerConfig config;
+    private final List<MigrationRules.Rule> rules;
+
+    public DatapackSyntaxScanner() {
+        this(FixerConfig.MC_1_21_4);
+    }
+
+    public DatapackSyntaxScanner(FixerConfig config) {
+        this.config = config;
+        this.rules = MigrationRules.forConfig(config);
+    }
 
     public List<Diagnostic> scan(Path datapacksDirectory) {
         if (!Files.isDirectory(datapacksDirectory)) return List.of();
         List<Diagnostic> results = new ArrayList<>();
-        try (Stream<Path> paths = Files.walk(datapacksDirectory)) {
-            Iterator<Path> iterator = paths.filter(Files::isRegularFile).iterator();
-            int scannedFiles = 0;
-            while (iterator.hasNext() && scannedFiles < MAX_FILES) {
-                scanFile(datapacksDirectory, iterator.next(), results);
-                scannedFiles++;
+        try {
+            for (Path pack : topLevelDirectories(datapacksDirectory)) checkLegacyDirectories(pack, results);
+            List<Path> files;
+            try (Stream<Path> paths = Files.walk(datapacksDirectory)) {
+                files = paths.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) && isRelevant(path))
+                        .sorted(Comparator.comparing(Path::toString)).toList();
             }
-            if (iterator.hasNext()) {
-                results.add(new Diagnostic(datapacksDirectory, 1, Diagnostic.Severity.WARNING, "SCAN_LIMIT",
-                        "Stopped after " + MAX_FILES + " files to protect server startup time.",
-                        "Split unusually large datapack directories or remove unrelated files."));
+            long totalBytes = 0;
+            int scanned = 0;
+            for (Path file : files) {
+                if (results.size() >= MAX_DIAGNOSTICS) {
+                    results.add(new Diagnostic(datapacksDirectory, 1, Diagnostic.Severity.WARNING, "DIAGNOSTIC_LIMIT",
+                            "Stopped after " + MAX_DIAGNOSTICS + " diagnostics.", "Fix the reported issues and scan again."));
+                    break;
+                }
+                if (scanned >= MAX_FILES || totalBytes >= MAX_TOTAL_BYTES) {
+                    results.add(new Diagnostic(datapacksDirectory, 1, Diagnostic.Severity.WARNING, "SCAN_LIMIT",
+                            "Stopped after " + scanned + " text files / " + (totalBytes / 1_048_576) + " MiB to protect server startup time.",
+                            "Split unusually large datapack directories or remove unrelated files."));
+                    break;
+                }
+                totalBytes += scanFile(datapacksDirectory, file, results);
+                scanned++;
             }
         } catch (IOException exception) {
             results.add(new Diagnostic(datapacksDirectory, 1, Diagnostic.Severity.ERROR, "SCAN_IO",
@@ -43,23 +72,67 @@ public final class DatapackSyntaxScanner {
         return List.copyOf(results);
     }
 
-    private void scanFile(Path root, Path file, List<Diagnostic> results) {
+    private static boolean isRelevant(Path path) {
+        String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
+        return name.endsWith(".json") || name.endsWith(".mcfunction") || name.equals("pack.mcmeta");
+    }
+
+    private static List<Path> topLevelDirectories(Path root) throws IOException {
+        try (Stream<Path> stream = Files.list(root)) {
+            return stream.filter(path -> Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS))
+                    .sorted(Comparator.comparing(Path::toString)).toList();
+        }
+    }
+
+    /** One diagnostic per legacy directory (the old code emitted one per file, and never saw .nbt-only structures/). */
+    private void checkLegacyDirectories(Path pack, List<Diagnostic> results) throws IOException {
+        if (!config.atLeast(FixerConfig.FORMAT_1_21)) return;
+        Path data = pack.resolve("data");
+        if (!Files.isDirectory(data, LinkOption.NOFOLLOW_LINKS)) return;
+        for (Path namespace : topLevelDirectories(data)) {
+            for (Map.Entry<String, String> entry : LegacyDirectories.ordered()) {
+                Path legacy = namespace.resolve(entry.getKey());
+                if (!Files.isDirectory(legacy, LinkOption.NOFOLLOW_LINKS)) continue;
+                Path modern = namespace.resolve(entry.getValue());
+                if (Files.exists(modern, LinkOption.NOFOLLOW_LINKS)) {
+                    results.add(new Diagnostic(legacy, 1, Diagnostic.Severity.ERROR, "LEGACY_DIRECTORY_CONFLICT",
+                            "Legacy directory '" + entry.getKey() + "' exists next to '" + entry.getValue() + "'; the legacy one is ignored by modern versions.",
+                            "Merge the contents into '" + entry.getValue() + "' manually; the fixer will not merge two directories."));
+                } else {
+                    results.add(new Diagnostic(legacy, 1, Diagnostic.Severity.ERROR, "LEGACY_DIRECTORY",
+                            "Legacy datapack directory '" + entry.getKey() + "' is not loaded by modern versions.",
+                            "Move it to '" + entry.getValue() + "'."));
+                }
+            }
+        }
+    }
+
+    /** @return bytes read, for the total-size budget */
+    private long scanFile(Path root, Path file, List<Diagnostic> results) {
         String normalized = root.relativize(file).toString().replace('\\', '/').toLowerCase(Locale.ROOT);
         boolean isJson = normalized.endsWith(".json") || normalized.endsWith("pack.mcmeta");
         boolean isFunction = normalized.endsWith(".mcfunction");
-        if (!isJson && !isFunction) return;
         try {
-            if (Files.size(file) > MAX_FILE_SIZE) return;
+            long size = Files.size(file);
+            if (size > MAX_FILE_SIZE) return 0;
             String content = Files.readString(file, StandardCharsets.UTF_8);
-            checkPluralDirectories(file, normalized, results);
             if (isJson) checkJson(file, content, results);
-            if (normalized.endsWith("pack.mcmeta")) checkPackMetadata(file, content, results);
-            if (isFunction) checkFunctionDelimiters(file, content, results);
+            if (isPackMetadata(normalized)) checkPackMetadata(file, content, results);
+            if (isFunction) checkFunction(file, content, results);
             checkKnownMigrations(file, normalized, content, results);
+            return size;
+        } catch (CharacterCodingException exception) {
+            results.add(new Diagnostic(file, 1, Diagnostic.Severity.ERROR, "READ_ENCODING",
+                    "File is not valid UTF-8.", "Re-save the file as UTF-8 without BOM."));
         } catch (IOException exception) {
             results.add(new Diagnostic(file, 1, Diagnostic.Severity.ERROR, "READ_IO",
                     "Could not read file: " + exception.getMessage(), "Check file encoding and permissions."));
         }
+        return 0;
+    }
+
+    private static boolean isPackMetadata(String normalized) {
+        return normalized.equals("pack.mcmeta") || (normalized.endsWith("/pack.mcmeta") && normalized.indexOf('/') == normalized.lastIndexOf('/'));
     }
 
     private static void checkJson(Path file, String content, List<Diagnostic> results) {
@@ -71,91 +144,77 @@ public final class DatapackSyntaxScanner {
         }
     }
 
-    private static void checkPackMetadata(Path file, String content, List<Diagnostic> results) {
+    private void checkPackMetadata(Path file, String content, List<Diagnostic> results) {
         try {
-            var root = JsonParser.parseString(content);
-            if (!root.isJsonObject() || !root.getAsJsonObject().has("pack")) {
+            JsonElement root = JsonParser.parseString(content);
+            if (!root.isJsonObject() || !root.getAsJsonObject().has("pack") || !root.getAsJsonObject().get("pack").isJsonObject()) {
                 results.add(new Diagnostic(file, 1, Diagnostic.Severity.ERROR, "PACK_METADATA_MISSING",
                         "pack.mcmeta must contain a top-level 'pack' object.",
-                        "Add a valid pack object with pack_format and description."));
+                        "Add a valid pack object with a format declaration and description."));
                 return;
             }
-            var pack = root.getAsJsonObject().getAsJsonObject("pack");
-            if (!pack.has("pack_format")) {
+            JsonObject pack = root.getAsJsonObject().getAsJsonObject("pack");
+            if (config.atLeast(FixerConfig.FORMAT_SUPPORTED_OBJECT) && pack.has("supported_formats") && pack.get("supported_formats").isJsonArray()) {
+                results.add(new Diagnostic(file, 1, Diagnostic.Severity.ERROR, "PACK_SUPPORTED_FORMATS_ARRAY",
+                        "supported_formats as an array is rejected by this pack format.",
+                        "Use {\"min_inclusive\":X,\"max_inclusive\":Y} (or min_format/max_format)."));
+            }
+            if (config.atLeast(FixerConfig.FORMAT_MIN_MAX)) {
+                if (!pack.has("pack_format") && !pack.has("min_format")) {
+                    results.add(new Diagnostic(file, 1, Diagnostic.Severity.ERROR, "PACK_FORMAT_MISSING",
+                            "pack.mcmeta declares neither min_format nor pack_format.",
+                            "Add min_format and max_format (pack_format is optional from format " + FixerConfig.FORMAT_MIN_MAX + " on)."));
+                }
+            } else if (!pack.has("pack_format")) {
                 results.add(new Diagnostic(file, 1, Diagnostic.Severity.ERROR, "PACK_FORMAT_MISSING",
-                        "This 1.21.4-targeted pack is missing pack_format.",
-                        "Set pack_format to 61 for Minecraft 1.21.4."));
+                        "pack.mcmeta is missing pack_format.",
+                        "Set pack_format to " + config.dataPackFormat() + " for this server version."));
             }
         } catch (JsonParseException ignored) {
             // The JSON parser diagnostic is already reported by checkJson.
         }
     }
 
-    private static void checkPluralDirectories(Path file, String normalized, List<Diagnostic> results) {
-        int data = normalized.indexOf("/data/");
-        if (data < 0) return;
-        String afterData = normalized.substring(data + 6);
-        int slash = afterData.indexOf('/');
-        if (slash < 0) return;
-        String resourcePath = afterData.substring(slash + 1);
-        for (String legacy : PLURAL_DIRECTORIES) {
-            if (resourcePath.startsWith(legacy + "/")) {
-                results.add(new Diagnostic(file, 1, Diagnostic.Severity.ERROR, "LEGACY_DIRECTORY",
-                        "Legacy datapack directory '" + legacy + "' is not loaded by modern versions.",
-                        "Move it to '" + singular(legacy) + "'."));
-                return;
+    private void checkKnownMigrations(Path file, String normalized, String content, List<Diagnostic> results) {
+        if (!isPackMetadata(normalized)) {
+            for (MigrationRules.Rule rule : rules) {
+                Matcher matcher = rule.pattern().matcher(content);
+                if (matcher.find()) {
+                    results.add(new Diagnostic(file, lineAt(content, matcher.start()), Diagnostic.Severity.ERROR,
+                            rule.code(), rule.message(), rule.suggestion()));
+                }
+            }
+        }
+        if (config.atLeast(FixerConfig.FORMAT_1_21_2) && normalized.contains("/recipe/")) {
+            Matcher matcher = LEGACY_RECIPE_INGREDIENT.matcher(content);
+            if (matcher.find()) {
+                results.add(new Diagnostic(file, lineAt(content, matcher.start()), Diagnostic.Severity.WARNING, "RECIPE_INGREDIENT_LEGACY",
+                        "Recipe ingredients may use the pre-1.21.2 object form.",
+                        "Use an item id string or a #tag string where the recipe schema accepts an ingredient."));
             }
         }
     }
 
-    private static void checkKnownMigrations(Path file, String normalized, String content, List<Diagnostic> results) {
-        if (content.contains("minecraft:type_specific/slime")) {
-            results.add(new Diagnostic(file, findLine(content, "minecraft:type_specific/slime"), Diagnostic.Severity.ERROR,
-                    "TYPE_SPECIFIC_SLIME", "26.2 renamed the slime entity sub-predicate.",
-                    "Replace minecraft:type_specific/slime with minecraft:type_specific/cube_mob."));
-        }
-        if (normalized.contains("/recipe/") && content.matches("(?s).*\"(?:item|tag)\"\\s*:\\s*\"[^\"]+\".*")) {
-            results.add(new Diagnostic(file, 1, Diagnostic.Severity.WARNING, "RECIPE_INGREDIENT_LEGACY",
-                    "Recipe ingredients may use the pre-1.21.2 object form.",
-                    "Use an item id string or a #tag string where the recipe schema accepts an ingredient."));
-        }
-        if (content.contains("\"condition\": \"minecraft:alternative\"")) {
-            results.add(new Diagnostic(file, findLine(content, "minecraft:alternative"), Diagnostic.Severity.ERROR,
-                    "ALTERNATIVE_RENAMED", "The alternative loot condition was renamed.",
-                    "Replace minecraft:alternative with minecraft:any_of."));
+    private static void checkFunction(Path file, String content, List<Diagnostic> results) {
+        for (McFunctionLinter.Issue issue : McFunctionLinter.lint(content)) {
+            results.add(new Diagnostic(file, issue.line(), Diagnostic.Severity.ERROR, "FUNCTION_DELIMITER",
+                    issue.message(), "Balance quotes, brackets, and braces on the affected command."));
         }
     }
 
-    private static void checkFunctionDelimiters(Path file, String content, List<Diagnostic> results) {
-        int square = 0, curly = 0;
-        boolean quote = false, escape = false;
+    private static int lineAt(String content, int offset) {
         int line = 1;
-        for (char character : content.toCharArray()) {
-            if (character == '\n') line++;
-            if (quote && character == '\\' && !escape) { escape = true; continue; }
-            if (character == '"' && !escape) quote = !quote;
-            if (!quote) {
-                if (character == '[') square++;
-                if (character == ']') square--;
-                if (character == '{') curly++;
-                if (character == '}') curly--;
-                if (square < 0 || curly < 0) break;
-            }
-            escape = false;
-        }
-        if (quote || square != 0 || curly != 0) results.add(new Diagnostic(file, line, Diagnostic.Severity.ERROR,
-                "FUNCTION_DELIMITER", "Unbalanced quote or SNBT/item-component delimiter in function.",
-                "Balance quotes, brackets, and braces on the affected command."));
+        for (int i = 0; i < offset && i < content.length(); i++) if (content.charAt(i) == '\n') line++;
+        return line;
     }
 
-    private static String singular(String value) {
-        return value.replace("entity_types", "entity_type").replace("game_events", "game_event")
-                .replace("advancements", "advancement").replace("functions", "function")
-                .replace("item_modifiers", "item_modifier").replace("loot_tables", "loot_table")
-                .replace("predicates", "predicate").replace("recipes", "recipe").replace("structures", "structure")
-                .replace("blocks", "block").replace("fluids", "fluid").replace("items", "item");
+    private static int lineOf(String message) {
+        if (message == null) return 1;
+        Matcher matcher = Pattern.compile("line (\\d+)").matcher(message);
+        return matcher.find() ? Integer.parseInt(matcher.group(1)) : 1;
     }
-    private static int findLine(String content, String needle) { return 1 + (int) content.substring(0, content.indexOf(needle)).chars().filter(c -> c == '\n').count(); }
-    private static int lineOf(String message) { var matcher = java.util.regex.Pattern.compile("line (\\d+)").matcher(message); return matcher.find() ? Integer.parseInt(matcher.group(1)) : 1; }
-    private static String compact(String message) { return message == null ? "unknown parser error" : message.replaceAll("\\s+", " "); }
+
+    private static String compact(String message) {
+        return message == null ? "unknown parser error" : message.replaceAll("\\s+", " ");
+    }
 }

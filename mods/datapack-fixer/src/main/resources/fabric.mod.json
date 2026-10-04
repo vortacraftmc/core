@@ -3,7 +3,7 @@
   "id": "datapack_fixer",
   "version": "${version}",
   "name": "Datapack Fixer",
-  "description": "Server-safe diagnostics for datapack syntax migrations.",
+  "description": "Server-safe diagnostics and backed-up, version-gated repairs for datapack syntax migrations.",
   "authors": [
     "vortacraftmc",
     "Runtoolkit (original source)"
