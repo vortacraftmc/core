@@ -6,20 +6,22 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Least privilege.
-#
-# The source-history archive is intentionally manual-only through the
-# archive-history step condition below. It never needs write access.
+# Least privilege by default. Only the `release` job below gets
+# contents: write, and it never checks out or runs repository code.
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a run on main: it may be in the middle of publishing.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  ci:
-    name: CI • ${{ matrix.os }} • Python ${{ matrix.python-version }}
+  # ==================================================================
+  # PYTHON: guigenmc generator
+  # ==================================================================
+  python-ci:
+    name: guigenmc • ${{ matrix.os }} • Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -33,31 +35,19 @@ jobs:
       PYTHONUNBUFFERED: "1"
 
     steps:
-      # ================================================================
-      # CHECKOUT
-      # ================================================================
-
       - name: Checkout full repository
         uses: actions/checkout@v7
         with:
           # Required for the optional source-with-history archive.
           fetch-depth: 0
-          # Do not leave the GITHUB_TOKEN inside .git; the archive step
-          # copies .git wholesale into a downloadable artifact.
+          # The archive step copies .git wholesale; do not leave the
+          # GITHUB_TOKEN inside it.
           persist-credentials: false
-
-      # ================================================================
-      # INSTALL
-      # ================================================================
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
-
-      # ================================================================
-      # ENVIRONMENT (after setup-python so it reports the matrix Python)
-      # ================================================================
 
       - name: Show environment
         run: |
@@ -86,10 +76,6 @@ jobs:
           trap 'echo "::endgroup::"' EXIT
 
           pip install -e ./scripts/gui_generator
-
-      # ================================================================
-      # TEST CONFIGURATION
-      # ================================================================
 
       - name: Write minimal config
         run: |
@@ -133,10 +119,6 @@ jobs:
 
           printf '\033[1;32m✔ menu.json created and validated\033[0m\n'
 
-      # ================================================================
-      # GUI GENERATION
-      # ================================================================
-
       - name: Generate datapack folder
         id: generate-folder
         continue-on-error: true
@@ -156,10 +138,6 @@ jobs:
           test -f shop_datapack/data/demo/function/core/load.mcfunction
 
           printf '\033[1;32m✔ Datapack folder generated and checked\033[0m\n'
-
-      # ================================================================
-      # ZIP / VALIDATION / TREE
-      # ================================================================
 
       - name: Generate zip and validate
         id: validate
@@ -190,10 +168,6 @@ jobs:
 
           printf '\033[1;32m✔ ZIP generation and validation passed\033[0m\n'
 
-      # ================================================================
-      # STATIC UI
-      # ================================================================
-
       - name: Verify UI static files
         id: static-ui
         continue-on-error: true
@@ -217,10 +191,6 @@ jobs:
 
           printf '\033[1;32m✔ UI static index.html exists\033[0m\n'
 
-      # ================================================================
-      # PACKAGE BUILD
-      # ================================================================
-
       - name: Build sdist and wheel
         id: package
         continue-on-error: true
@@ -236,8 +206,8 @@ jobs:
           python -m build
           python -m twine check dist/*
 
-          # The editable install above always sees static/ in the source
-          # tree; this checks that the built wheel actually ships it.
+          # The editable install always sees static/ in the source tree;
+          # this checks that the built wheel actually ships it.
           python - << 'PY'
           import glob, sys, zipfile
 
@@ -251,10 +221,6 @@ jobs:
 
           printf '\033[1;32m✔ sdist/wheel build, twine check and wheel contents passed\033[0m\n'
 
-      # ================================================================
-      # NORMAL TEST ARTIFACT
-      # ================================================================
-
       - name: Upload generated datapack
         if: always()
         uses: actions/upload-artifact@v7
@@ -264,15 +230,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
 
-      # ================================================================
-      # SOURCE + GIT HISTORY ARCHIVE
-      #
-      # IMPORTANT:
-      # This is deliberately restricted to manual workflow_dispatch runs
-      # and ONE matrix combination. It is never automatically published
-      # on push/pull_request.
-      # ================================================================
-
+      # Source + Git history archive: manual runs only, ONE matrix
+      # combination. Never produced on push/pull_request.
       - name: Create source archive with Git history
         id: source-archive
         if: >
@@ -339,10 +298,6 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-      # ================================================================
-      # DIAGNOSTICS
-      # ================================================================
-
       - name: Diagnostics
         if: always()
         shell: bash
@@ -383,14 +338,10 @@ jobs:
              [ "$validate_result" = "success" ] &&
              [ "$static_result" = "success" ] &&
              [ "$package_result" = "success" ]; then
-            printf "${GREEN}✔ All CI checks passed${RESET}\n"
+            printf "${GREEN}✔ All guigenmc checks passed${RESET}\n"
           else
-            printf "${RED}✘ One or more CI checks failed${RESET}\n"
+            printf "${RED}✘ One or more guigenmc checks failed${RESET}\n"
           fi
-
-      # ================================================================
-      # SUMMARY
-      # ================================================================
 
       - name: Write CI summary
         if: always()
@@ -409,7 +360,7 @@ jobs:
           icon() { [ "$1" = "success" ] && echo "✅" || echo "❌"; }
 
           {
-            echo "# 🧪 CI Summary"
+            echo "# 🧪 guigenmc CI Summary"
             echo ""
             echo "| Check | Result |"
             echo "|---|---|"
@@ -426,16 +377,433 @@ jobs:
             echo "| Python | \`${{ matrix.python-version }}\` |"
             echo "| Ref | \`$GITHUB_REF\` |"
             echo "| Commit | \`$GITHUB_SHA\` |"
-            echo ""
-            echo "## Artifacts"
-            echo ""
-            echo "- \`datapack-${{ matrix.os }}-py${{ matrix.python-version }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$generate_result" != "success" ] ||
              [ "$validate_result" != "success" ] ||
              [ "$static_result" != "success" ] ||
              [ "$package_result" != "success" ]; then
-            echo "::error title=CI failed::One or more CI checks failed."
+            echo "::error title=guigenmc CI failed::One or more checks failed."
             exit 1
           fi
+
+  # ==================================================================
+  # GRADLE: build + lint (read-only token)
+  # ==================================================================
+  build-lint:
+    name: Build • Lint
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      publish: ${{ steps.release-gate.outputs.PUBLISH }}
+
+    env:
+      FORCE_COLOR: "1"
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Prepare runner
+        run: |
+          set -euo pipefail
+
+          echo "::group::🔧 Runner Preparation"
+          trap 'echo "::endgroup::"' EXIT
+
+          chmod +x ./gradlew
+
+          printf '\033[1;36m%s\033[0m\n' "Runner: $RUNNER_NAME"
+          printf '\033[1;36m%s\033[0m\n' "OS: $RUNNER_OS"
+          printf '\033[1;36m%s\033[0m\n' "Java:"
+          java -version
+
+          printf '\033[1;36m%s\033[0m\n' "Gradle:"
+          ./gradlew --version
+
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Ref: $GITHUB_REF"
+          echo "SHA: $GITHUB_SHA"
+
+      - name: Build all subprojects
+        id: build
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+
+          GREEN='\033[1;32m'
+          CYAN='\033[1;36m'
+          RED='\033[1;31m'
+          RESET='\033[0m'
+
+          echo "::group::🏗️ Build :: buildAll + build"
+          trap 'echo "::endgroup::"' EXIT
+
+          printf "${CYAN}▶ Running buildAll + build (-PconfirmZip=yes)${RESET}\n"
+
+          ./gradlew buildAll build --continue -PconfirmZip=yes
+          rc=$?
+
+          if [ "$rc" -eq 0 ]; then
+            printf "${GREEN}✔ Build completed successfully${RESET}\n"
+          else
+            printf "${RED}✘ Build failed with exit code %s${RESET}\n" "$rc"
+            echo "::error title=Build failed::Gradle buildAll/build exited with code $rc"
+          fi
+
+          exit "$rc"
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-outputs
+          path: |
+            mods/**/build/libs/*.jar
+            examples/**/build/libs/*.jar
+            build/packs-dist/*.zip
+            build/dist/**
+          if-no-files-found: ignore
+          # 90 is the maximum for public repositories.
+          retention-days: 90
+
+      - name: Gradle lint
+        id: gradle-lint
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+
+          GREEN='\033[1;32m'
+          RED='\033[1;31m'
+          RESET='\033[0m'
+
+          echo "::group::🧹 Gradle Lint"
+          trap 'echo "::endgroup::"' EXIT
+
+          ./gradlew lint --continue
+          rc=$?
+
+          if [ "$rc" -eq 0 ]; then
+            printf "${GREEN}✔ Gradle lint passed${RESET}\n"
+          else
+            printf "${RED}✘ Gradle lint failed with exit code %s${RESET}\n" "$rc"
+            echo "::error title=Gradle lint failed::lint --continue exited with code $rc"
+          fi
+
+          exit "$rc"
+
+      - name: Lint datapacks
+        id: datapack-lint
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+
+          GREEN='\033[1;32m'
+          RED='\033[1;31m'
+          RESET='\033[0m'
+
+          echo "::group::📦 Datapack Lint"
+          trap 'echo "::endgroup::"' EXIT
+
+          if [ ! -f ".github/workflows/lint.sh" ]; then
+            printf "${RED}✘ .github/workflows/lint.sh is missing${RESET}\n"
+            echo "::error file=.github/workflows/lint.sh,title=Missing lint script::The datapack lint script does not exist."
+            exit 1
+          fi
+
+          bash .github/workflows/lint.sh
+          rc=$?
+
+          if [ "$rc" -eq 0 ]; then
+            printf "${GREEN}✔ Datapack lint passed${RESET}\n"
+          else
+            printf "${RED}✘ Datapack lint failed with exit code %s${RESET}\n" "$rc"
+            echo "::error title=Datapack lint failed::lint.sh exited with code $rc"
+          fi
+
+          exit "$rc"
+
+      - name: Diagnostics
+        if: always()
+        run: |
+          set +e
+
+          GREEN='\033[1;32m'
+          RED='\033[1;31m'
+          CYAN='\033[1;36m'
+          RESET='\033[0m'
+
+          echo "::group::🔎 Diagnostics"
+          trap 'echo "::endgroup::"' EXIT
+
+          build_result="${{ steps.build.outcome }}"
+          gradle_lint_result="${{ steps.gradle-lint.outcome }}"
+          datapack_lint_result="${{ steps.datapack-lint.outcome }}"
+
+          printf "${CYAN}Build:${RESET} %s\n" "$build_result"
+          printf "${CYAN}Gradle lint:${RESET} %s\n" "$gradle_lint_result"
+          printf "${CYAN}Datapack lint:${RESET} %s\n" "$datapack_lint_result"
+
+          echo "::group::Git status"
+          git status --short
+          echo "::endgroup::"
+
+          echo "::group::Generated artifacts"
+          find build mods examples \
+            -type f \
+            \( -name '*.jar' -o -name '*.zip' \) \
+            -print 2>/dev/null | sort
+          echo "::endgroup::"
+
+          echo "::group::Build directories"
+          find build -maxdepth 3 -type d -print 2>/dev/null | sort
+          echo "::endgroup::"
+
+          if [ "$build_result" != "success" ]; then
+            printf "${RED}✘ Build diagnostics: FAILURE${RESET}\n"
+          else
+            printf "${GREEN}✔ Build diagnostics: OK${RESET}\n"
+          fi
+
+      # Decides whether anything may be published. Publishing is only
+      # ever allowed from main, on push or manual runs, after a fully
+      # green build + lint.
+      - name: Release gate
+        id: release-gate
+        if: always()
+        run: |
+          set -euo pipefail
+
+          GREEN='\033[1;32m'
+          RED='\033[1;31m'
+          YELLOW='\033[1;33m'
+          RESET='\033[0m'
+
+          build_result="${{ steps.build.outcome }}"
+          gradle_lint_result="${{ steps.gradle-lint.outcome }}"
+          datapack_lint_result="${{ steps.datapack-lint.outcome }}"
+
+          echo "::group::🚦 Release Gate"
+          trap 'echo "::endgroup::"' EXIT
+
+          printf "${YELLOW}Build:${RESET} %s\n" "$build_result"
+          printf "${YELLOW}Gradle lint:${RESET} %s\n" "$gradle_lint_result"
+          printf "${YELLOW}Datapack lint:${RESET} %s\n" "$datapack_lint_result"
+
+          allowed=false
+          if [ "$build_result" = "success" ] &&
+             [ "$gradle_lint_result" = "success" ] &&
+             [ "$datapack_lint_result" = "success" ]; then
+            allowed=true
+          fi
+
+          publish=false
+          if [ "$allowed" = "true" ] &&
+             [ "$GITHUB_REF" = "refs/heads/main" ] &&
+             { [ "$GITHUB_EVENT_NAME" = "push" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; }; then
+            publish=true
+          fi
+
+          echo "RELEASE_ALLOWED=$allowed" >> "$GITHUB_OUTPUT"
+          echo "PUBLISH=$publish" >> "$GITHUB_OUTPUT"
+
+          if [ "$allowed" = "true" ]; then
+            printf "${GREEN}✔ Release gate PASSED${RESET}\n"
+          else
+            printf "${RED}✘ Release gate FAILED — nothing will be published.${RESET}\n"
+            echo "::warning title=Release blocked::Build or lint failed; packs-latest will not be updated."
+          fi
+
+      - name: Build pack zips
+        if: steps.release-gate.outputs.PUBLISH == 'true'
+        run: |
+          set -euo pipefail
+
+          echo "::group::📦 Package Individual Packs"
+          trap 'echo "::endgroup::"' EXIT
+
+          ./gradlew zipPacks -PconfirmZip=yes
+
+      - name: Build merged datapack
+        if: steps.release-gate.outputs.PUBLISH == 'true'
+        run: |
+          set -euo pipefail
+
+          echo "::group::🔀 Build Merged Datapack"
+          trap 'echo "::endgroup::"' EXIT
+
+          ./gradlew mergeDatapacks build
+
+      - name: Collect release assets
+        if: steps.release-gate.outputs.PUBLISH == 'true'
+        run: |
+          set -euo pipefail
+
+          echo "::group::📤 Collect release assets"
+          trap 'echo "::endgroup::"' EXIT
+
+          mkdir -p release-assets
+          shopt -s nullglob
+          files=(build/packs-dist/*.zip build/dist/*.zip)
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error title=No release assets::No zips were found in build/packs-dist or build/dist."
+            exit 1
+          fi
+
+          cp -v "${files[@]}" release-assets/
+
+      - name: Upload release assets
+        if: steps.release-gate.outputs.PUBLISH == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-packs
+          path: release-assets/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Final summary
+        if: always()
+        run: |
+          set +e
+
+          GREEN='\033[1;32m'
+          RED='\033[1;31m'
+          RESET='\033[0m'
+
+          build_result="${{ steps.build.outcome }}"
+          gradle_lint_result="${{ steps.gradle-lint.outcome }}"
+          datapack_lint_result="${{ steps.datapack-lint.outcome }}"
+          release_allowed="${{ steps.release-gate.outputs.RELEASE_ALLOWED }}"
+          publish="${{ steps.release-gate.outputs.PUBLISH }}"
+
+          echo "::group::📊 Final Summary"
+          trap 'echo "::endgroup::"' EXIT
+
+          show() {
+            if [ "$2" = "success" ] || [ "$2" = "true" ]; then
+              printf "${GREEN}✔ %s${RESET}\n" "$1"
+            else
+              printf "${RED}✘ %s${RESET}\n" "$1"
+            fi
+          }
+
+          show "Build" "$build_result"
+          show "Gradle lint" "$gradle_lint_result"
+          show "Datapack lint" "$datapack_lint_result"
+          show "Release gate" "$release_allowed"
+
+          {
+            echo "# 🏗️ Build / Lint"
+            echo ""
+            echo "| Component | Result |"
+            echo "|---|---|"
+            echo "| Build | \`$build_result\` |"
+            echo "| Gradle lint | \`$gradle_lint_result\` |"
+            echo "| Datapack lint | \`$datapack_lint_result\` |"
+            echo "| Release gate | \`$release_allowed\` |"
+            echo "| Will publish | \`${publish:-false}\` |"
+            echo ""
+            echo "## Environment"
+            echo ""
+            echo "| Property | Value |"
+            echo "|---|---|"
+            echo "| Runner | \`$RUNNER_OS\` |"
+            echo "| Java | \`25\` |"
+            echo "| Ref | \`$GITHUB_REF\` |"
+            echo "| Commit | \`$GITHUB_SHA\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # build/lint steps use continue-on-error, so the job itself
+          # would otherwise stay green. Fail it explicitly.
+          if [ "$build_result" != "success" ] ||
+             [ "$gradle_lint_result" != "success" ] ||
+             [ "$datapack_lint_result" != "success" ]; then
+            echo "::error title=Build/Lint failed::Build or lint did not succeed."
+            exit 1
+          fi
+
+  # ==================================================================
+  # RELEASE: only job with write access; runs no repository code
+  # ==================================================================
+  release:
+    name: Release • packs-latest
+    needs: build-lint
+    if: needs.build-lint.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v7
+        with:
+          name: release-packs
+          path: release-assets
+
+      - name: Publish packs-latest
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: packs-latest
+          name: Latest packs
+          body: |
+            Automatically updated from main.
+
+            This release reflects the current contents of `packs/` and the
+            merged datapack generated from `packs/merge-manifest.json`.
+          files: release-assets/*.zip
+          fail_on_unmatched_files: true
+          make_latest: true
+
+      # Runs AFTER publishing so the release is never left empty, and
+      # refuses to run if there is nothing current to compare against.
+      - name: Remove stale pack assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          echo "::group::🧹 Release Cleanup :: packs-latest"
+          trap 'echo "::endgroup::"' EXIT
+
+          current_files="$(find release-assets -maxdepth 1 -type f -name '*.zip' -printf '%f\n')"
+
+          if [ -z "$current_files" ]; then
+            echo "::error title=Cleanup aborted::No current assets known; refusing to delete anything."
+            exit 1
+          fi
+
+          existing_assets="$(
+            gh release view packs-latest \
+              --repo "$GITHUB_REPOSITORY" \
+              --json assets \
+              --jq '.assets[].name'
+          )"
+
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+
+            if ! printf '%s\n' "$current_files" | grep -qxF -- "$asset"; then
+              printf '\033[1;33mDeleting stale asset: %s\033[0m\n' "$asset"
+
+              gh release delete-asset packs-latest "$asset" \
+                --repo "$GITHUB_REPOSITORY" \
+                --yes
+            fi
+          done <<< "$existing_assets"
