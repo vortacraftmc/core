@@ -39,7 +39,12 @@ apply from: "${projectDir}/../../build-logic/shared-fabric-mod.gradle"
 // LICENSE file to bundle, and referencing a missing file here unconditionally
 // would fail every consumer's jar task, so this stays out of the shared script.
 jar {
+    // base.archivesName replaces project.archivesBaseName, which Gradle 9
+    // removed (the wrapper is on 9.8.0). Captured as a plain String so the
+    // rename closure touches no Project API at execution time.
+    def licenseSuffix = base.archivesName.get()
+    inputs.property "licenseSuffix", licenseSuffix
     from("LICENSE") {
-        rename { "${it}_${project.archivesBaseName}" }
+        rename { "${it}_${licenseSuffix}" }
     }
 }
