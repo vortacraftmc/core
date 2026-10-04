@@ -65,10 +65,16 @@ def includeIfGradle = { String base ->
     }
 
     int includedCount = 0
+    // eachFileRecurse yields files in filesystem order, which differs between
+    // OSes/filesystems. Collect first and sort by path so the include order
+    // (and therefore `gradle projects` / CI log output) is deterministic.
+    List<File> buildFiles = []
     baseDir.eachFileRecurse { File f ->
-        if (f.name != 'build.gradle' && f.name != 'build.gradle.kts') {
-            return
+        if (f.name == 'build.gradle' || f.name == 'build.gradle.kts') {
+            buildFiles << f
         }
+    }
+    buildFiles.sort { it.path }.each { File f ->
 
         File dir = f.parentFile
         if (dir.path.contains(File.separator + 'build' + File.separator) ||

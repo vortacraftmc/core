@@ -21,9 +21,18 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
 
-  # Pip (Python) bağımlılık güncellemeleri
+  # Pip (Python) bağımlılık güncellemeleri. The only requirements.txt /
+  # pyproject.toml in the tree live in scripts/gui_generator, so "/" never
+  # matched anything.
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "/scripts/gui_generator"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # npm: scripts/dpgen has a package.json + lockfile that no other entry covers.
+  - package-ecosystem: "npm"
+    directory: "/scripts/dpgen"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
