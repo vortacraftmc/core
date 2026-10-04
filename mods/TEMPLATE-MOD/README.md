@@ -1,5 +1,7 @@
 # TEMPLATE-MOD
 
+> **⚠️ Maintenance paused** since 2026-10-04 (expected until at least 2027–2028): no fixes or Minecraft-version updates are planned and issues may go unanswered. See [Project status](https://github.com/vortacraftmc/core#project-status-maintenance-paused).
+
 A Fabric mod template for Minecraft 26.1.2.
 
 ## Requirements

@@ -1,5 +1,7 @@
 # Datapack Fixer
 
+> **⚠️ Maintenance paused** since 2026-10-04 (expected until at least 2027–2028): no fixes or Minecraft-version updates are planned and issues may go unanswered. See [Project status](https://github.com/vortacraftmc/core#project-status-maintenance-paused).
+
 A **Fabric 1.21.4 server-safe diagnostic mod** for datapack syntax migration. It deliberately does not intercept datapack loading, patch network packets, or change gameplay. On startup it only reads unpacked datapacks and emits diagnostics to the server log; the only file writes it performs are the explicit, operator-triggered `/datapackfixer fix` repair (see "Repairs and backups" below), which always backs up first.
 
 ## Scope

@@ -15,6 +15,14 @@ deliberately outside it.
 or still listed in `packs/merge-manifest.json` `include`. `-PcheckArchiveStrict=true`
 turns warnings (e.g. missing successor) into failures.
 
+## Repository-level pause
+
+Since 2026-10-04 the whole repository is also on a maintenance pause (expected until at least
+2027–2028; see the root `README.md`, "Project status"). That is separate from the per-project
+archive below: the datapacks here are retired, the repository itself is paused and not archived
+on GitHub. Nothing in this folder will be fixed or re-checked during the pause, so assume every
+`known_issues` entry in `archive.json` is still open.
+
 ## Archiving a project
 
 1. `git mv packs/<name> archived/<name>` (or set `"path": null` if the code lives elsewhere).
