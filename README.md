@@ -13,7 +13,7 @@ What that means in practice:
 - **No upkeep automation.** Dependabot version updates and the scheduled CODEOWNERS sync are switched off. CI still runs on pushes and pull requests, but nobody is watching the results.
 - **Datapacks are archived.** Everything under `archived/` is a frozen reference copy and must not be deployed on a live server without review (see `archived/README.md`). That archive (2026-10-03) is a separate decision from this pause: those projects are retired, not paused.
 - **Mods will fall behind.** The projects under `mods/` are pinned to specific Minecraft versions (for example 1.21.1 and 1.21.4) and will not follow new releases during the pause.
-- **Not a dead end.** The repository is not archived on GitHub and work may resume later, but there is no commitment and no date. The code is under the Unlicense (see `LICENSE`), so forking is the quickest way to keep something alive.
+- **Not a dead end.** The repository is archived on GitHub (read-only) as a temporary measure; the owner can unarchive it and work may resume later, but there is no commitment and no date. The code is under the Unlicense (see `LICENSE`), so forking is the quickest way to keep something alive.
 
 ## Structure
 
