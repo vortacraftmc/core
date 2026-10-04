@@ -13,6 +13,8 @@ Supported diagnostics are deliberately narrow and syntax-oriented:
 - `minecraft:alternative`, renamed to `minecraft:any_of`;
 - likely pre-1.21.2 recipe ingredient object syntax.
 
+Every rule is **gated on the data pack format the build targets** (`FixerConfig`, 61 for the shipped 1.21.4 build; override with `-Ddatapackfixer.format=<n>`). A rule introduced in a newer version is never reported or applied for an older target; before 1.3.0 the 26.2 `slime` -> `cube_mob` rename was also applied on 1.21.4, where `slime` is the valid id and `cube_mob` does not exist.
+
 A diagnostic is a suggestion, not an automatic migration. The mod does not claim that a semantically different pack is safe after a textual replacement.
 
 ## Multiplayer safety
@@ -61,14 +63,24 @@ The source includes narrow 26.2 syntax diagnostics, notably the `minecraft:type_
 
 ## Repairs and backups
 
-Version 1.2.0 adds an operator-only repair command for directory datapacks:
-
 ```mcfunction
-/datapackfixer scan
-/datapackfixer fix
+/datapackfixer scan   # diagnostics (log + first lines in chat)
+/datapackfixer plan   # dry run: what `fix` would change, nothing is written
+/datapackfixer fix    # back up, repair, then:
 /reload
 ```
 
-`fix` requires permission level 4. Before any change, it copies every directory datapack to `world/datapack_fixer_backups/<UTC timestamp>/` and writes an `audit.txt` report there. It never processes ZIP/JAR datapacks.
+`fix` requires permission level 4. Only packs that actually change are copied to `world/datapack_fixer_backups/<UTC timestamp>/` (with an `audit.txt`) before anything is touched. Files are written atomically, a repair that would turn valid JSON into invalid JSON is skipped, a pack that fails mid-repair is restored from its backup, and symlinks are never followed or written through. ZIP/JAR datapacks are never processed.
 
-The current allowlist repairs only deterministic transformations: singular data directory names, the `minecraft:type_specific/slime` and `minecraft:alternative` renames, and a missing 1.21.4 `pack_format` in otherwise valid `pack.mcmeta`. Invalid JSON, ambiguous recipe conversions, legacy NBT/item-component rewrites, and gameplay-semantic migrations are reported but deliberately not guessed or rewritten.
+Packs whose files are read-only (for example locked by Datapack Blocker) are skipped with `SKIPPED_NOT_WRITABLE`; run `/datapackblocker unlock` first, then `/datapackblocker lock` afterwards.
+
+The allowlist of deterministic repairs: singular data directory names (never merged when both exist), `minecraft:type_specific/slime` (format 107+), `minecraft:alternative` -> `any_of` (format 57+, whitespace-tolerant), and a missing `pack_format` in an otherwise valid `pack.mcmeta` below format 82. Invalid JSON, ambiguous recipe conversions, NBT/item-component rewrites and gameplay-semantic migrations are reported but never guessed.
+
+## .mcfunction delimiter check
+
+Works per command (comments skipped, trailing-`\` continuations joined, free-text commands such as `say`/`msg` ignored) and reports the line where the command starts. Quotes are only treated as strings inside `[...]`/`{...}`. It is a heuristic: an unterminated quote outside any bracket is not reported.
+
+## Known limits
+
+- The scanner uses Gson's lenient parser, so JSON that Gson accepts but a stricter consumer rejects (comments, trailing commas, single quotes) is not flagged.
+- The runnable artifact targets 1.21.4 with Yarn mappings. Running it on 26.x requires porting `DatapackFixerMod` (mappings, command source, permission API) and building with `-Ddatapackfixer.format=<format>`; the scanner/engine classes have no Minecraft dependencies.
