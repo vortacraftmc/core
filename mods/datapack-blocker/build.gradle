@@ -17,6 +17,17 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.12.2')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.slf4j:slf4j-api:2.0.16'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
 tasks.withType(JavaCompile).configureEach {
     it.options.release = 21
 }
