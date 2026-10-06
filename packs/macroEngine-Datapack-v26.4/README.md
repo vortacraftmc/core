@@ -93,26 +93,17 @@ execute as @a run function macroengine:systems/trim/scan
 - **What is not in the pack:** the zip contains no `.jar`, `.exe`, scripts, `.git/` or `.env` files, only datapack files (`.mcfunction`, `.json`, `pack.png`). A datapack cannot open network connections or write to the server's file system on its own.
 - **The real risk is the command-executing APIs.** Several functions run a caller-supplied string as a command (the `$execute ... run $(cmd)` pattern: `api/cmd/as_player`, `api/cmd/other/run_*`, `api/perm/run`, `api/perm/exec`, `core/lib/queue_add_cmd`, `core/lib/schedule_cmd`). Passing player-controlled text (sign, book, dialog, name tag) into them results in **command injection**. `api/cmd/op`, `ban_ip`, `whitelist` and `publish` also run server administration commands through macros.
 - **The input system does not execute input.** Captured raw text is only written to the `macroengine:input` storage. Validate it with `input/validate/check` (`int`, `float`, `bool`, `tag_safe`) before using it.
-- **The built-in protection is limited.** The "sink guard" in 28 functions only checks that the pack is active; it does not authorize the caller. Any other datapack in the same world can call these functions (there is no isolation between datapacks).
+- **There is no built-in protection.** The pack has no load gate or caller authorization. Any other datapack in the same world can call these functions (there is no isolation between datapacks).
 - **Permission level:** everything runs at the server's function permission level. The pack's own load notice states this and warns about lag, crashes and world changes.
 
 ### Can I install it on a server?
 
 Yes. It is a purely server-side datapack, and players do not need any mods. Requirements:
 
-1. **Version:** the pack targets `26.4-snapshot-1` (pack format `122`). The confirm step rejects any other data pack format.
-2. **It starts inactive.** Dropping it into `datapacks/` and running `/reload` is not enough; the pack waits in a "pending" state until an operator confirms it:
-   ```mcfunction
-   /tag <player_name> add macroengine.gate_admin
-   /function macroengine:gate/v26_4/confirm {format:122}
-   ```
-   Confirmation is bound to the pack version and must be repeated for a different version.
-3. **Text rendering:** use it together with `macroEngine-Resourcepack-v26.4`.
-4. **Back up first** and try it on a test server.
-5. **Emergency stop:** `/function macroengine:gate/v26_4/lock` disables the tick loop, loading and the guarded command functions; `/function macroengine:gate/v26_4/unlock` re-enables them. More than 5 `/reload`s within 200 ticks of each other locks the pack automatically.
-6. **Removal:** `/function macroengine:disable`. See the forceload note under Known Issues.
-
-![Activation gate flow](docs/media/gate-flow.svg)
+1. **Version:** the pack targets `26.4-snapshot-1` (pack format `122`).
+2. **Text rendering:** use it together with `macroEngine-Resourcepack-v26.4`.
+3. **Back up first** and try it on a test server.
+4. **Removal:** `/function macroengine:disable`. See the forceload note under Known Issues.
 
 ### Is it paid?
 
@@ -123,7 +114,7 @@ No. The pack is released under the **Unlicense** (public domain): free, includin
 
 ### Is it still maintained?
 
-No. `pack.mcmeta` describes the pack as `[ARCHIVED]`, and the load notice says "unmaintained, deploy not recommended". No updates are planned before 2027-2028 at the earliest. Do not expect fixes; fork it and patch it yourself if you need changes.
+Not currently. The maintainer is stepping away and plans to return in 2027-2028, at which point changes will come as a pull request. Until then do not expect fixes; fork it and patch it yourself if you need changes.
 
 ### How is the performance?
 
@@ -134,18 +125,16 @@ Not measured. From the code: while players are online, the `time`, `player` and 
 <!--
 In-game media is not included yet. Add real captures under docs/media/ and uncomment:
 
-![Confirm step in the server console](docs/media/confirm-console.png)
 ![Input capture via writable book](docs/media/input-book.gif)
 ![Circuit/overload armor trim](docs/media/trim-preview.png)
 -->
 
-The diagrams above are generated from the source code. Real in-game captures (confirm step, input capture, armor trim) are not available yet.
+The diagrams above are generated from the source code. Real in-game captures (input capture, armor trim) are not available yet.
 
 ## Known Issues
 
-- **Archived and unmaintained.** No security or compatibility patches will follow.
+- **Unmaintained until 2027-2028.** No security or compatibility patches will follow before then.
 - **Snapshot-only target.** `26.4-snapshot-1`, pack format `122`. It may not load on stable releases.
-- **"Initializes automatically" (Installation) is outdated.** The pack stays inert until an operator confirms it (see "Can I install it on a server?").
 - **Forceload side effects.** On load the pack runs `forceload add 0 0` and `forceload add -30000000 1600`. Cleanup only runs `forceload remove 0 0`, which also removes a `0 0` forceload the server owner added themselves, and `-30000000 1600` is **never removed** (if it lies outside the world border, the command may fail silently).
 - **Command-executing APIs do not check who is calling.** See "Is it safe?".
 - **NBT-filtered `@e[type=item]` scan every tick** (performance note above).
