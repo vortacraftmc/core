@@ -2,6 +2,6 @@
     "pack": {
         "max_format": [122, 1],
         "min_format": [122, 1],
-        "description": "[ARCHIVED] QuickShare - per-player item sharing helper by vortacraftmc (based on Runtoolkit)"
+        "description": "QuickShare - per-player item sharing helper by vortacraftmc (based on Runtoolkit)"
     }
 }

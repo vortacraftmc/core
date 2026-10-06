@@ -5,7 +5,7 @@
 # gate (that gate system has been removed).
 
 # Archive banner (score-controlled)
-execute if score #vortacraftmc.archivedpacks.macroengine macroengine.meta matches 1 run tellraw @a {"text":"[macroengine] This pack is marked archived (#vortacraftmc.archivedpacks.macroengine=1).","color":"red"}
+execute if score #vortacraftmc.archivedpacks.macroengine macroengine.meta matches 1 run tellraw @s {"text":"[macroengine] This pack is marked archived (#vortacraftmc.archivedpacks.macroengine=1).","color":"red"}
 
 # Already loaded → data-loss prevention notice (NOT a hard gate; does not block)
 # Load functions run without an executor entity, so a bare "@s" can never match;

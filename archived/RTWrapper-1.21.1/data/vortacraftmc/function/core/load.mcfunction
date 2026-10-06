@@ -4,6 +4,4 @@
 # docs/API.md "vortacraftmc loaded-pack registry") uses a minecraft:tick criterion, which the
 # game checks automatically for every online player without a `advancement grant` call.
 # This registry is visual-only: advancements are granted automatically and never revoked.
-# vc-gate: inert until rtwrapper:gate/r1_21_1 state is active
-execute unless data storage rtwrapper:gate/r1_21_1 {state:"active"} run return 0
 execute unless data storage vortacraftmc:meta {loaded:1b} run data modify storage vortacraftmc:meta loaded set value 1b

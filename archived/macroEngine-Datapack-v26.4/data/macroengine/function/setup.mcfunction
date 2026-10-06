@@ -1,8 +1,6 @@
 # --- MacroEngine Granular Progress Load Sequence ---
 
 # Initialization
-# vc-gate: inert until macroengine:gate/v26_4 state is active
-execute unless data storage macroengine:gate/v26_4 {state:"active"} run return 0
 execute unless entity @a run say [MacroEngine] Starting initialization...
 execute unless entity @a run say [ 0%] [....................] Initializing system...
 
