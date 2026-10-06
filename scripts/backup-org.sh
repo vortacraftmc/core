@@ -10,10 +10,8 @@
 #
 # Token: uses VC_TOKEN or GH_TOKEN if set, otherwise prompts silently.
 # Keep this script OUTSIDE any git repository folder (e.g. ~/backup-org.sh).
-
 set -euo pipefail
 umask 077
-
 ORG="${ORG:-vortacraftmc}"
 BACKUP_DIR="${BACKUP_DIR:-$HOME/backup/$ORG}"
 OUT_DIR="${OUT_DIR:-$HOME/backup-out}"
@@ -22,10 +20,8 @@ INCLUDE_SOURCE="${INCLUDE_SOURCE:-1}"
 WITH_HOOKS="${WITH_HOOKS:-0}"
 KEEP="${KEEP:-7}"
 DATE="$(date +%F)"
-
 log() { printf '[%s] %s\n' "$(date +%T)" "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
-
 # ---------------------------------------------------------------- token
 TOKEN="${VC_TOKEN:-${GH_TOKEN:-}}"
 TOKEN_FILE=""
@@ -34,13 +30,11 @@ cleanup() {
   unset TOKEN VC_TOKEN GH_TOKEN PW1 PW2 2>/dev/null || true
 }
 trap cleanup EXIT
-
 if [ -z "$TOKEN" ]; then
   read -rsp "GitHub token (input is hidden): " TOKEN
   echo
 fi
 [ -n "$TOKEN" ] || die "token is empty"
-
 # ---------------------------------------------------------------- tools
 command -v git >/dev/null || die "git not found"
 if ! command -v github-backup >/dev/null; then
@@ -48,9 +42,7 @@ if ! command -v github-backup >/dev/null; then
   pip install --quiet github-backup
 fi
 case "$ENCRYPT" in 7z|none) ;; *) die "ENCRYPT must be 7z or none" ;; esac
-
 mkdir -p "$BACKUP_DIR" "$OUT_DIR"
-
 # ------------------------------------------- pick supported CLI flags
 # Flag names can vary between versions; unsupported ones are skipped.
 HELP="$(github-backup --help 2>&1 || true)"
@@ -58,7 +50,6 @@ WANT=(--repositories --wikis --issues --issue-comments --issue-events
       --pulls --pull-comments --pull-commits --pull-details
       --labels --milestones --releases --assets)
 if [ "$WITH_HOOKS" = 1 ]; then WANT+=(--hooks); fi
-
 FLAGS=()
 for f in "${WANT[@]}"; do
   if grep -q -- "$f" <<<"$HELP"; then
@@ -67,7 +58,6 @@ for f in "${WANT[@]}"; do
     log "warning: $f is not available in this version, skipped"
   fi
 done
-
 # --------------------------------------------------------------- backup
 log "Starting backup: $ORG -> $BACKUP_DIR"
 # Keep the token out of argv: a command-line token is readable by every local
@@ -84,7 +74,6 @@ else
 fi
 github-backup "$ORG" --organization -t "$TOKEN_ARG" -o "$BACKUP_DIR" \
   --private --fork --bare --incremental "${FLAGS[@]}"
-
 # ------------------------------------------------- org-level metadata
 if command -v gh >/dev/null; then
   mkdir -p "$BACKUP_DIR/org-meta"
@@ -97,7 +86,6 @@ if command -v gh >/dev/null; then
       log "warning: could not fetch $ep (missing permission?)"
     fi
   done
-
   EXPECTED="$(GH_TOKEN="$TOKEN" gh api "/orgs/$ORG" \
     --jq '.public_repos + .total_private_repos' 2>/dev/null || true)"
   ACTUAL="$(find "$BACKUP_DIR/repositories" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)"
@@ -109,7 +97,6 @@ if command -v gh >/dev/null; then
 else
   log "gh not found, skipping org metadata and repository count check"
 fi
-
 # ------------------------------------ integrity check + plain source clones
 shopt -s dotglob nullglob
 for d in "$BACKUP_DIR"/repositories/*/; do
@@ -131,17 +118,14 @@ for d in "$BACKUP_DIR"/repositories/*/; do
   fi
 done
 shopt -u dotglob nullglob
-
 if [ "$INCLUDE_SOURCE" = 1 ]; then
   n="$(find "$BACKUP_DIR/repositories" -path '*/source/*' -not -path '*/.git/*' -type f | wc -l)"
   log "Plain source files going into the archive: $n"
   if [ "$n" -eq 0 ]; then log "WARNING: source/ folders are empty, source code will not be in the archive."; fi
 fi
-
 # -------------------------------------------------------------- archive
 PARENT="$(dirname "$BACKUP_DIR")"
 BASE="$(basename "$BACKUP_DIR")"
-
 if [ "$ENCRYPT" = 7z ]; then
   if ! command -v 7z >/dev/null; then
     log "installing p7zip"
@@ -167,10 +151,35 @@ else
   log "WARNING: the archive is NOT encrypted. It contains private code; encrypt it before uploading anywhere."
   tar -czf "$ARCHIVE" -C "$PARENT" "$BASE"
   tar -tzf "$ARCHIVE" >/dev/null || die "archive verification failed"
+
+  # ---------------------------------------------------------------- token sanitization
+  # Scan the freshly-built tar.gz for any remaining https://user:token@… credentials
+  # (commonly left in .git/config by github-backup) and redact them.
+  log "Sanitizing embedded tokens in archive..."
+  td="$(mktemp -d)"
+  trap 'rm -rf "$td"; cleanup' EXIT   # extend existing cleanup
+  tar -xzf "$ARCHIVE" -C "$td"
+  changed=0
+  while IFS= read -r -d '' file; do
+    if grep -aEq 'https://[^/[:space:]@:]+:[^@[:space:]]+@' "$file"; then
+      perl -0pi -e \
+        's#(https://[^/\s:@]+:)[^@\s]+(@github\.com/)#$1[REDACTED]$2#g;
+         s#(https://[^/\s:@]+:)[^@\s]+(@[^/\s]+)#$1[REDACTED]$2#g' \
+        "$file"
+      log "  sanitized: ${file#$td/}"
+      changed=$((changed + 1))
+    fi
+  done < <(find "$td" -type f -print0)
+  # Rebuild the archive in-place (overwrite the original)
+  rm -f "$ARCHIVE"
+  tar -czf "$ARCHIVE" -C "$td" .
+  tar -tzf "$ARCHIVE" >/dev/null || die "sanitized archive verification failed"
+  log "Token sanitization complete ($changed file(s) cleaned)"
+  rm -rf "$td"
+  # restore the original trap
+  trap cleanup EXIT
 fi
-
 (cd "$OUT_DIR" && sha256sum "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256")
-
 # ------------------------------------------------- prune old archives
 find "$OUT_DIR" -maxdepth 1 -type f \( -name "$ORG-*.7z" -o -name "$ORG-*.tar.gz" \) \
   -printf '%T@ %p\n' | sort -rn | tail -n +"$((KEEP + 1))" | cut -d' ' -f2- |
@@ -178,7 +187,6 @@ find "$OUT_DIR" -maxdepth 1 -type f \( -name "$ORG-*.7z" -o -name "$ORG-*.tar.gz
     log "removing old archive: $old"
     rm -f -- "$old" "$old.sha256"
   done
-
 # -------------------------------------------------------------- summary
 echo
 log "Done."
