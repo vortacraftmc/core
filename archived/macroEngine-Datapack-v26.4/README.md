@@ -114,7 +114,7 @@ Yes. It is a purely server-side datapack, and players do not need any mods. Requ
 
 No. The pack is released under the **Unlicense** (public domain): free, including commercial use, and no attribution is required. Two notes:
 
-- The header of `data/minecraft/tags/function/_rt_origin.mcfunction` inside the zip says "MIT License". Both licenses permit free use, but the two statements are inconsistent.
+- The header of `data/minecraft/tags/function/_vc_origin.mcfunction` inside the zip says "MIT License". Both licenses permit free use, but the two statements are inconsistent.
 - This is not legal advice.
 
 ### Is it still maintained?
