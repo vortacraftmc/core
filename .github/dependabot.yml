@@ -1,25 +1,31 @@
 # Keeps GitHub Actions, Gradle, Docker, and Python (pip) dependencies up to date via PRs.
 # Packs under packs/ are locked by datapack-immutability.yml and contain no
 # ecosystem manifests Dependabot would touch.
+#
+# MAINTENANCE PAUSE (2026-10-04, expected until at least 2027-2028):
+# open-pull-requests-limit: 0 turns off Dependabot *version* updates for every ecosystem
+# below so nobody has to triage PRs while the project is unattended. Dependabot alerts and
+# security updates are controlled separately in the repository settings and are not affected.
+# To resume: set the limits back to 5.
 version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
 
   - package-ecosystem: "gradle"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
 
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
 
   # Pip (Python) bağımlılık güncellemeleri. The only requirements.txt /
   # pyproject.toml in the tree live in scripts/gui_generator, so "/" never
@@ -28,11 +34,11 @@ updates:
     directory: "/scripts/gui_generator"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
 
   # npm: scripts/dpgen has a package.json + lockfile that no other entry covers.
   - package-ecosystem: "npm"
     directory: "/scripts/dpgen"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0

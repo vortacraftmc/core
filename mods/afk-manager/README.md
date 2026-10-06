@@ -1,5 +1,7 @@
 # AFK Manager
 
+> **⚠️ Maintenance paused** since 2026-10-04 (expected until at least 2027–2028): no fixes or Minecraft-version updates are planned and issues may go unanswered. See [Project status](https://github.com/vortacraftmc/core#project-status-maintenance-paused).
+
 Server-side Fabric mod (Minecraft **1.21.1**, Java 21, dedicated server). Vanilla clients can join; nothing
 is needed on the client.
 

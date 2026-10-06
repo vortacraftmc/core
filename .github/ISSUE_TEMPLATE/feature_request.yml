@@ -2,6 +2,10 @@ name: "✨ Feature Request"
 description: Suggest a new feature or enhancement for a mod, pack, or script in this monorepo
 labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        **⚠️ Maintenance paused (not permanently archived).** Since 2026-10-04 the maintainer is expected to be inactive on GitHub until at least 2027–2028. This issue may go unanswered for a long time and no fixes or releases are planned. Datapacks under `archived/` are reference-only. See [Project status](https://github.com/vortacraftmc/core#project-status-maintenance-paused).
   - type: dropdown
     id: area
     attributes:
