@@ -22,6 +22,6 @@
   <text x="380" y="215" text-anchor="middle" font-size="11" fill="#57606a">tick: time / player / queue every tick, hud every 2, admin every 4</text>
 
   <rect x="30" y="236" width="700" height="46" rx="8" fill="#ffebe9" stroke="#cf222e"/>
-  <text x="380" y="256" text-anchor="middle" font-weight="bold" fill="#1f2328">gate/v26_4  (activation, lockdown, reload breaker, sink guard)</text>
+  <text x="380" y="256" text-anchor="middle" font-weight="bold" fill="#1f2328">load / tick entry points</text>
   <text x="380" y="273" text-anchor="middle" font-size="11" fill="#57606a">everything above stays inert until state = active</text>
 </svg>

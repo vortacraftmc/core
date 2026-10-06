@@ -11,6 +11,10 @@ Consolidated monorepo for the vortacraftmc ecosystem.
 - `archived/`  — Reserved for projects no longer developed but kept for reference (registry: `archived/archive.json`, validate with `scripts/check_archive.py`)
 - `other/`     — Reserved for content that doesn't fit another category (registry: `archived/archive.json`, validate with `scripts/check_archive.py`)
 
+## Fork status
+
+This fork (`IronCrest-sudo/core`) is **not maintained until 2027-2028**. The datapacks are back under `packs/` without the archive load gates, so they load normally and run commands at the function permission level. Review them before use and back up your world. The maintainer plans to return in 2027-2028 and will bring changes back via pull request. Until then no fixes, reviews or issue triage should be expected.
+
 ## Datapack maintenance status
 
 Datapacks under `packs/` are now in maintenance mode. Concretely, that means:
