@@ -7,15 +7,15 @@ python -m pip install mecha
 echo "::endgroup::"
 
 IGNORE_PATHS=(
-   "archived/*"
-   "build/*"
-   # Legacy pack (pack_format 12): camelCase gamerule names are valid there,
-   # Mecha validates against the newest game version and rejects them.
-   "packs/cmdTunnel-datapack/*"
-   # Uses the 26.x `time query minecraft:day` form, which Mecha's grammar
-   # (v0.101.0) does not know yet. Only these two files are skipped.
-   "packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/time_phase.mcfunction"
-   "packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/get_time.mcfunction"
+    "archived/*"
+    "build/*"
+    # Legacy pack (pack_format 12): camelCase gamerule names are valid there,
+    # Mecha validates against the newest game version and rejects them.
+    "packs/cmdTunnel-datapack/*"
+    # Uses the 26.x `time query minecraft:day` form, which Mecha's grammar
+    # (v0.101.0) does not know yet. Only these two files are skipped.
+    "packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/time_phase.mcfunction"
+    "packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/get_time.mcfunction"
 )
 
 echo "::group::🚫 Ignoring paths"
@@ -35,9 +35,12 @@ cp -a . "$TMP_DIR/project"
 
 cd "$TMP_DIR/project"
 
+REMOVED_FILES=()
+
 for pattern in "${IGNORE_PATHS[@]}"; do
     while IFS= read -r -d '' target; do
         echo "::notice::Ignoring ${target#./}"
+        REMOVED_FILES+=("${target#./}")
         rm -rf "$target"
     done < <(find . -path "./$pattern" -print0 2>/dev/null)
 done
@@ -52,6 +55,17 @@ if mecha .; then
 else
     mecha_status=$?
     echo "::error::Mecha reported validation errors (exit $mecha_status)."
+fi
+
+echo "::endgroup::"
+
+echo "::group::♻️ Restoring deleted files"
+
+if [ "${#REMOVED_FILES[@]}" -gt 0 ]; then
+    git checkout -- "${REMOVED_FILES[@]}" 2>/dev/null || true
+    echo "::notice::Restored ${#REMOVED_FILES[@]} file(s)/folder(s) from Git index."
+else
+    echo "::notice::No files to restore."
 fi
 
 echo "::endgroup::"
