@@ -118,7 +118,10 @@ def item_air_command(selector: str, slot: int) -> str:
     return f"item replace entity {selector} container.{slot} with minecraft:air"
 
 
-def custom_data_predicate(fields: dict[str, Any]) -> str:
+def custom_data_predicate(fields: dict[str, Any], pack: str | None = None) -> str:
+    fields = dict(fields)
+    if pack:
+        fields["pack"] = pack
     inner_parts = []
     for k, v in fields.items():
         if isinstance(v, str):
@@ -129,17 +132,19 @@ def custom_data_predicate(fields: dict[str, Any]) -> str:
     return f"*[custom_data~{{guigen:{{{inner}}}}}]"
 
 
-def clear_by_type_id(widget_type: str, widget_id: str, count: int | None = 1) -> str:
-    spec = custom_data_predicate({"type": widget_type, "id": widget_id})
+def clear_by_type_id(
+    widget_type: str, widget_id: str, count: int | None = 1, pack: str | None = None
+) -> str:
+    spec = custom_data_predicate({"type": widget_type, "id": widget_id}, pack)
     if count is None:
         return f"clear @s {spec}"
     return f"clear @s {spec} {count}"
 
 
-def clear_by_type(widget_type: str) -> str:
-    spec = custom_data_predicate({"type": widget_type})
+def clear_by_type(widget_type: str, pack: str | None = None) -> str:
+    spec = custom_data_predicate({"type": widget_type}, pack)
     return f"clear @s {spec}"
 
 
-def clear_all_widgets() -> str:
-    return "clear @s *[custom_data~{guigen:{widget:1}}]"
+def clear_all_widgets(pack: str | None = None) -> str:
+    return "clear @s " + custom_data_predicate({"widget": 1}, pack)

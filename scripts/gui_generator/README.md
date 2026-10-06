@@ -306,6 +306,29 @@ operate the menu without being operators — the same v5 ergonomics as
 
 ---
 
+## Using several guigenmc packs together
+
+Every generated pack is isolated by its **namespace**. Scoreboard objectives,
+player triggers and item `custom_data` are all prefixed per pack:
+
+| What | Name |
+|------|------|
+| Internal objectives | `guigen.<namespace>.menu_timer`, `.page`, `.click`, `.tmp`, `.rand`, `.opened`, `.cd_<action>` |
+| Player triggers | `/trigger guigen.<namespace>.open`, `.last`, `.close` |
+| Widget items | `custom_data={guigen:{…, pack:"<namespace>"}}` |
+
+Rules:
+
+- **One namespace = one pack.** Two packs with the same `namespace` still
+  overwrite each other's `core/` functions — give each pack its own namespace.
+- Scores you name yourself (`toggle.score`, `counter_score`, `extra_scores`, …)
+  are **not** renamed, so packs can share them on purpose.
+- Upgrading: objectives from older builds (`guigen_menu_timer`, `guigen.open`, …)
+  stay in the world unused. Remove them with `/scoreboard objectives remove <name>`
+  if you want a clean scoreboard list.
+
+---
+
 ## Security model
 
 guigenmc is a **datapack generator**, not a sandbox for Minecraft commands.

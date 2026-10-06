@@ -16,6 +16,7 @@ from ..models import (
     menu_core_prefix,
     menu_function_prefix,
     menu_tag,
+    obj,
     resolved_action_id,
 )
 from ..paths import core_dir_path, menu_dir_path
@@ -27,7 +28,7 @@ def generate_load(menu: dict[str, Any], out: dict[str, str]) -> None:
     scores = list(collect_scores(menu))
     for w in interactive_widgets(menu):
         if int(w.get("cooldown_ticks") or 0) > 0:
-            sc = cd_score(resolved_action_id(w))
+            sc = cd_score(resolved_action_id(w), menu)
             if sc not in scores:
                 scores.append(sc)
 
@@ -36,9 +37,9 @@ def generate_load(menu: dict[str, Any], out: dict[str, str]) -> None:
     # guikit-datapack v5 port: permission-0 player triggers
     lines.extend(
         [
-            "scoreboard objectives add guigen.open trigger",
-            "scoreboard objectives add guigen.last trigger",
-            "scoreboard objectives add guigen.close trigger",
+            f"scoreboard objectives add {obj(menu, 'open')} trigger",
+            f"scoreboard objectives add {obj(menu, 'last')} trigger",
+            f"scoreboard objectives add {obj(menu, 'close')} trigger",
         ]
     )
     cart = f"@e[type={container_entity_id(menu['container'])},tag={menu_tag(menu)}]"
@@ -73,7 +74,7 @@ def generate_open(menu: dict[str, Any], out: dict[str, str]) -> None:
         "",
         f"summon {container_entity_id(menu['container'])} {summon_coords} {nbt}",
         "",
-        "scoreboard players set @s guigen_page 0",
+        f"scoreboard players set @s {obj(menu, 'page')} 0",
     ]
     for cmd in menu.get("on_open") or []:
         lines.append(str(cmd))
@@ -103,17 +104,17 @@ def generate_open(menu: dict[str, Any], out: dict[str, str]) -> None:
     lines.extend(
         [
             f"function {menu_function_prefix(menu)}/fill",
-            f"scoreboard players set @s guigen_menu_timer {menu['timer_ticks']}",
+            f"scoreboard players set @s {obj(menu, 'menu_timer')} {menu['timer_ticks']}",
             "",
             "# guikit-datapack v5 port: world-saved memory of the last opened",
             "# menu — dummy scores persist across /reload, which powers",
-            "# /trigger guigen.last.",
-            "scoreboard players set @s guigen_opened 1",
+            "# /trigger guigen.<ns>.last.",
+            f"scoreboard players set @s {obj(menu, 'opened')} 1",
             "",
             'tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},'
             '{"text":"Menu opened. Right-click the cart, then SHIFT-click buttons.","color":"yellow"}]',
             'tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},'
-            '{"text":"Tip: /trigger guigen.close closes instantly, /trigger guigen.last reopens.","color":"gray","italic":true}]',
+            '{"text":"Tip: /trigger ' + obj(menu, "close") + ' closes instantly, /trigger ' + obj(menu, "last") + ' reopens.","color":"gray","italic":true}]',
             "",
         ]
     )
@@ -131,10 +132,9 @@ def generate_close(menu: dict[str, Any], out: dict[str, str]) -> None:
     lines.extend(
         [
             f"kill @e[type={container_entity_id(menu['container'])},tag={menu_tag(menu)}]",
-            clear_all_widgets(),
-            "clear @s *[custom_data~{guigen:{widget:1}}]",
-            "scoreboard players reset @s guigen_menu_timer",
-            "scoreboard players reset @s guigen_page",
+            clear_all_widgets(menu['namespace']),
+            f"scoreboard players reset @s {obj(menu, 'menu_timer')}",
+            f"scoreboard players reset @s {obj(menu, 'page')}",
         ]
     )
     for cmd in menu.get("on_close") or []:
@@ -182,35 +182,35 @@ def generate_triggers(menu: dict[str, Any], out: dict[str, str]) -> None:
 
     out[f"{core_dir_path(menu)}/open_trigger.mcfunction"] = "\n".join(
         [
-            "# Auto-generated — /trigger guigen.open (guikit v5 port)",
-            "scoreboard players set @s guigen.open 0",
-            "scoreboard players enable @s guigen.open",
+            "# Auto-generated — /trigger guigen.<ns>.open (guikit v5 port)",
+            f"scoreboard players set @s {obj(menu, 'open')} 0",
+            f"scoreboard players enable @s {obj(menu, 'open')}",
             open_fn,
             "",
         ]
     )
     out[f"{core_dir_path(menu)}/last_trigger.mcfunction"] = "\n".join(
         [
-            "# Auto-generated — /trigger guigen.last (guikit v5 port: play/last_trigger)",
+            "# Auto-generated — /trigger guigen.<ns>.last (guikit v5 port: play/last_trigger)",
             "# Reopens the menu if this player ever opened it. The remembered state",
-            "# (guigen_opened) is world-saved, so it survives /reload — same property",
+            f"# ({obj(menu, 'opened')}) is world-saved, so it survives /reload — same property",
             "# guikit v5 gets from storage guikit:mem last.m<pid>.",
-            "scoreboard players set @s guigen.last 0",
-            "scoreboard players enable @s guigen.last",
-            'execute unless score @s guigen_opened matches 1.. run tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},{"text":"You have not opened this menu yet.","color":"red"}]',
-            "execute unless score @s guigen_opened matches 1.. run return 0",
+            f"scoreboard players set @s {obj(menu, 'last')} 0",
+            f"scoreboard players enable @s {obj(menu, 'last')}",
+            'execute unless score @s ' + obj(menu, "opened") + ' matches 1.. run tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},{"text":"You have not opened this menu yet.","color":"red"}]',
+            f"execute unless score @s {obj(menu, 'opened')} matches 1.. run return 0",
             open_fn,
             "",
         ]
     )
     out[f"{core_dir_path(menu)}/close_trigger.mcfunction"] = "\n".join(
         [
-            "# Auto-generated — /trigger guigen.close (guikit v5 port: play/close_trigger)",
+            "# Auto-generated — /trigger guigen.<ns>.close (guikit v5 port: play/close_trigger)",
             "# Instant self-close — no operator permission needed.",
-            "scoreboard players set @s guigen.close 0",
-            "scoreboard players enable @s guigen.close",
-            'execute unless score @s guigen_menu_timer matches 1.. run tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},{"text":"No open menu to close.","color":"red"}]',
-            "execute unless score @s guigen_menu_timer matches 1.. run return 0",
+            f"scoreboard players set @s {obj(menu, 'close')} 0",
+            f"scoreboard players enable @s {obj(menu, 'close')}",
+            'execute unless score @s ' + obj(menu, "menu_timer") + ' matches 1.. run tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},{"text":"No open menu to close.","color":"red"}]',
+            f"execute unless score @s {obj(menu, 'menu_timer')} matches 1.. run return 0",
             close_fn,
             "",
         ]
@@ -218,7 +218,7 @@ def generate_triggers(menu: dict[str, Any], out: dict[str, str]) -> None:
     out[f"{core_dir_path(menu)}/close_all.mcfunction"] = "\n".join(
         [
             "# Auto-generated — guikit v5 port (api/close_all): closes every open menu (ops)",
-            f"execute as @a[scores={{guigen_menu_timer=1..}}] run {close_fn}",
+            f"execute as @a[scores={{{obj(menu, 'menu_timer')}=1..}}] run {close_fn}",
             "",
         ]
     )
