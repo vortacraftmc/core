@@ -155,17 +155,17 @@ def test_generate_triggers_files():
 
     last = out["data/demo/function/core/last_trigger.mcfunction"]
     assert "/trigger" not in last or True
-    assert "scoreboard players set @s guigen.last 0" in last
-    assert "scoreboard players enable @s guigen.last" in last
-    assert "guigen_opened" in last
+    assert "scoreboard players set @s guigen.demo.last 0" in last
+    assert "scoreboard players enable @s guigen.demo.last" in last
+    assert "guigen.demo.opened" in last
     assert "function demo:menu/shop/open" in last
 
     close = out["data/demo/function/core/close_trigger.mcfunction"]
-    assert "guigen_menu_timer matches 1.." in close
+    assert "guigen.demo.menu_timer matches 1.." in close
     assert "function demo:menu/shop/close" in close
 
     close_all = out["data/demo/function/core/close_all.mcfunction"]
-    assert "execute as @a[scores={guigen_menu_timer=1..}] run function demo:menu/shop/close" in close_all
+    assert "execute as @a[scores={guigen.demo.menu_timer=1..}] run function demo:menu/shop/close" in close_all
 
 
 def test_full_datapack_has_v5_trigger_layer():
@@ -189,19 +189,19 @@ def test_full_datapack_has_v5_trigger_layer():
     files = generate_datapack(menu)
 
     load = files["data/demo/function/core/load.mcfunction"]
-    for obj in ("guigen.open", "guigen.last", "guigen.close"):
+    for obj in ("guigen.demo.open", "guigen.demo.last", "guigen.demo.close"):
         assert f"scoreboard objectives add {obj} trigger" in load
-    assert "scoreboard objectives add guigen_opened dummy" in load
+    assert "scoreboard objectives add guigen.demo.opened dummy" in load
 
     tick = files["data/demo/function/core/tick.mcfunction"]
-    for obj in ("guigen.open", "guigen.last", "guigen.close"):
+    for obj in ("guigen.demo.open", "guigen.demo.last", "guigen.demo.close"):
         assert f"scoreboard players enable @a {obj}" in tick
     assert "function demo:core/open_trigger" in tick
     assert "function demo:core/last_trigger" in tick
     assert "function demo:core/close_trigger" in tick
 
     open_fn = files["data/demo/function/menu/shop/open.mcfunction"]
-    assert "scoreboard players set @s guigen_opened 1" in open_fn
+    assert "scoreboard players set @s guigen.demo.opened 1" in open_fn
 
     # pack format bump (guikit-datapack commit "Update pack format version to 122")
     assert '"min_format": 122' in files["pack.mcmeta"]

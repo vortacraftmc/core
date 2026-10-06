@@ -1,0 +1,7 @@
+{
+  "values": [
+    "vortacraftmc:core/load",
+    "rtwrapper:core/load",
+    "rtwrapper:core/trigger_load"
+  ]
+}

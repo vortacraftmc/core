@@ -1,7 +1,0 @@
-{
-  "values": [
-    "rtwrapper:gate/v1_0_1/load",
-    "rtwrapper:core/load",
-    "rtwrapper:core/trigger_load"
-  ]
-}
