@@ -8,7 +8,7 @@ echo "::endgroup::"
 
 IGNORE_PATHS=(
    "archived/*"
-   "build/merged-datapack/*"
+   "build/*/merged-datapack/*"
    # Legacy pack (pack_format 12): camelCase gamerule names are valid there,
    # Mecha validates against the newest game version and rejects them.
    "packs/cmdTunnel-datapack/*"
