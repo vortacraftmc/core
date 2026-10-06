@@ -2,14 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [main, master, devlop, test]
   pull_request:
   workflow_dispatch:
 
 # Least privilege by default. Only the `release` job below gets
 # contents: write, and it never checks out or runs repository code.
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
