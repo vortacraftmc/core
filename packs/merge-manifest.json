@@ -9,7 +9,8 @@
   },
   "include": [
     "guikit-datapack",
-    "macroEngine-Datapack-v26.4"
+    "macroEngine-Datapack-v26.4",
+    "RTWrapper-v1.0.1"
   ],
   "exclude": [],
   "allowMismatchedFormats": false,
