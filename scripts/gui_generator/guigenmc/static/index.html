@@ -489,8 +489,9 @@ function dictToSnbt(d) {
 }
 
 // ItemComponents: { custom_name: Text|null, lore: Text[], custom_data: {}, max_stack_size: 1 }
-function mkItemComponents({ custom_name = null, lore = [], custom_data = {}, max_stack_size = 1 } = {}) {
-  return { custom_name, lore, custom_data, max_stack_size };
+function mkItemComponents({ custom_name = null, lore = [], custom_data = {}, max_stack_size = 1,
+  enchanted = false, custom_model_data = null, count = 1 } = {}) {
+  return { custom_name, lore, custom_data, max_stack_size, enchanted: !!enchanted, custom_model_data, count: Math.max(1, parseInt(count, 10) || 1) };
 }
 
 function itemComponentsToSnbtSuffix(c) {
@@ -504,6 +505,8 @@ function itemComponentsToSnbtSuffix(c) {
     parts.push(`custom_data=${dictToSnbt(c.custom_data)}`);
   }
   if (c.max_stack_size !== 64) parts.push(`max_stack_size=${c.max_stack_size}`);
+  if (c.enchanted) parts.push("enchantment_glint_override=true");
+  if (c.custom_model_data != null) parts.push(`custom_model_data=${parseInt(c.custom_model_data, 10)}`);
   if (!parts.length) return "";
   return "[" + parts.join(",") + "]";
 }
@@ -516,7 +519,9 @@ function itemId(item) {
 
 function itemReplaceCommand(selector, slot, item, components) {
   const suffix = itemComponentsToSnbtSuffix(components);
-  return `item replace entity ${selector} container.${slot} with ${itemId(item)}${suffix}`;
+  const count = parseInt(components.count || 1, 10);
+  const countS = count !== 1 ? ` ${count}` : "";
+  return `item replace entity ${selector} container.${slot} with ${itemId(item)}${suffix}${countS}`;
 }
 
 function itemAirCommand(selector, slot) {
@@ -580,16 +585,29 @@ function widgetComponents(w, cellSlot = null, pack = null) {
     custom_name: w.name,
     lore: w.lore ? w.lore.slice() : [],
     custom_data: guiCustomData(w, cellSlot, pack),
+    enchanted: !!w.enchanted,
+    custom_model_data: w.custom_model_data ?? null,
+    count: parseInt(w.count || 1, 10),
+    max_stack_size: parseInt(w.max_stack_size || 1, 10),
   });
 }
 
 function componentsForToggle(w, state, pack = null) {
   const t = w.toggle;
   const data = guiCustomData(w, null, pack);
+  const pick = (k, d) => (k in t ? t[k] : d);
   if (state === 0) {
-    return [t.off_item, mkItemComponents({ custom_name: t.off_name, lore: t.off_lore.slice(), custom_data: data })];
+    return [t.off_item, mkItemComponents({
+      custom_name: t.off_name, lore: t.off_lore.slice(), custom_data: data,
+      enchanted: !!pick("off_enchanted", w.enchanted),
+      custom_model_data: pick("off_custom_model_data", w.custom_model_data ?? null),
+    })];
   }
-  return [t.on_item, mkItemComponents({ custom_name: t.on_name, lore: t.on_lore.slice(), custom_data: data })];
+  return [t.on_item, mkItemComponents({
+    custom_name: t.on_name, lore: t.on_lore.slice(), custom_data: data,
+    enchanted: !!pick("on_enchanted", true),
+    custom_model_data: pick("on_custom_model_data", w.custom_model_data ?? null),
+  })];
 }
 
 function componentsForCycle(w, index, pack = null) {
@@ -669,6 +687,10 @@ function mkWidget(fields) {
       action_id: "",
       name: null,
       lore: [],
+      enchanted: false,
+      custom_model_data: null,
+      count: 1,
+      max_stack_size: 1,
       commands: [],
       functions: [],
       sound: null,
@@ -699,31 +721,68 @@ function mkWidget(fields) {
 
 // ---- models/menu.py ---------------------------------------------------------
 
-function mkContainer({ type = "chest_minecart", invulnerable = true, no_gravity = true, silent = true } = {}) {
-  return { type, invulnerable, no_gravity, silent };
+const CONTAINER_TYPES = {
+  chest_minecart: ["chest_minecart", 27],
+  hopper_minecart: ["hopper_minecart", 5],
+  chest_boat: ["oak_chest_boat", 27],
+  oak_chest_boat: ["oak_chest_boat", 27],
+  spruce_chest_boat: ["spruce_chest_boat", 27],
+  birch_chest_boat: ["birch_chest_boat", 27],
+  jungle_chest_boat: ["jungle_chest_boat", 27],
+  acacia_chest_boat: ["acacia_chest_boat", 27],
+  dark_oak_chest_boat: ["dark_oak_chest_boat", 27],
+  mangrove_chest_boat: ["mangrove_chest_boat", 27],
+  cherry_chest_boat: ["cherry_chest_boat", 27],
+  bamboo_chest_raft: ["bamboo_chest_raft", 27],
+  pale_oak_chest_boat: ["pale_oak_chest_boat", 27],
+};
+const VALID_CONTAINER_TYPES = Object.keys(CONTAINER_TYPES);
+const CONTAINER_ALIASES = { chest: "chest_minecart", hopper: "hopper_minecart", boat: "chest_boat", oak_boat: "oak_chest_boat" };
+const LAYOUT_PRESETS = {
+  border: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
+  top_row: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+  bottom_row: [18, 19, 20, 21, 22, 23, 24, 25, 26],
+  left_column: [0, 9, 18],
+  right_column: [8, 17, 26],
+  center: [4, 12, 13, 14, 22],
+};
+
+// Python's float repr: 2 -> "2.0", 0.6 -> "0.6" (keeps generated text byte-identical)
+function pyFloat(x) {
+  const n = Number(x);
+  return Number.isInteger(n) ? n.toFixed(1) : String(n);
+}
+
+function mkContainer({ type = "chest_minecart", invulnerable = true, no_gravity = true, silent = true,
+  glowing = false, custom_name_visible = false, persistence = true, y_offset = 0.0, rotation_yaw = null } = {}) {
+  return { type, invulnerable, no_gravity, silent, glowing, custom_name_visible, persistence, y_offset: Number(y_offset), rotation_yaw };
 }
 
 function containerEntityId(c) {
-  return `minecraft:${c.type}`;
+  return CONTAINER_TYPES[c.type] ? `minecraft:${CONTAINER_TYPES[c.type][0]}` : `minecraft:${c.type}`;
 }
 
 function containerSlotCount(c) {
-  return c.type === "hopper_minecart" ? 5 : 27;
+  return CONTAINER_TYPES[c.type] ? CONTAINER_TYPES[c.type][1] : 27;
 }
 
 function containerSummonNbt(c, tags, customName = null) {
   const tagList = tags.map((t) => `"${t}"`).join(",");
   const flags = [];
-  if (c.invulnerable) flags.push("Invulnerable:1b");
-  if (c.no_gravity) flags.push("NoGravity:1b");
-  if (c.silent) flags.push("Silent:1b");
-  flags.push("CustomNameVisible:0b");
-  if (customName) {
-    flags.push(`CustomName:{text:"${escapeSnbtString(customName)}",italic:false}`);
-  }
+  if (c.invulnerable ?? true) flags.push("Invulnerable:1b");
+  if (c.no_gravity ?? true) flags.push("NoGravity:1b");
+  if (c.silent ?? true) flags.push("Silent:1b");
+  if (c.glowing) flags.push("Glowing:1b");
+  if (c.persistence ?? true) flags.push("PersistenceRequired:1b");
+  flags.push(`CustomNameVisible:${c.custom_name_visible ? 1 : 0}b`);
+  if (customName) flags.push(`CustomName:{text:"${escapeSnbtString(customName)}",italic:false}`);
   flags.push(`Tags:[${tagList}]`);
+  if (c.rotation_yaw != null) flags.push(`Rotation:[${pyFloat(c.rotation_yaw)}f,0f]`);
   return "{" + flags.join(",") + "}";
 }
+
+
+
 
 function menuFunctionPrefix(m) {
   return `${m.namespace}:menu/${m.menu_id}`;
@@ -855,6 +914,10 @@ function loaderToggleState(raw) {
     on_commands: (raw.on_commands || []).slice(),
     off_commands: (raw.off_commands || []).slice(),
     tick_while_on: (raw.tick_while_on || []).slice(),
+    off_enchanted: !!(raw.off_enchanted ?? false),
+    on_enchanted: !!(raw.on_enchanted ?? true),
+    off_custom_model_data: raw.off_custom_model_data ?? null,
+    on_custom_model_data: raw.on_custom_model_data ?? null,
   };
 }
 
@@ -925,6 +988,10 @@ function loaderWidget(raw) {
     action_id: String(raw.action_id ?? raw.id ?? ""),
     name: loaderText(raw.name),
     lore: loaderTextList(raw.lore),
+    enchanted: !!(raw.enchanted ?? raw.glint ?? false),
+    custom_model_data: (raw.custom_model_data ?? raw.cmd) != null ? parseInt(raw.custom_model_data ?? raw.cmd, 10) : null,
+    count: parseInt(raw.count ?? raw.amount ?? 1, 10),
+    max_stack_size: parseInt(raw.max_stack_size ?? 1, 10),
     commands: (raw.commands || []).slice(),
     functions: (raw.functions || []).slice(),
     sound: raw.sound ?? null,
@@ -1091,21 +1158,49 @@ function loaderPage(raw, fallbackIndex) {
   const widgetsRaw = raw.widgets || raw.buttons || [];
   if (!Array.isArray(widgetsRaw)) throw new TypeError("page.widgets must be a list");
   const widgets = widgetsRaw.map(loaderWidget);
-  return { index, name, widgets };
+  return {
+    index, name, widgets,
+    on_enter: (raw.on_enter || []).slice(),
+    layout: raw.layout ?? null,
+    filler: raw.filler ?? null,
+  };
+}
+
+function applyLayoutFillers(page, menu) {
+  const layout = page.layout || menu.layout;
+  if (!layout) return;
+  const presetSlots = LAYOUT_PRESETS[String(layout)];
+  if (!presetSlots) return;
+  if (containerSlotCount(menu.container) < 27) return;
+  const occupied = new Set();
+  for (const w of page.widgets) for (const s of occupiedSlots(w)) occupied.add(s);
+  const fillerItem = page.filler || menu.default_filler || "minecraft:gray_stained_glass_pane";
+  for (const s of presetSlots) {
+    if (!occupied.has(s)) {
+      page.widgets.push(mkSeparatorWidget(s, String(fillerItem)));
+      occupied.add(s);
+    }
+  }
 }
 
 function loaderContainer(raw) {
   if (raw == null) return mkContainer();
   if (typeof raw !== "object") throw new TypeError("container must be an object");
-  const ctype = String(raw.type ?? "chest_minecart");
-  if (!["chest_minecart", "hopper_minecart"].includes(ctype)) {
-    throw new Error(`Unknown container type: ${ctype} (allowed: chest_minecart, hopper_minecart)`);
+  let ctype = String(raw.type ?? "chest_minecart");
+  ctype = CONTAINER_ALIASES[ctype] ?? ctype;
+  if (!CONTAINER_TYPES[ctype]) {
+    throw new Error(`Unknown container type: ${ctype} (allowed: ${VALID_CONTAINER_TYPES.join(", ")})`);
   }
   return mkContainer({
     type: ctype,
     invulnerable: raw.invulnerable ?? true,
     no_gravity: raw.no_gravity ?? true,
     silent: raw.silent ?? true,
+    glowing: Boolean(raw.glowing ?? false),
+    custom_name_visible: Boolean(raw.custom_name_visible ?? raw.name_visible ?? false),
+    persistence: Boolean(raw.persistence ?? raw.persistent ?? true),
+    y_offset: parseFloat(raw.y_offset ?? raw.offset_y ?? 0.0),
+    rotation_yaw: raw.rotation_yaw != null ? parseFloat(raw.rotation_yaw) : null,
   });
 }
 
@@ -1135,7 +1230,7 @@ function menuFromDict(data) {
   }
   const pages = pagesRaw.map((p, i) => loaderPage(p, i));
 
-  return {
+  const menu = {
     namespace: namespace,
     menu_id: menuId,
     display_name: String(data.display_name ?? menuId),
@@ -1146,7 +1241,15 @@ function menuFromDict(data) {
     pages,
     extra_scores: (data.extra_scores || []).slice(),
     pack_description: data.pack_description ?? null,
+    on_open: (data.on_open || []).slice(),
+    on_close: (data.on_close || []).slice(),
+    default_filler: data.default_filler ?? "minecraft:gray_stained_glass_pane",
+    layout: data.layout ?? null,
+    fill_empty: data.fill_empty ?? true,
+    message_prefix: data.message_prefix ?? null,
   };
+  for (const page of menu.pages) applyLayoutFillers(page, menu);
+  return menu;
 }
 
 function loadMenuFromJsonString(jsonText) {
@@ -1259,6 +1362,8 @@ function generatePageFills(menu, out) {
   const slots = containerSlotCount(menu.container);
   for (const page of menu.pages) {
     const lines = [`# Page ${page.index} – ${page.name}`, ""];
+    for (const cmd of page.on_enter || []) lines.push(String(cmd));
+    if ((page.on_enter || []).length) lines.push("");
     for (const w of page.widgets) {
       lines.push(`# slot ${w.slot}: ${resolvedActionId(w)} (${w.kind})`);
       if (w.kind === "toggle") lines.push(...emitToggle(menu, w));
@@ -1273,10 +1378,11 @@ function generatePageFills(menu, out) {
     const occupied = pageOccupied(page.widgets);
     const pads = [];
     for (let s = 0; s < slots; s++) if (!occupied.has(s)) pads.push(s);
-    if (pads.length) {
+    if (pads.length && (menu.fill_empty ?? true)) {
+      const fillerItem = page.filler || menu.default_filler || "minecraft:gray_stained_glass_pane";
       lines.push("# Locked filler panes (no empty slots)");
       for (const s of pads) {
-        const pad = mkSeparatorWidget(s);
+        const pad = mkSeparatorWidget(s, String(fillerItem));
         pad.action_id = `pad_${page.index}_${s}`;
         lines.push(itemReplaceCommand(cartSelector(menu), s, pad.item, widgetComponents(pad, null, menu.namespace)));
       }
@@ -1568,6 +1674,7 @@ function handlerFor(menu, w) {
       // guikit-datapack v5 port (cond/t_dimension): `at @s` moves execution
       // to the player so the check works regardless of caller context.
       const dim = cond.dimension || "minecraft:overworld";
+      lines.push(`# condition: player is in dimension ${dim}`);
       const ok = `execute at @s if dimension ${dim} run `;
       lines.push(...successBlock(ok));
       lines.push(`execute at @s unless dimension ${dim} run ${tellrawLine(fail)}`);
@@ -1578,6 +1685,7 @@ function handlerFor(menu, w) {
       // `at @s` reads the weather where the player stands.
       const wx = cond.weather || "clear";
       const pred = `${menu.namespace}:guigen/weather_${wx}`;
+      lines.push(`# condition: weather is ${wx} in the player's dimension`);
       const ok = `execute at @s if predicate ${pred} run `;
       lines.push(...successBlock(ok));
       lines.push(`execute at @s unless predicate ${pred} run ${tellrawLine(fail)}`);
@@ -1619,6 +1727,8 @@ function generateLoad(menu, out) {
     }
   }
   for (const score of scores) lines.push(`scoreboard objectives add ${score} dummy`);
+  // guikit-datapack v5 port: permission-0 player triggers (pack-scoped)
+  for (const k of ["open", "last", "close"]) lines.push(`scoreboard objectives add ${obj(menu, k)} trigger`);
   const cart = `@e[type=${containerEntityId(menu.container)},tag=${menuTag(menu)}]`;
   lines.push(
     "",
@@ -1633,14 +1743,18 @@ function generateLoad(menu, out) {
 
 function generateOpen(menu, out) {
   const nbt = containerSummonNbt(menu.container, [`${menu.namespace}.menu`, menuTag(menu)], menu.display_name);
+  const yOff = Number(menu.container.y_offset || 0.0);
+  const summonCoords = yOff ? `~ ~${pyFloat(yOff)} ~` : "~ ~ ~";
   const lines = [
     "# Auto-generated open",
     `function ${menuFunctionPrefix(menu)}/close`,
     "",
-    `summon ${containerEntityId(menu.container)} ~ ~ ~ ${nbt}`,
+    `summon ${containerEntityId(menu.container)} ${summonCoords} ${nbt}`,
     "",
     `scoreboard players set @s ${obj(menu, 'page')} 0`,
   ];
+  for (const cmd of menu.on_open || []) lines.push(String(cmd));
+  if ((menu.on_open || []).length) lines.push("");
   const inited = new Set();
   for (const w of allWidgets(menu)) {
     const scoresToInit = [];
@@ -1659,7 +1773,13 @@ function generateOpen(menu, out) {
     `function ${menuFunctionPrefix(menu)}/fill`,
     `scoreboard players set @s ${obj(menu, 'menu_timer')} ${menu.timer_ticks}`,
     "",
+    "# guikit-datapack v5 port: world-saved memory of the last opened",
+    "# menu — dummy scores persist across /reload, which powers",
+    "# /trigger guigen.<ns>.last.",
+    `scoreboard players set @s ${obj(menu, 'opened')} 1`,
+    "",
     `tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},{"text":"Menu opened. Right-click the cart, then SHIFT-click buttons.","color":"yellow"}]`,
+    `tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},{"text":"Tip: /trigger ${obj(menu, 'close')} closes instantly, /trigger ${obj(menu, 'last')} reopens.","color":"gray","italic":true}]`,
     ""
   );
   out.set(`${menuDirPath(menu)}/open.mcfunction`, lines.join("\n"));
@@ -1675,13 +1795,72 @@ function generateClose(menu, out) {
     `kill @e[type=${containerEntityId(menu.container)},tag=${menuTag(menu)}]`,
     clearAllWidgets(menu.namespace),
     `scoreboard players reset @s ${obj(menu, 'menu_timer')}`,
-    `scoreboard players reset @s ${obj(menu, 'page')}`,
-    ""
+    `scoreboard players reset @s ${obj(menu, 'page')}`
   );
+  for (const cmd of menu.on_close || []) lines.push(String(cmd));
+  lines.push("");
   out.set(`${menuDirPath(menu)}/close.mcfunction`, lines.join("\n"));
 }
 
 
+const WEATHER_PREDICATE_FIELDS = {
+  clear: { raining: false, thundering: false },
+  rain: { raining: true, thundering: false },
+  thunder: { raining: true, thundering: true },
+};
+
+// Java Edition has no `execute if weather`; emit minecraft:weather_check predicates.
+function generateWeatherPredicates(menu, out) {
+  const used = new Set();
+  for (const w of allWidgets(menu)) {
+    if (w.condition && w.condition.type === "weather") used.add(w.condition.weather || "clear");
+  }
+  for (const wx of [...used].sort()) {
+    const data = { type: "minecraft:weather_check", ...WEATHER_PREDICATE_FIELDS[wx] };
+    out.set(`data/${menu.namespace}/predicate/guigen/weather_${wx}.json`, JSON.stringify(data, null, 2) + "\n");
+  }
+}
+
+// guikit-datapack v5 port: permission-0 player triggers (pack-scoped names)
+function generateTriggers(menu, out) {
+  const openFn = `function ${menuFunctionPrefix(menu)}/open`;
+  const closeFn = `function ${menuFunctionPrefix(menu)}/close`;
+  const g = '{"text":"[GUI-GENERATOR] ","color":"gray"}';
+  out.set(`${coreDirPath(menu)}/open_trigger.mcfunction`, [
+    "# Auto-generated — /trigger guigen.<ns>.open (guikit v5 port)",
+    `scoreboard players set @s ${obj(menu, 'open')} 0`,
+    `scoreboard players enable @s ${obj(menu, 'open')}`,
+    openFn,
+    "",
+  ].join("\n"));
+  out.set(`${coreDirPath(menu)}/last_trigger.mcfunction`, [
+    "# Auto-generated — /trigger guigen.<ns>.last (guikit v5 port: play/last_trigger)",
+    "# Reopens the menu if this player ever opened it. The remembered state",
+    `# (${obj(menu, 'opened')}) is world-saved, so it survives /reload — same property`,
+    "# guikit v5 gets from storage guikit:mem last.m<pid>.",
+    `scoreboard players set @s ${obj(menu, 'last')} 0`,
+    `scoreboard players enable @s ${obj(menu, 'last')}`,
+    `execute unless score @s ${obj(menu, 'opened')} matches 1.. run tellraw @s [${g},{"text":"You have not opened this menu yet.","color":"red"}]`,
+    `execute unless score @s ${obj(menu, 'opened')} matches 1.. run return 0`,
+    openFn,
+    "",
+  ].join("\n"));
+  out.set(`${coreDirPath(menu)}/close_trigger.mcfunction`, [
+    "# Auto-generated — /trigger guigen.<ns>.close (guikit v5 port: play/close_trigger)",
+    "# Instant self-close — no operator permission needed.",
+    `scoreboard players set @s ${obj(menu, 'close')} 0`,
+    `scoreboard players enable @s ${obj(menu, 'close')}`,
+    `execute unless score @s ${obj(menu, 'menu_timer')} matches 1.. run tellraw @s [${g},{"text":"No open menu to close.","color":"red"}]`,
+    `execute unless score @s ${obj(menu, 'menu_timer')} matches 1.. run return 0`,
+    closeFn,
+    "",
+  ].join("\n"));
+  out.set(`${coreDirPath(menu)}/close_all.mcfunction`, [
+    "# Auto-generated — guikit v5 port (api/close_all): closes every open menu (ops)",
+    `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] run ${closeFn}`,
+    "",
+  ].join("\n"));
+}
 function generateTags(menu, out) {
   out.set(
     `data/minecraft/tags/function/load.json`,
@@ -1694,8 +1873,10 @@ function generateTags(menu, out) {
 }
 
 function generatePackMcmeta(out, description) {
-  const data = { pack: { description, min_format: 119, max_format: 119 } };
-  out.set(`pack.mcmeta`, JSON.stringify(data, null, 2) + "\n");
+  const data = { pack: { description, min_format: 122, max_format: 122 } };
+  // Python json.dumps escapes non-ASCII; mirror it so output is byte-identical
+  const json = JSON.stringify(data, null, 2).replace(/[\u0080-\uffff]/g, (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+  out.set(`pack.mcmeta`, json + "\n");
 }
 
 // ---- generators/tick.py ----------------------------------------------------
@@ -1721,6 +1902,15 @@ function generateTick(menu, out) {
     `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] run scoreboard players remove @s ${obj(menu, 'menu_timer')} 1`,
     `execute as @a[scores={${obj(menu, 'menu_timer')}=0}] at @s run function ${menuFunctionPrefix(menu)}/close`,
     "",
+    "# Player triggers — guikit-datapack v5 port (core/tick enables and",
+    "# dispatches guigen.<ns>.open/last/close; permission level 0)",
+    `scoreboard players enable @a ${obj(menu, 'open')}`,
+    `scoreboard players enable @a ${obj(menu, 'last')}`,
+    `scoreboard players enable @a ${obj(menu, 'close')}`,
+    `execute as @a[scores={${obj(menu, 'open')}=1..}] at @s run function ${menuCorePrefix(menu)}/open_trigger`,
+    `execute as @a[scores={${obj(menu, 'last')}=1..}] at @s run function ${menuCorePrefix(menu)}/last_trigger`,
+    `execute as @a[scores={${obj(menu, 'close')}=1..}] run function ${menuCorePrefix(menu)}/close_trigger`,
+    "",
     "# Cooldown tick-down",
   ];
 
@@ -1743,7 +1933,7 @@ function generateTick(menu, out) {
     // cart was removed some other way (killed, unloaded, etc).
     lines.push(
       "# Follow (cart is kept on the player; distance_close cannot be exceeded)",
-      `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] at @s as ${cart} run tp @s ~ ~ ~`,
+      `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] at @s as ${cart} run tp @s ${menu.container.y_offset ? `~ ~${pyFloat(menu.container.y_offset)} ~` : "~ ~ ~"}`,
       `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] at @s unless entity @e[type=${entity},tag=${menuTag(menu)},limit=1] run function ${menuFunctionPrefix(menu)}/close`,
       ""
     );
@@ -1755,7 +1945,7 @@ function generateTick(menu, out) {
     lines.push(
       "# Not following — enforce distance_close and cart-presence",
       `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] at @s unless entity @e[type=${entity},tag=${menuTag(menu)},limit=1] run function ${menuFunctionPrefix(menu)}/close`,
-      `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] at @s unless entity @e[type=${entity},tag=${menuTag(menu)},distance=..${dist},limit=1] run function ${menuFunctionPrefix(menu)}/close`,
+      `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] at @s unless entity @e[type=${entity},tag=${menuTag(menu)},distance=..${pyFloat(dist)},limit=1] run function ${menuFunctionPrefix(menu)}/close`,
       ""
     );
   }
@@ -1832,9 +2022,11 @@ function generateDatapack(menu) {
   generateFillRouter(menu, out);
   generatePageFills(menu, out);
   generateHandlers(menu, out);
+  generateWeatherPredicates(menu, out);
+  generateTriggers(menu, out);
   generateTick(menu, out);
   generateTags(menu, out);
-  generatePackMcmeta(out, menu.pack_description || `${menu.display_name} (generated by guigen)`);
+  generatePackMcmeta(out, menu.pack_description || `${menu.display_name} (generated by guigenmc)`);
   return out;
 }
 
@@ -1858,17 +2050,31 @@ function summarize(menu) {
 function validateMenu(menu) {
   const warnings = [];
   const slotCount = containerSlotCount(menu.container);
+  const ctype = menu.container.type;
+
+  if (!VALID_CONTAINER_TYPES.includes(ctype)) {
+    warnings.push(`Container type '${ctype}' is not in the known list: ${VALID_CONTAINER_TYPES.join(", ")}.`);
+  }
+  const layout = menu.layout;
+  if (layout && !(String(layout) in LAYOUT_PRESETS)) {
+    warnings.push(`Unknown menu layout '${layout}'. Known: ${Object.keys(LAYOUT_PRESETS).join(", ")}.`);
+  }
+  const yOff = Number(menu.container.y_offset || 0.0);
+  if (Math.abs(yOff) > 5) {
+    warnings.push(`container.y_offset=${pyFloat(yOff)} is unusually large; the cart may be hard to click.`);
+  }
 
   for (const page of menu.pages) {
+    if (page.layout && !(String(page.layout) in LAYOUT_PRESETS)) {
+      warnings.push(`Page ${page.index} (${page.name}): unknown layout '${page.layout}'. Known: ${Object.keys(LAYOUT_PRESETS).join(", ")}.`);
+    }
     const bySlot = new Map();
     for (const w of page.widgets) {
       for (const s of occupiedSlots(w)) {
         if (!bySlot.has(s)) bySlot.set(s, []);
         bySlot.get(s).push(w);
         if (s < 0 || s >= slotCount) {
-          warnings.push(
-            `Page ${page.index} (${page.name}): slot ${s} is out of range for ${menu.container.type} (valid: 0–${slotCount - 1}).`
-          );
+          warnings.push(`Page ${page.index} (${page.name}): slot ${s} is out of range for ${ctype} (valid: 0–${slotCount - 1}).`);
         }
       }
     }
@@ -1882,21 +2088,45 @@ function validateMenu(menu) {
     }
   }
 
-  // nav/confirm targets are only ever used to *set* guigen_page — nothing
-  // checks the value is a real page, so a bad target_page silently produces
-  // a working button that switches to a page with no fill function, leaving
-  // the container looking "stuck" with the previous page's items.
+  // nav/tab/confirm targets only *set* the page score — nothing else checks they
+  // exist, so a bad target silently leaves the container "stuck" on the old page.
   const validIndices = new Set(menu.pages.map((p) => p.index));
+  const validList = [...validIndices].sort((a, b) => a - b).join(", ");
   for (const w of allWidgets(menu)) {
-    if (w.kind === "nav" && !validIndices.has(w.target_page)) {
-      warnings.push(
-        `Widget "${resolvedActionId(w)}" (nav) targets page ${w.target_page}, which does not exist. Valid pages: ${[...validIndices].sort((a, b) => a - b).join(", ")}.`
-      );
+    if ((w.kind === "nav" || w.kind === "tab") && !validIndices.has(w.target_page)) {
+      warnings.push(`Widget "${resolvedActionId(w)}" (${w.kind}) targets page ${w.target_page}, which does not exist. Valid pages: ${validList}.`);
     }
     if (w.kind === "confirm" && !validIndices.has(w.confirm_page)) {
-      warnings.push(
-        `Widget "${resolvedActionId(w)}" (confirm) targets page ${w.confirm_page}, which does not exist. Valid pages: ${[...validIndices].sort((a, b) => a - b).join(", ")}.`
-      );
+      warnings.push(`Widget "${resolvedActionId(w)}" (confirm) targets page ${w.confirm_page}, which does not exist. Valid pages: ${validList}.`);
+    }
+    if ((w.count ?? 1) > 64) {
+      warnings.push(`Widget "${resolvedActionId(w)}" has count=${w.count} (>64).`);
+    }
+    if (w.kind === "link" && !w.url) {
+      warnings.push(`Widget "${resolvedActionId(w)}" (link) has no url — click will do nothing useful.`);
+    }
+    if (w.kind === "cycle") {
+      const opts = (w.cycle && w.cycle.options) || [];
+      if (opts.length < 2) warnings.push(`Widget "${resolvedActionId(w)}" (cycle) needs at least 2 options.`);
+    }
+  }
+
+  const radioGroups = new Map();
+  for (const w of allWidgets(menu)) {
+    if (w.kind === "radio") {
+      if (!radioGroups.has(w.radio.score)) radioGroups.set(w.radio.score, []);
+      radioGroups.get(w.radio.score).push(w);
+    }
+  }
+  for (const [score, widgets] of radioGroups) {
+    const values = widgets.map((w) => w.radio.value);
+    if (new Set(values).size < 2) {
+      const names = widgets.map((w) => resolvedActionId(w)).join(", ");
+      warnings.push(`Radio group "${score}" has fewer than 2 distinct values (${names}) — a radio group with one option is just a button.`);
+    }
+    const dups = [...new Set(values.filter((v) => values.filter((x) => x === v).length > 1))].sort((a, b) => a - b);
+    if (dups.length) {
+      warnings.push(`Radio group "${score}" has duplicate value(s) [${dups.join(", ")}] — multiple options would appear selected at once.`);
     }
   }
 
