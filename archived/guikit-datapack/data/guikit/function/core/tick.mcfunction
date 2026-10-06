@@ -1,6 +1,4 @@
 # guikit :: tick
-# vc-gate: inert until guikit:gate/v5 state is active
-execute unless data storage guikit:gate/v5 {state:"active"} run return 0
 scoreboard players add #tick guikit.const 1
 execute as @a[scores={guikit.gmsg=1..}] run scoreboard players remove @s guikit.gmsg 1
 scoreboard players enable @a guikit.ack

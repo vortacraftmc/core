@@ -11,8 +11,6 @@
 # minecraft:tick, see data/minecraft/tags/function/tick.json).
 
 # Config-level pause guard (separate from the storage-level pause below)
-# vc-gate: inert until macroengine:gate/v26_4 state is active
-execute unless data storage macroengine:gate/v26_4 {state:"active"} run return 0
 execute if score #vortacraftmc.packs.macroengine.config.tick.pause macroengine.meta matches 1 run return 0
 
 # Ensure tick config defaults exist (idempotent, only fills missing keys)

@@ -1,8 +1,6 @@
 # RTWrapper core bootstrap.
 # Scoreboards are intentionally stable fake-player state; existing values are not overwritten.
 
-# vc-gate: inert until rtwrapper:gate/r26_3 state is active
-execute unless data storage rtwrapper:gate/r26_3 {state:"active"} run return 0
 execute if data storage rtwrapper:meta {loaded:1b} run return 0
 
 scoreboard objectives add rtw.config dummy
