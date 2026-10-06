@@ -15,18 +15,6 @@ Consolidated monorepo for the vortacraftmc ecosystem.
 
 This fork (`IronCrest-sudo/core`) is **not maintained until 2027-2028**. The datapacks are back under `packs/` without the archive load gates, so they load normally and run commands at the function permission level. Review them before use and back up your world. The maintainer plans to return in 2027-2028 and will bring changes back via pull request. Until then no fixes, reviews or issue triage should be expected.
 
-## Datapack maintenance status
-
-Datapacks under `packs/` are now in maintenance mode. Concretely, that means:
-
-- **In scope:** bug fixes, security hardening, compatibility fixes for new Minecraft versions (pack_format bumps, syntax migrations), and small quality-of-life updates to existing modules.
-- **Out of scope:** new modules, new systems, or any feature work that expands what a pack does beyond its current functionality. If a change would require adding a new top-level system (comparable in scope to, say, the rate-limit or hidden-flag modules already in `macroEngine`), it does not belong here.
-- **Rationale:** datapacks in this repo (particularly `macroEngine`) have grown large enough that further feature growth trades off against maintainability — see the "hard to scale" point in the FAQ below. Fabric mods under `mods/` remain the intended path for new functionality going forward.
-
-This status applies to `packs/` only; it does not affect `mods/`, `scripts/`, or any other top-level directory.
-
-**Every existing top-level directory under `packs/` is additionally locked** in `packs/.datapack-lock.json` (`locked: true`), and CI (`.github/workflows/datapack-immutability.yml`) blocks any PR that touches a file under a locked pack — including the in-scope bug fixes and security hardening described above. To make such a change: open a PR that flips the pack's entry to `locked: false` and get it merged first, then open your actual fix as a separate PR, then open a third PR that sets it back to `locked: true`. See the `$comment` in `packs/.datapack-lock.json` for the exact mechanism.
-
 ## Fabric vs. datapacks — FAQ
 
 This repo hosts both Fabric mods (`mods/`) and datapacks (`packs/`). To clear up some misconceptions that circulate between the two:
@@ -155,9 +143,3 @@ to the upstream project was never properly cleared before the fork was
 built out, so **use of `inv_gui` is not recommended** until that is
 resolved. It is kept in this monorepo for reference and possible
 reimplementation, not as a supported component.
-
-## Skipped repos (empty or inconsistent)
-
-- FunctionPP: only 2 file(s)
-- DataLibFabric: 1KB, empty/placeholder (manually confirmed)
-- .github: only 2 file(s)
