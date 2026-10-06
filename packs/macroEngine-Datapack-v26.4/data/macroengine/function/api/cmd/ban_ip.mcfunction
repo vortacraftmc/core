@@ -1,0 +1,1 @@
+$ban-ip $(player) $(reason)

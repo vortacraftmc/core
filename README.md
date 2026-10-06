@@ -24,7 +24,7 @@ What that means in practice:
 - `archived/`  — Reserved for projects no longer developed but kept for reference (registry: `archived/archive.json`, validate with `scripts/check_archive.py`)
 - `other/`     — Reserved for content that doesn't fit another category (registry: `archived/archive.json`, validate with `scripts/check_archive.py`)
 
-## Datapack maintenance status
+## Fork status
 
 > **Superseded (2026-10-03):** every datapack has since been moved to `archived/` (see the registry in `archived/archive.json`). This section and "Note: Moved from Datapacks to Fabric" below describe the earlier maintenance-mode policy and are kept for history; `packs/` now only holds the macroEngine resource pack.
 
@@ -166,9 +166,3 @@ to the upstream project was never properly cleared before the fork was
 built out, so **use of `inv_gui` is not recommended** until that is
 resolved. It is kept in this monorepo for reference and possible
 reimplementation, not as a supported component.
-
-## Skipped repos (empty or inconsistent)
-
-- FunctionPP: only 2 file(s)
-- DataLibFabric: 1KB, empty/placeholder (manually confirmed)
-- .github: only 2 file(s)

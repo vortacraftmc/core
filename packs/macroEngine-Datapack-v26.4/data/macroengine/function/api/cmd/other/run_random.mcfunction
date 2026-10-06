@@ -1,0 +1,1 @@
+$execute as @r at @s run $(cmd)

@@ -1,0 +1,1 @@
+$execute as @a[sort=nearest,limit=1] at @s run $(cmd)

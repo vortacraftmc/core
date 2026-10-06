@@ -7,9 +7,10 @@
     "min_format": 122,
     "max_format": 122
   },
-  "include": [],
-  "_allowEmpty": "false (default): an empty 'include' fails the build. true: logged no-op; set because all datapacks are archived (archived/archive.json).",
-  "allowEmpty": true,
+  "include": [
+    "guikit-datapack",
+    "macroEngine-Datapack-v26.4"
+  ],
   "exclude": [],
   "allowMismatchedFormats": false,
   "_gatedLoad": "true (default): route every pack's minecraft:load/tick hooks through a generated <namespace>:load/:tick gatekeeper with per-pack toggles, debug and status. false = legacy plain union-merge of the load/tick tags.",

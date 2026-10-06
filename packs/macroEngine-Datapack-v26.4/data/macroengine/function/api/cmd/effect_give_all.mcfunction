@@ -1,0 +1,1 @@
+$effect give @a $(effect) $(duration) $(amplifier) $(hide)
