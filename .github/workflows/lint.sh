@@ -8,6 +8,13 @@ echo "::endgroup::"
 
 IGNORE_PATHS=(
    "archived/*"
+   # Legacy pack (pack_format 12): camelCase gamerule names are valid there,
+   # Mecha validates against the newest game version and rejects them.
+   "packs/cmdTunnel-datapack/*"
+   # Uses the 26.x `time query minecraft:day` form, which Mecha's grammar
+   # (v0.101.0) does not know yet. Only these two files are skipped.
+   "packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/time_phase.mcfunction"
+   "packs/macroEngine-Datapack-v26.4/data/macroengine/function/world/get_time.mcfunction"
 )
 
 echo "::group::🚫 Ignoring paths"
