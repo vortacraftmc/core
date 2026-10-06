@@ -523,26 +523,33 @@ function itemAirCommand(selector, slot) {
   return `item replace entity ${selector} container.${slot} with minecraft:air`;
 }
 
-function customDataPredicate(fields) {
+// Pack-scoped scoreboard objective / trigger name (mirrors models.obj in Python):
+// every pack owns its own objectives so several packs can be loaded together.
+function obj(m, name) {
+  return `guigen.${m.namespace}.${name}`;
+}
+
+function customDataPredicate(fields, pack = null) {
+  if (pack) fields = { ...fields, pack };
   const inner = Object.entries(fields)
     .map(([k, v]) => (typeof v === "string" ? `${k}:"${v}"` : `${k}:${v}`))
     .join(",");
   return `*[custom_data~{guigen:{${inner}}}]`;
 }
 
-function clearByTypeId(widgetType, widgetId, count = 1) {
-  const spec = customDataPredicate({ type: widgetType, id: widgetId });
+function clearByTypeId(widgetType, widgetId, count = 1, pack = null) {
+  const spec = customDataPredicate({ type: widgetType, id: widgetId }, pack);
   if (count == null) return `clear @s ${spec}`;
   return `clear @s ${spec} ${count}`;
 }
 
-function clearByType(widgetType) {
-  const spec = customDataPredicate({ type: widgetType });
+function clearByType(widgetType, pack = null) {
+  const spec = customDataPredicate({ type: widgetType }, pack);
   return `clear @s ${spec}`;
 }
 
-function clearAllWidgets() {
-  return "clear @s *[custom_data~{guigen:{widget:1}}]";
+function clearAllWidgets(pack = null) {
+  return `clear @s ${customDataPredicate({ widget: 1 }, pack)}`;
 }
 
 // ---- models/widgets.py ------------------------------------------------------
@@ -560,33 +567,35 @@ function occupiedSlots(w) {
   return [w.slot];
 }
 
-function guiCustomData(w, cellSlot = null) {
+function guiCustomData(w, cellSlot = null, pack = null) {
   let wid = resolvedActionId(w);
   if (cellSlot != null) wid = `${wid}_s${cellSlot}`;
-  return { guigen: { widget: 1, type: w.kind, id: wid } };
+  const data = { widget: 1, type: w.kind, id: wid };
+  if (pack) data.pack = pack; // pack-scoped: same action_id in two packs never collides
+  return { guigen: data };
 }
 
-function widgetComponents(w, cellSlot = null) {
+function widgetComponents(w, cellSlot = null, pack = null) {
   return mkItemComponents({
     custom_name: w.name,
     lore: w.lore ? w.lore.slice() : [],
-    custom_data: guiCustomData(w, cellSlot),
+    custom_data: guiCustomData(w, cellSlot, pack),
   });
 }
 
-function componentsForToggle(w, state) {
+function componentsForToggle(w, state, pack = null) {
   const t = w.toggle;
-  const data = guiCustomData(w);
+  const data = guiCustomData(w, null, pack);
   if (state === 0) {
     return [t.off_item, mkItemComponents({ custom_name: t.off_name, lore: t.off_lore.slice(), custom_data: data })];
   }
   return [t.on_item, mkItemComponents({ custom_name: t.on_name, lore: t.on_lore.slice(), custom_data: data })];
 }
 
-function componentsForCycle(w, index) {
+function componentsForCycle(w, index, pack = null) {
   const opts = w.cycle.options;
   const opt = opts[index % opts.length];
-  const data = guiCustomData(w);
+  const data = guiCustomData(w, null, pack);
   return [opt.item, mkItemComponents({
     custom_name: opt.name,
     lore: (opt.lore || []).slice(),
@@ -596,9 +605,9 @@ function componentsForCycle(w, index) {
   })];
 }
 
-function componentsForRadio(w, selected) {
+function componentsForRadio(w, selected, pack = null) {
   const r = w.radio;
-  const data = guiCustomData(w);
+  const data = guiCustomData(w, null, pack);
   if (!selected) {
     return [r.off_item, mkItemComponents({
       custom_name: r.off_name,
@@ -617,9 +626,9 @@ function componentsForRadio(w, selected) {
   })];
 }
 
-function componentsForTab(w, active) {
+function componentsForTab(w, active, pack = null) {
   const t = w.tab;
-  const data = guiCustomData(w);
+  const data = guiCustomData(w, null, pack);
   if (!active) {
     return [t.off_item, mkItemComponents({
       custom_name: t.off_name || w.name,
@@ -742,7 +751,7 @@ function interactiveWidgets(m) {
 }
 
 function collectScores(m) {
-  const scores = ["guigen_menu_timer", "guigen_click", "guigen_page", "guigen_tmp", "guigen_rand"];
+  const scores = ["menu_timer", "click", "page", "tmp", "rand", "opened"].map((n) => obj(m, n));
   for (const s of m.extra_scores) if (!scores.includes(s)) scores.push(s);
   for (const w of allWidgets(m)) {
     if (w.toggle && !scores.includes(w.toggle.score)) scores.push(w.toggle.score);
@@ -1158,20 +1167,20 @@ function generateFillRouter(menu, out) {
   const lines = ["# Auto-generated – route to current page (every slot is overwritten)", ""];
   for (const page of menu.pages) {
     lines.push(
-      `execute if score @s guigen_page matches ${page.index} run function ${menuPagePrefix(menu)}/${page.index}`
+      `execute if score @s ${obj(menu, 'page')} matches ${page.index} run function ${menuPagePrefix(menu)}/${page.index}`
     );
   }
   out.set(`${menuDirPath(menu)}/fill.mcfunction`, lines.join("\n") + "\n");
 }
 
 function emitStatic(menu, w) {
-  return [itemReplaceCommand(cartSelector(menu), w.slot, w.item, widgetComponents(w))];
+  return [itemReplaceCommand(cartSelector(menu), w.slot, w.item, widgetComponents(w, null, menu.namespace))];
 }
 
 function emitToggle(menu, w) {
   const lines = [];
   for (const state of [0, 1]) {
-    const [item, comps] = componentsForToggle(w, state);
+    const [item, comps] = componentsForToggle(w, state, menu.namespace);
     const cmd = itemReplaceCommand(cartSelector(menu), w.slot, item, comps);
     lines.push(`execute if score @s ${w.toggle.score} matches ${state} run ${cmd}`);
   }
@@ -1183,7 +1192,7 @@ function emitCycle(menu, w) {
   const opts = w.cycle.options;
   const score = w.cycle.score;
   for (let i = 0; i < opts.length; i++) {
-    const [item, comps] = componentsForCycle(w, i);
+    const [item, comps] = componentsForCycle(w, i, menu.namespace);
     const cmd = itemReplaceCommand(cartSelector(menu), w.slot, item, comps);
     lines.push(`execute if score @s ${score} matches ${i} run ${cmd}`);
   }
@@ -1194,7 +1203,7 @@ function emitRadio(menu, w) {
   const lines = [];
   const r = w.radio;
   for (const selected of [false, true]) {
-    const [item, comps] = componentsForRadio(w, selected);
+    const [item, comps] = componentsForRadio(w, selected, menu.namespace);
     const cmd = itemReplaceCommand(cartSelector(menu), w.slot, item, comps);
     const kw = selected ? "if" : "unless";
     lines.push(`execute ${kw} score @s ${r.score} matches ${r.value} run ${cmd}`);
@@ -1205,10 +1214,10 @@ function emitRadio(menu, w) {
 function emitTab(menu, w) {
   const lines = [];
   for (const active of [false, true]) {
-    const [item, comps] = componentsForTab(w, active);
+    const [item, comps] = componentsForTab(w, active, menu.namespace);
     const cmd = itemReplaceCommand(cartSelector(menu), w.slot, item, comps);
     const kw = active ? "if" : "unless";
-    lines.push(`execute ${kw} score @s guigen_page matches ${w.target_page} run ${cmd}`);
+    lines.push(`execute ${kw} score @s ${obj(menu, 'page')} matches ${w.target_page} run ${cmd}`);
   }
   return lines;
 }
@@ -1222,11 +1231,11 @@ function emitProgress(menu, w) {
     const threshold = Math.floor((i * mx) / width);
     const emptyComps = mkItemComponents({
       custom_name: w.name || mkText(" "),
-      custom_data: guiCustomData(w, slot),
+      custom_data: guiCustomData(w, slot, menu.namespace),
     });
     const fullComps = mkItemComponents({
       custom_name: w.name || mkText(" "),
-      custom_data: guiCustomData(w, slot),
+      custom_data: guiCustomData(w, slot, menu.namespace),
     });
     const emptyCmd = itemReplaceCommand(cartSelector(menu), slot, w.progress_empty_item, emptyComps);
     const fullCmd = itemReplaceCommand(cartSelector(menu), slot, w.progress_full_item, fullComps);
@@ -1269,7 +1278,7 @@ function generatePageFills(menu, out) {
       for (const s of pads) {
         const pad = mkSeparatorWidget(s);
         pad.action_id = `pad_${page.index}_${s}`;
-        lines.push(itemReplaceCommand(cartSelector(menu), s, pad.item, widgetComponents(pad)));
+        lines.push(itemReplaceCommand(cartSelector(menu), s, pad.item, widgetComponents(pad, null, menu.namespace)));
       }
       lines.push("");
     }
@@ -1296,15 +1305,15 @@ function playsound(sound) {
   return [`playsound ${sound} master @s ~ ~ ~ 1 1`];
 }
 
-function cdScore(actionId) {
+function cdScore(actionId, menu = null) {
   const safe = String(actionId).replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 40);
-  return `guigen_cd_${safe}`;
+  return menu ? obj(menu, `cd_${safe}`) : `guigen_cd_${safe}`;
 }
 
-function cooldownGuard(w) {
+function cooldownGuard(menu, w) {
   const ticks = parseInt(w.cooldown_ticks || 0, 10);
   if (ticks <= 0) return [];
-  const sc = cdScore(resolvedActionId(w));
+  const sc = cdScore(resolvedActionId(w), menu);
   const msg = mkText("Please wait…", { color: "red" });
   return [
     `# cooldown ${ticks}t -> ${sc}`,
@@ -1315,15 +1324,15 @@ function cooldownGuard(w) {
   ];
 }
 
-function costGuard(w) {
+function costGuard(menu, w) {
   const cost = w.cost;
   if (cost == null) return [];
   const fail = cost.fail_message || mkText("Not enough resources.", { color: "red" });
   const lines = ["# cost check"];
   if (cost.item) {
-    lines.push(`execute store result score @s guigen_tmp run clear @s ${cost.item} 0`);
-    lines.push(`execute if score @s guigen_tmp matches ..${cost.count - 1} run ${tellrawLine(fail)}`);
-    lines.push(`execute if score @s guigen_tmp matches ..${cost.count - 1} run return 1`);
+    lines.push(`execute store result score @s ${obj(menu, 'tmp')} run clear @s ${cost.item} 0`);
+    lines.push(`execute if score @s ${obj(menu, 'tmp')} matches ..${cost.count - 1} run ${tellrawLine(fail)}`);
+    lines.push(`execute if score @s ${obj(menu, 'tmp')} matches ..${cost.count - 1} run return 1`);
     lines.push(`clear @s ${cost.item} ${cost.count}`);
   }
   if (cost.score) {
@@ -1356,10 +1365,10 @@ function handlerFor(menu, w) {
     // early-return, otherwise a spam-click or a failed cost check still
     // lets the timer keep ticking down toward an unexpected close.
     lines.push(`# Interaction keeps the menu open — reset auto-close timer`);
-    lines.push(`scoreboard players set @s guigen_menu_timer ${menu.timer_ticks}`);
+    lines.push(`scoreboard players set @s ${obj(menu, 'menu_timer')} ${menu.timer_ticks}`);
     lines.push("");
-    lines.push(...cooldownGuard(w));
-    if (w.cost != null) lines.push(...costGuard(w));
+    lines.push(...cooldownGuard(menu, w));
+    if (w.cost != null) lines.push(...costGuard(menu, w));
   }
 
   if (w.kind === "close") {
@@ -1372,7 +1381,7 @@ function handlerFor(menu, w) {
 
   if (w.kind === "nav") {
     lines.push(...playsound(w.sound));
-    lines.push(`scoreboard players set @s guigen_page ${w.target_page}`);
+    lines.push(`scoreboard players set @s ${obj(menu, 'page')} ${w.target_page}`);
     lines.push(`function ${menuFunctionPrefix(menu)}/fill`);
     if (w.success_message) lines.push(tellrawLine(w.success_message));
     return lines;
@@ -1380,7 +1389,7 @@ function handlerFor(menu, w) {
 
   if (w.kind === "confirm") {
     lines.push(...playsound(w.sound));
-    lines.push(`scoreboard players set @s guigen_page ${w.confirm_page}`);
+    lines.push(`scoreboard players set @s ${obj(menu, 'page')} ${w.confirm_page}`);
     lines.push(`function ${menuFunctionPrefix(menu)}/fill`);
     const msg = w.success_message || mkText("Confirm?", { color: "gold" });
     lines.push(tellrawLine(msg));
@@ -1400,7 +1409,7 @@ function handlerFor(menu, w) {
 
   if (w.kind === "tab") {
     lines.push(...playsound(w.sound));
-    lines.push(`scoreboard players set @s guigen_page ${w.target_page}`);
+    lines.push(`scoreboard players set @s ${obj(menu, 'page')} ${w.target_page}`);
     lines.push(`function ${menuFunctionPrefix(menu)}/fill`);
     if (w.success_message) lines.push(tellrawLine(w.success_message));
     return lines;
@@ -1410,10 +1419,10 @@ function handlerFor(menu, w) {
     const t = w.toggle;
     lines.push(...playsound(w.sound));
     lines.push(
-      `execute if score @s ${t.score} matches 1 run scoreboard players set @s guigen_tmp 1`,
+      `execute if score @s ${t.score} matches 1 run scoreboard players set @s ${obj(menu, 'tmp')} 1`,
       `execute if score @s ${t.score} matches 0 run scoreboard players set @s ${t.score} 1`,
-      `execute if score @s guigen_tmp matches 1 run scoreboard players set @s ${t.score} 0`,
-      `scoreboard players reset @s guigen_tmp`,
+      `execute if score @s ${obj(menu, 'tmp')} matches 1 run scoreboard players set @s ${t.score} 0`,
+      `scoreboard players reset @s ${obj(menu, 'tmp')}`,
       ""
     );
     for (const c of t.on_commands) lines.push(`execute if score @s ${t.score} matches 1 run ${c}`);
@@ -1429,18 +1438,18 @@ function handlerFor(menu, w) {
     const rewards = w.random.rewards;
     const totalWeight = rewards.reduce((sum, r) => sum + r.weight, 0);
     lines.push(...playsound(w.sound));
-    lines.push(`execute store result score @s guigen_rand run random value 0..${totalWeight - 1}`);
+    lines.push(`execute store result score @s ${obj(menu, 'rand')} run random value 0..${totalWeight - 1}`);
     lines.push("");
     let lo = 0;
     for (const r of rewards) {
       const hi = lo + r.weight - 1;
-      const guard = `execute if score @s guigen_rand matches ${lo}..${hi} run `;
+      const guard = `execute if score @s ${obj(menu, 'rand')} matches ${lo}..${hi} run `;
       for (const c of r.commands) lines.push(`${guard}${c}`);
       for (const fn of r.functions) lines.push(`${guard}function ${fn}`);
       if (r.message) lines.push(`${guard}${tellrawLine(r.message)}`);
       lo = hi + 1;
     }
-    lines.push("", `scoreboard players reset @s guigen_rand`);
+    lines.push("", `scoreboard players reset @s ${obj(menu, 'rand')}`);
     if (w.success_message) lines.push(tellrawLine(w.success_message));
     lines.push(`function ${menuFunctionPrefix(menu)}/fill`);
     return lines;
@@ -1529,14 +1538,14 @@ function handlerFor(menu, w) {
     }
 
     if (cond.type === "item_count_lt") {
-      lines.push(`execute store result score @s guigen_tmp run clear @s ${cond.item} 0`);
-      lines.push(`execute if score @s guigen_tmp matches ${cond.max_count}.. run ${tellrawLine(fail)}`);
-      const ok = `execute if score @s guigen_tmp matches ..${cond.max_count - 1} run `;
+      lines.push(`execute store result score @s ${obj(menu, 'tmp')} run clear @s ${cond.item} 0`);
+      lines.push(`execute if score @s ${obj(menu, 'tmp')} matches ${cond.max_count}.. run ${tellrawLine(fail)}`);
+      const ok = `execute if score @s ${obj(menu, 'tmp')} matches ..${cond.max_count - 1} run `;
       lines.push(...successBlock(ok));
     } else if (cond.type === "item_count_gte") {
-      lines.push(`execute store result score @s guigen_tmp run clear @s ${cond.item} 0`);
-      lines.push(`execute if score @s guigen_tmp matches ..${cond.min_count - 1} run ${tellrawLine(fail)}`);
-      const ok = `execute if score @s guigen_tmp matches ${cond.min_count}.. run `;
+      lines.push(`execute store result score @s ${obj(menu, 'tmp')} run clear @s ${cond.item} 0`);
+      lines.push(`execute if score @s ${obj(menu, 'tmp')} matches ..${cond.min_count - 1} run ${tellrawLine(fail)}`);
+      const ok = `execute if score @s ${obj(menu, 'tmp')} matches ${cond.min_count}.. run `;
       lines.push(...successBlock(ok));
     } else if (cond.type === "score") {
       const ok = `execute if score @s ${cond.score} matches ${cond.matches} run `;
@@ -1605,7 +1614,7 @@ function generateLoad(menu, out) {
   const scores = collectScores(menu).slice();
   for (const w of interactiveWidgets(menu)) {
     if (parseInt(w.cooldown_ticks || 0, 10) > 0) {
-      const sc = cdScore(resolvedActionId(w));
+      const sc = cdScore(resolvedActionId(w), menu);
       if (!scores.includes(sc)) scores.push(sc);
     }
   }
@@ -1630,7 +1639,7 @@ function generateOpen(menu, out) {
     "",
     `summon ${containerEntityId(menu.container)} ~ ~ ~ ${nbt}`,
     "",
-    "scoreboard players set @s guigen_page 0",
+    `scoreboard players set @s ${obj(menu, 'page')} 0`,
   ];
   const inited = new Set();
   for (const w of allWidgets(menu)) {
@@ -1648,7 +1657,7 @@ function generateOpen(menu, out) {
   }
   lines.push(
     `function ${menuFunctionPrefix(menu)}/fill`,
-    `scoreboard players set @s guigen_menu_timer ${menu.timer_ticks}`,
+    `scoreboard players set @s ${obj(menu, 'menu_timer')} ${menu.timer_ticks}`,
     "",
     `tellraw @s [{"text":"[GUI-GENERATOR] ","color":"gray"},{"text":"Menu opened. Right-click the cart, then SHIFT-click buttons.","color":"yellow"}]`,
     ""
@@ -1664,10 +1673,9 @@ function generateClose(menu, out) {
   }
   lines.push(
     `kill @e[type=${containerEntityId(menu.container)},tag=${menuTag(menu)}]`,
-    clearAllWidgets(),
-    "clear @s *[custom_data~{guigen:{widget:1}}]",
-    "scoreboard players reset @s guigen_menu_timer",
-    "scoreboard players reset @s guigen_page",
+    clearAllWidgets(menu.namespace),
+    `scoreboard players reset @s ${obj(menu, 'menu_timer')}`,
+    `scoreboard players reset @s ${obj(menu, 'page')}`,
     ""
   );
   out.set(`${menuDirPath(menu)}/close.mcfunction`, lines.join("\n"));
@@ -1694,11 +1702,11 @@ function generatePackMcmeta(out, description) {
 
 const VACUUM_TYPES = ["label", "separator", "progress"];
 
-function detectBlock(widgetType, widgetId, handlerFn) {
+function detectBlock(menu, widgetType, widgetId, handlerFn) {
   return [
-    `execute as @a[scores={guigen_menu_timer=1..}] store success score @s guigen_click run ${clearByTypeId(widgetType, widgetId, 1)}`,
-    `execute as @a[scores={guigen_click=1}] at @s run function ${handlerFn}`,
-    `scoreboard players reset @a[scores={guigen_click=1}] guigen_click`,
+    `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] store success score @s ${obj(menu, 'click')} run ${clearByTypeId(widgetType, widgetId, 1, menu.namespace)}`,
+    `execute as @a[scores={${obj(menu, 'click')}=1}] at @s run function ${handlerFn}`,
+    `scoreboard players reset @a[scores={${obj(menu, 'click')}=1}] ${obj(menu, 'click')}`,
     "",
   ];
 }
@@ -1710,8 +1718,8 @@ function generateTick(menu, out) {
   let lines = [
     "# Auto-generated core tick",
     "# Timer",
-    "execute as @a[scores={guigen_menu_timer=1..}] run scoreboard players remove @s guigen_menu_timer 1",
-    `execute as @a[scores={guigen_menu_timer=0}] at @s run function ${menuFunctionPrefix(menu)}/close`,
+    `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] run scoreboard players remove @s ${obj(menu, 'menu_timer')} 1`,
+    `execute as @a[scores={${obj(menu, 'menu_timer')}=0}] at @s run function ${menuFunctionPrefix(menu)}/close`,
     "",
     "# Cooldown tick-down",
   ];
@@ -1720,7 +1728,7 @@ function generateTick(menu, out) {
   for (const w of interactiveWidgets(menu)) {
     const ticks = parseInt(w.cooldown_ticks || 0, 10);
     if (ticks > 0) {
-      const sc = cdScore(resolvedActionId(w));
+      const sc = cdScore(resolvedActionId(w), menu);
       if (!cdScores.includes(sc)) cdScores.push(sc);
     }
   }
@@ -1735,8 +1743,8 @@ function generateTick(menu, out) {
     // cart was removed some other way (killed, unloaded, etc).
     lines.push(
       "# Follow (cart is kept on the player; distance_close cannot be exceeded)",
-      `execute as @a[scores={guigen_menu_timer=1..}] at @s as ${cart} run tp @s ~ ~ ~`,
-      `execute as @a[scores={guigen_menu_timer=1..}] at @s unless entity @e[type=${entity},tag=${menuTag(menu)},limit=1] run function ${menuFunctionPrefix(menu)}/close`,
+      `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] at @s as ${cart} run tp @s ~ ~ ~`,
+      `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] at @s unless entity @e[type=${entity},tag=${menuTag(menu)},limit=1] run function ${menuFunctionPrefix(menu)}/close`,
       ""
     );
   } else {
@@ -1746,8 +1754,8 @@ function generateTick(menu, out) {
     const dist = menu.distance_close;
     lines.push(
       "# Not following — enforce distance_close and cart-presence",
-      `execute as @a[scores={guigen_menu_timer=1..}] at @s unless entity @e[type=${entity},tag=${menuTag(menu)},limit=1] run function ${menuFunctionPrefix(menu)}/close`,
-      `execute as @a[scores={guigen_menu_timer=1..}] at @s unless entity @e[type=${entity},tag=${menuTag(menu)},distance=..${dist},limit=1] run function ${menuFunctionPrefix(menu)}/close`,
+      `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] at @s unless entity @e[type=${entity},tag=${menuTag(menu)},limit=1] run function ${menuFunctionPrefix(menu)}/close`,
+      `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] at @s unless entity @e[type=${entity},tag=${menuTag(menu)},distance=..${dist},limit=1] run function ${menuFunctionPrefix(menu)}/close`,
       ""
     );
   }
@@ -1769,7 +1777,7 @@ function generateTick(menu, out) {
     if (seen.has(aid)) continue;
     seen.add(aid);
     const handler = `${menuClickPrefix(menu)}/${aid}`;
-    lines.push(...detectBlock(w.kind, aid, handler));
+    lines.push(...detectBlock(menu, w.kind, aid, handler));
   }
 
   lines.push("# Vacuum GUI items from player", "");
@@ -1777,20 +1785,19 @@ function generateTick(menu, out) {
   presentKinds.add("separator");
   for (const kind of VACUUM_TYPES) {
     if (presentKinds.has(kind)) {
-      lines.push(`execute as @a[scores={guigen_menu_timer=1..}] run ${clearByType(kind)}`);
+      lines.push(`execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] run ${clearByType(kind, menu.namespace)}`);
     }
   }
-  lines.push(`execute as @a[scores={guigen_menu_timer=1..}] run ${clearAllWidgets()}`);
-  lines.push(`execute as @a[scores={guigen_menu_timer=1..}] run clear @s *[custom_data~{guigen:{widget:1}}]`);
+  lines.push(`execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] run ${clearAllWidgets(menu.namespace)}`);
 
   lines.push(
     "",
     "# Restore layout every tick",
-    `execute as @a[scores={guigen_menu_timer=1..}] at @s run function ${menuFunctionPrefix(menu)}/fill`,
+    `execute as @a[scores={${obj(menu, 'menu_timer')}=1..}] at @s run function ${menuFunctionPrefix(menu)}/fill`,
     "",
     "# Kill dropped GUI items",
-    `kill @e[type=minecraft:item,nbt={Item:{components:{"minecraft:custom_data":{guigen:{widget:1}}}}}]`,
-    `kill @e[type=minecraft:item,nbt={Item:{components:{custom_data:{guigen:{widget:1}}}}}]`,
+    `kill @e[type=minecraft:item,nbt={Item:{components:{"minecraft:custom_data":{guigen:{widget:1,pack:\"${menu.namespace}\"}}}}}]`,
+    `kill @e[type=minecraft:item,nbt={Item:{components:{custom_data:{guigen:{widget:1,pack:\"${menu.namespace}\"}}}}}]`,
     ""
   );
 
