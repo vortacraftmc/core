@@ -16,6 +16,7 @@ from ..models import (
     menu_page_prefix,
     menu_tag,
     mk_separator_widget,
+    obj,
     occupied_slots,
     resolved_action_id,
     widget_components,
@@ -34,20 +35,20 @@ def generate_fill_router(menu: dict[str, Any], out: dict[str, str]) -> None:
     lines = ["# Auto-generated – route to current page (every slot is overwritten)", ""]
     for page in menu["pages"]:
         lines.append(
-            f"execute if score @s guigen_page matches {page['index']} "
+            f"execute if score @s {obj(menu, 'page')} matches {page['index']} "
             f"run function {menu_page_prefix(menu)}/{page['index']}"
         )
     out[f"{menu_dir_path(menu)}/fill.mcfunction"] = "\n".join(lines) + "\n"
 
 
 def emit_static(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
-    return [item_replace_command(cart_selector(menu), w["slot"], w["item"], widget_components(w))]
+    return [item_replace_command(cart_selector(menu), w["slot"], w["item"], widget_components(w, None, menu['namespace']))]
 
 
 def emit_toggle(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     for state in (0, 1):
-        item, comps = components_for_toggle(w, state)
+        item, comps = components_for_toggle(w, state, menu['namespace'])
         cmd = item_replace_command(cart_selector(menu), w["slot"], item, comps)
         lines.append(f"execute if score @s {w['toggle']['score']} matches {state} run {cmd}")
     return lines
@@ -58,7 +59,7 @@ def emit_cycle(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
     opts = w["cycle"]["options"]
     score = w["cycle"]["score"]
     for i, _ in enumerate(opts):
-        item, comps = components_for_cycle(w, i)
+        item, comps = components_for_cycle(w, i, menu['namespace'])
         cmd = item_replace_command(cart_selector(menu), w["slot"], item, comps)
         lines.append(f"execute if score @s {score} matches {i} run {cmd}")
     return lines
@@ -68,7 +69,7 @@ def emit_radio(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
     r = w["radio"]
     lines: list[str] = []
     for selected in (False, True):
-        item, comps = components_for_radio(w, selected)
+        item, comps = components_for_radio(w, selected, menu['namespace'])
         cmd = item_replace_command(cart_selector(menu), w["slot"], item, comps)
         kw = "if" if selected else "unless"
         lines.append(f"execute {kw} score @s {r['score']} matches {r['value']} run {cmd}")
@@ -78,10 +79,10 @@ def emit_radio(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
 def emit_tab(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     for active in (False, True):
-        item, comps = components_for_tab(w, active)
+        item, comps = components_for_tab(w, active, menu['namespace'])
         cmd = item_replace_command(cart_selector(menu), w["slot"], item, comps)
         kw = "if" if active else "unless"
-        lines.append(f"execute {kw} score @s guigen_page matches {w['target_page']} run {cmd}")
+        lines.append(f"execute {kw} score @s {obj(menu, 'page')} matches {w['target_page']} run {cmd}")
     return lines
 
 
@@ -94,11 +95,11 @@ def emit_progress(menu: dict[str, Any], w: dict[str, Any]) -> list[str]:
         threshold = (i * mx) // width
         empty_comps = mk_item_components(
             custom_name=w.get("name") or {"text": " ", "italic": False, "color": None, "bold": None, "underlined": None},
-            custom_data=gui_custom_data(w, slot),
+            custom_data=gui_custom_data(w, slot, menu['namespace']),
         )
         full_comps = mk_item_components(
             custom_name=w.get("name") or {"text": " ", "italic": False, "color": None, "bold": None, "underlined": None},
-            custom_data=gui_custom_data(w, slot),
+            custom_data=gui_custom_data(w, slot, menu['namespace']),
         )
         empty_cmd = item_replace_command(cart_selector(menu), slot, w["progress_empty_item"], empty_comps)
         full_cmd = item_replace_command(cart_selector(menu), slot, w["progress_full_item"], full_comps)
@@ -158,7 +159,7 @@ def generate_page_fills(menu: dict[str, Any], out: dict[str, str]) -> None:
                 pad = mk_separator_widget(s, str(filler_item))
                 pad["action_id"] = f"pad_{page['index']}_{s}"
                 lines.append(
-                    item_replace_command(cart_selector(menu), s, pad["item"], widget_components(pad))
+                    item_replace_command(cart_selector(menu), s, pad["item"], widget_components(pad, None, menu['namespace']))
                 )
             lines.append("")
 

@@ -13,6 +13,7 @@ from ..models import (
     menu_core_prefix,
     menu_function_prefix,
     menu_tag,
+    obj,
     resolved_action_id,
 )
 from ..paths import core_dir_path
@@ -21,12 +22,25 @@ from .handlers import cd_score
 VACUUM_TYPES = ["label", "separator", "progress"]
 
 
-def detect_block(widget_type: str, widget_id: str, handler_fn: str) -> list[str]:
+def dropped_item_kill(menu: dict[str, Any], key: str) -> str:
+    """Kill dropped GUI items of *this* pack only (pack-scoped custom_data)."""
+    ns = menu["namespace"]
+    inner = "{widget:1,pack:\"" + ns + "\"}"
+    return (
+        "kill @e[type=minecraft:item,nbt={Item:{components:{"
+        + key
+        + ":{guigen:"
+        + inner
+        + "}}}}]"
+    )
+
+
+def detect_block(menu: dict[str, Any], widget_type: str, widget_id: str, handler_fn: str) -> list[str]:
     return [
-        f"execute as @a[scores={{guigen_menu_timer=1..}}] store success score @s guigen_click "
-        f"run {clear_by_type_id(widget_type, widget_id, 1)}",
-        f"execute as @a[scores={{guigen_click=1}}] at @s run function {handler_fn}",
-        "scoreboard players reset @a[scores={guigen_click=1}] guigen_click",
+        f"execute as @a[scores={{{obj(menu, 'menu_timer')}=1..}}] store success score @s {obj(menu, 'click')} "
+        f"run {clear_by_type_id(widget_type, widget_id, 1, menu['namespace'])}",
+        f"execute as @a[scores={{{obj(menu, 'click')}=1}}] at @s run function {handler_fn}",
+        f"scoreboard players reset @a[scores={{{obj(menu, 'click')}=1}}] {obj(menu, 'click')}",
         "",
     ]
 
@@ -38,17 +52,17 @@ def generate_tick(menu: dict[str, Any], out: dict[str, str]) -> None:
     lines = [
         "# Auto-generated core tick",
         "# Timer",
-        "execute as @a[scores={guigen_menu_timer=1..}] run scoreboard players remove @s guigen_menu_timer 1",
-        f"execute as @a[scores={{guigen_menu_timer=0}}] at @s run function {menu_function_prefix(menu)}/close",
+        f"execute as @a[scores={{{obj(menu, 'menu_timer')}=1..}}] run scoreboard players remove @s {obj(menu, 'menu_timer')} 1",
+        f"execute as @a[scores={{{obj(menu, 'menu_timer')}=0}}] at @s run function {menu_function_prefix(menu)}/close",
         "",
         "# Player triggers — guikit-datapack v5 port (core/tick enables and",
-        "# dispatches guigen.open/last/close; permission level 0)",
-        "scoreboard players enable @a guigen.open",
-        "scoreboard players enable @a guigen.last",
-        "scoreboard players enable @a guigen.close",
-        f"execute as @a[scores={{guigen.open=1..}}] at @s run function {menu_core_prefix(menu)}/open_trigger",
-        f"execute as @a[scores={{guigen.last=1..}}] at @s run function {menu_core_prefix(menu)}/last_trigger",
-        f"execute as @a[scores={{guigen.close=1..}}] run function {menu_core_prefix(menu)}/close_trigger",
+        "# dispatches guigen.<ns>.open/last/close; permission level 0)",
+        f"scoreboard players enable @a {obj(menu, 'open')}",
+        f"scoreboard players enable @a {obj(menu, 'last')}",
+        f"scoreboard players enable @a {obj(menu, 'close')}",
+        f"execute as @a[scores={{{obj(menu, 'open')}=1..}}] at @s run function {menu_core_prefix(menu)}/open_trigger",
+        f"execute as @a[scores={{{obj(menu, 'last')}=1..}}] at @s run function {menu_core_prefix(menu)}/last_trigger",
+        f"execute as @a[scores={{{obj(menu, 'close')}=1..}}] run function {menu_core_prefix(menu)}/close_trigger",
         "",
         "# Cooldown tick-down",
     ]
@@ -57,7 +71,7 @@ def generate_tick(menu: dict[str, Any], out: dict[str, str]) -> None:
     for w in interactive_widgets(menu):
         ticks = int(w.get("cooldown_ticks") or 0)
         if ticks > 0:
-            sc = cd_score(resolved_action_id(w))
+            sc = cd_score(resolved_action_id(w), menu)
             if sc not in cd_scores:
                 cd_scores.append(sc)
     for sc in cd_scores:
@@ -71,8 +85,8 @@ def generate_tick(menu: dict[str, Any], out: dict[str, str]) -> None:
         lines.extend(
             [
                 "# Follow (cart is kept on the player; distance_close cannot be exceeded)",
-                f"execute as @a[scores={{guigen_menu_timer=1..}}] at @s as {cart} run tp @s {tp_target}",
-                f"execute as @a[scores={{guigen_menu_timer=1..}}] at @s "
+                f"execute as @a[scores={{{obj(menu, 'menu_timer')}=1..}}] at @s as {cart} run tp @s {tp_target}",
+                f"execute as @a[scores={{{obj(menu, 'menu_timer')}=1..}}] at @s "
                 f"unless entity @e[type={entity},tag={menu_tag(menu)},limit=1] "
                 f"run function {menu_function_prefix(menu)}/close",
                 "",
@@ -83,10 +97,10 @@ def generate_tick(menu: dict[str, Any], out: dict[str, str]) -> None:
         lines.extend(
             [
                 "# Not following — enforce distance_close and cart-presence",
-                f"execute as @a[scores={{guigen_menu_timer=1..}}] at @s "
+                f"execute as @a[scores={{{obj(menu, 'menu_timer')}=1..}}] at @s "
                 f"unless entity @e[type={entity},tag={menu_tag(menu)},limit=1] "
                 f"run function {menu_function_prefix(menu)}/close",
-                f"execute as @a[scores={{guigen_menu_timer=1..}}] at @s "
+                f"execute as @a[scores={{{obj(menu, 'menu_timer')}=1..}}] at @s "
                 f"unless entity @e[type={entity},tag={menu_tag(menu)},distance=..{dist},limit=1] "
                 f"run function {menu_function_prefix(menu)}/close",
                 "",
@@ -108,7 +122,7 @@ def generate_tick(menu: dict[str, Any], out: dict[str, str]) -> None:
             continue
         seen.add(aid)
         handler = f"{menu_click_prefix(menu)}/{aid}"
-        lines.extend(detect_block(w["kind"], aid, handler))
+        lines.extend(detect_block(menu, w["kind"], aid, handler))
 
     lines.extend(["# Vacuum GUI items from player", ""])
     present_kinds = {w["kind"] for w in all_widgets(menu)}
@@ -116,23 +130,20 @@ def generate_tick(menu: dict[str, Any], out: dict[str, str]) -> None:
     for kind in VACUUM_TYPES:
         if kind in present_kinds:
             lines.append(
-                f"execute as @a[scores={{guigen_menu_timer=1..}}] run {clear_by_type(kind)}"
+                f"execute as @a[scores={{{obj(menu, 'menu_timer')}=1..}}] run {clear_by_type(kind, menu['namespace'])}"
             )
-    lines.append(f"execute as @a[scores={{guigen_menu_timer=1..}}] run {clear_all_widgets()}")
-    lines.append(
-        "execute as @a[scores={guigen_menu_timer=1..}] run clear @s *[custom_data~{guigen:{widget:1}}]"
-    )
+    lines.append(f"execute as @a[scores={{{obj(menu, 'menu_timer')}=1..}}] run {clear_all_widgets(menu['namespace'])}")
 
     lines.extend(
         [
             "",
             "# Restore layout every tick",
-            f"execute as @a[scores={{guigen_menu_timer=1..}}] at @s "
+            f"execute as @a[scores={{{obj(menu, 'menu_timer')}=1..}}] at @s "
             f"run function {menu_function_prefix(menu)}/fill",
             "",
             "# Kill dropped GUI items",
-            'kill @e[type=minecraft:item,nbt={Item:{components:{"minecraft:custom_data":{guigen:{widget:1}}}}}]',
-            "kill @e[type=minecraft:item,nbt={Item:{components:{custom_data:{guigen:{widget:1}}}}}]",
+            dropped_item_kill(menu, '"minecraft:custom_data"'),
+            dropped_item_kill(menu, "custom_data"),
             "",
         ]
     )

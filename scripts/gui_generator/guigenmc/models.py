@@ -118,20 +118,28 @@ def occupied_slots(w: dict[str, Any]) -> list[int]:
     return [w["slot"]]
 
 
-def gui_custom_data(w: dict[str, Any], cell_slot: int | None = None) -> dict[str, Any]:
+def gui_custom_data(
+    w: dict[str, Any], cell_slot: int | None = None, pack: str | None = None
+) -> dict[str, Any]:
     wid = resolved_action_id(w)
     if cell_slot is not None:
         wid = f"{wid}_s{cell_slot}"
-    return {"guigen": {"widget": 1, "type": w["kind"], "id": wid}}
+    data: dict[str, Any] = {"widget": 1, "type": w["kind"], "id": wid}
+    if pack:
+        # pack-scoped so two packs with the same action_id never match each other
+        data["pack"] = pack
+    return {"guigen": data}
 
 
-def widget_components(w: dict[str, Any], cell_slot: int | None = None) -> dict[str, Any]:
+def widget_components(
+    w: dict[str, Any], cell_slot: int | None = None, pack: str | None = None
+) -> dict[str, Any]:
     from .components import mk_item_components
 
     return mk_item_components(
         custom_name=w.get("name"),
         lore=list(w.get("lore") or []),
-        custom_data=gui_custom_data(w, cell_slot),
+        custom_data=gui_custom_data(w, cell_slot, pack),
         enchanted=bool(w.get("enchanted")),
         custom_model_data=w.get("custom_model_data"),
         count=int(w.get("count") or 1),
@@ -139,11 +147,13 @@ def widget_components(w: dict[str, Any], cell_slot: int | None = None) -> dict[s
     )
 
 
-def components_for_toggle(w: dict[str, Any], state: int) -> tuple[str, dict[str, Any]]:
+def components_for_toggle(
+    w: dict[str, Any], state: int, pack: str | None = None
+) -> tuple[str, dict[str, Any]]:
     from .components import mk_item_components
 
     t = w["toggle"]
-    data = gui_custom_data(w)
+    data = gui_custom_data(w, None, pack)
     if state == 0:
         return (
             t["off_item"],
@@ -167,12 +177,14 @@ def components_for_toggle(w: dict[str, Any], state: int) -> tuple[str, dict[str,
     )
 
 
-def components_for_cycle(w: dict[str, Any], index: int) -> tuple[str, dict[str, Any]]:
+def components_for_cycle(
+    w: dict[str, Any], index: int, pack: str | None = None
+) -> tuple[str, dict[str, Any]]:
     from .components import mk_item_components
 
     opts = w["cycle"]["options"]
     opt = opts[index % len(opts)]
-    data = gui_custom_data(w)
+    data = gui_custom_data(w, None, pack)
     return (
         opt["item"],
         mk_item_components(
@@ -185,12 +197,14 @@ def components_for_cycle(w: dict[str, Any], index: int) -> tuple[str, dict[str, 
     )
 
 
-def components_for_radio(w: dict[str, Any], selected: bool) -> tuple[str, dict[str, Any]]:
+def components_for_radio(
+    w: dict[str, Any], selected: bool, pack: str | None = None
+) -> tuple[str, dict[str, Any]]:
     """Radio button: one option of an exclusive group sharing a score."""
     from .components import mk_item_components
 
     r = w["radio"]
-    data = gui_custom_data(w)
+    data = gui_custom_data(w, None, pack)
     if not selected:
         return (
             r["off_item"],
@@ -214,12 +228,14 @@ def components_for_radio(w: dict[str, Any], selected: bool) -> tuple[str, dict[s
     )
 
 
-def components_for_tab(w: dict[str, Any], active: bool) -> tuple[str, dict[str, Any]]:
+def components_for_tab(
+    w: dict[str, Any], active: bool, pack: str | None = None
+) -> tuple[str, dict[str, Any]]:
     """Page tab: nav that highlights itself while its page is open."""
     from .components import mk_item_components
 
     t = w["tab"]
-    data = gui_custom_data(w)
+    data = gui_custom_data(w, None, pack)
     if not active:
         return (
             t["off_item"],
@@ -397,6 +413,17 @@ def menu_tag(m: dict[str, Any]) -> str:
     return f"{m['namespace']}.{m['menu_id']}"
 
 
+def obj(m: dict[str, Any], name: str) -> str:
+    """Pack-scoped scoreboard objective / trigger name.
+
+    Every generated pack used to share global objectives (guigen_menu_timer,
+    guigen_page, ...) and triggers (guigen.open, ...). With several packs
+    loaded they corrupted each other, so each pack now owns its own set,
+    keyed by its namespace: ``guigen.<namespace>.<name>``.
+    """
+    return f"guigen.{m['namespace']}.{name}"
+
+
 def all_widgets(m: dict[str, Any]) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for p in m["pages"]:
@@ -410,13 +437,13 @@ def interactive_widgets(m: dict[str, Any]) -> list[dict[str, Any]]:
 
 def collect_scores(m: dict[str, Any]) -> list[str]:
     scores = [
-        "guigen_menu_timer",
-        "guigen_click",
-        "guigen_page",
-        "guigen_tmp",
-        "guigen_rand",
+        obj(m, "menu_timer"),
+        obj(m, "click"),
+        obj(m, "page"),
+        obj(m, "tmp"),
+        obj(m, "rand"),
         # guikit-datapack v5 port: world-saved "last opened menu" memory
-        "guigen_opened",
+        obj(m, "opened"),
     ]
     for s in m.get("extra_scores") or []:
         if s not in scores:

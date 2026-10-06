@@ -155,9 +155,9 @@ def cmd_generate(args: argparse.Namespace) -> int:
     print()
     # guikit-datapack v5 port: permission-0 player triggers
     info("Player triggers (no operator needed — guikit v5 port):")
-    print(f"  {C.CYAN}/trigger guigen.open{C.RESET}   open the menu")
-    print(f"  {C.CYAN}/trigger guigen.last{C.RESET}   reopen it (remembered across /reload)")
-    print(f"  {C.CYAN}/trigger guigen.close{C.RESET}  close your own menu immediately")
+    print(f"  {C.CYAN}/trigger guigen.{summary['namespace']}.open{C.RESET}   open the menu")
+    print(f"  {C.CYAN}/trigger guigen.{summary['namespace']}.last{C.RESET}   reopen it (remembered across /reload)")
+    print(f"  {C.CYAN}/trigger guigen.{summary['namespace']}.close{C.RESET}  close your own menu immediately")
     print(f"  {C.CYAN}/function {summary['namespace']}:core/close_all{C.RESET}   close every open menu (ops)")
     print()
     return 0
