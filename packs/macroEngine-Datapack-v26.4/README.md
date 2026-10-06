@@ -94,7 +94,7 @@ execute as @a run function macroengine:systems/trim/scan
 - **The real risk is the command-executing APIs.** Several functions run a caller-supplied string as a command (the `$execute ... run $(cmd)` pattern: `api/cmd/as_player`, `api/cmd/other/run_*`, `api/perm/run`, `api/perm/exec`, `core/lib/queue_add_cmd`, `core/lib/schedule_cmd`). Passing player-controlled text (sign, book, dialog, name tag) into them results in **command injection**. `api/cmd/op`, `ban_ip`, `whitelist` and `publish` also run server administration commands through macros.
 - **The input system does not execute input.** Captured raw text is only written to the `macroengine:input` storage. Validate it with `input/validate/check` (`int`, `float`, `bool`, `tag_safe`) before using it.
 - **There is no built-in protection.** The pack has no load gate or caller authorization. Any other datapack in the same world can call these functions (there is no isolation between datapacks).
-- **Permission level:** everything runs at the server's function permission level. The pack's own load notice states this and warns about lag, crashes and world changes.
+- **Permission level:** everything runs at the server's function permission level.
 
 ### Can I install it on a server?
 
@@ -138,7 +138,7 @@ The diagrams above are generated from the source code. Real in-game captures (in
 - **Forceload side effects.** On load the pack runs `forceload add 0 0` and `forceload add -30000000 1600`. Cleanup only runs `forceload remove 0 0`, which also removes a `0 0` forceload the server owner added themselves, and `-30000000 1600` is **never removed** (if it lies outside the world border, the command may fail silently).
 - **Command-executing APIs do not check who is calling.** See "Is it safe?".
 - **NBT-filtered `@e[type=item]` scan every tick** (performance note above).
-- **License and file inconsistencies.** `LICENSE` and `THIRD_PARTY_LICENSES.md` are not in this zip (the statement "Both files ship inside the distributed zip" above is wrong). `ARCHIVED.md`, referenced by the load notice, is also missing. `_rt_origin.mcfunction` is claimed to be stripped from distribution zips but is present (the game ignores it, so it is harmless) and its license header contradicts the Unlicense.
+- **License and file inconsistencies.** `LICENSE` and `THIRD_PARTY_LICENSES.md` are not in this zip (the statement "Both files ship inside the distributed zip" above is wrong). `_rt_origin.mcfunction` is claimed to be stripped from distribution zips but is present (the game ignores it, so it is harmless) and its license header contradicts the Unlicense.
 - **The restart hint depends on the file name.** After `disable`, the suggested command assumes `file/macroEngine-Datapack-v26.4.zip`; if the zip is named differently (e.g. `v26_4`), the command will not work.
 
 ## License
