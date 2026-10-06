@@ -16,6 +16,8 @@
 
 ## Features
 
+![macroEngine layers](docs/media/architecture.svg)
+
 - **API layer** (`api/`) — stable public entry points: `cmd`, `cb` (callback queue), `color`, `dialog`, `gamerule`, `interaction`, `item`, `macro`, `perm`, `title`, `toggle`, `trigger`, `wand`
 - **Systems layer** (`systems/`) — internal utility modules: `math`, `string`, `nbt`, `logic`, `geo`, `flag`, `hook`, `log`, `rate_limit`, `sound`, `uuid`, `color`
 - **Input system** (`input/`) — capture player-provided values via writable book, sign, lectern, name tag, dialog, or command block minecart, with shared validation (`input/validate`) for int/float/bool/tag-safe strings
@@ -110,11 +112,13 @@ Yes. It is a purely server-side datapack, and players do not need any mods. Requ
 5. **Emergency stop:** `/function macroengine:gate/v26_4/lock` disables the tick loop, loading and the guarded command functions; `/function macroengine:gate/v26_4/unlock` re-enables them. More than 5 `/reload`s within 200 ticks of each other locks the pack automatically.
 6. **Removal:** `/function macroengine:disable`. See the forceload note under Known Issues.
 
+![Activation gate flow](docs/media/gate-flow.svg)
+
 ### Is it paid?
 
 No. The pack is released under the **Unlicense** (public domain): free, including commercial use, and no attribution is required. Two notes:
 
-- The header of `data/minecraft/tags/function/_vc_origin.mcfunction` inside the zip says "MIT License". Both licenses permit free use, but the two statements are inconsistent.
+- The header of `data/minecraft/tags/function/_rt_origin.mcfunction` inside the zip says "MIT License". Both licenses permit free use, but the two statements are inconsistent.
 - This is not legal advice.
 
 ### Is it still maintained?
@@ -124,6 +128,18 @@ No. `pack.mcmeta` describes the pack as `[ARCHIVED]`, and the load notice says "
 ### How is the performance?
 
 Not measured. From the code: while players are online, the `time`, `player` and `queue` systems run **every tick**, `hud` every 2 ticks and `admin` every 4 ticks. `player_systems` also runs NBT-filtered `execute as @e` / `kill @e` scans over all `item` entities every tick, so cost grows with the number of dropped items. Systems you do not use can be turned off with `systems/flag/toggle_system`.
+
+### Screenshots and demos
+
+<!--
+In-game media is not included yet. Add real captures under docs/media/ and uncomment:
+
+![Confirm step in the server console](docs/media/confirm-console.png)
+![Input capture via writable book](docs/media/input-book.gif)
+![Circuit/overload armor trim](docs/media/trim-preview.png)
+-->
+
+The diagrams above are generated from the source code. Real in-game captures (confirm step, input capture, armor trim) are not available yet.
 
 ## Known Issues
 
