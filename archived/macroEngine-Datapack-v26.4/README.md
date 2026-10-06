@@ -80,6 +80,62 @@ execute as @a run function macroengine:systems/trim/scan
 
 ---
 
+## FAQ
+
+> This section is based on a **static review** of the source (the code was read, not run in-game). Test on a staging server before deploying to production.
+
+### Is it safe?
+
+**Short answer:** no malicious content was found, but it is not safe to install blindly either. It is a powerful toolkit and can be dangerous if misused.
+
+- **What is not in the pack:** the zip contains no `.jar`, `.exe`, scripts, `.git/` or `.env` files, only datapack files (`.mcfunction`, `.json`, `pack.png`). A datapack cannot open network connections or write to the server's file system on its own.
+- **The real risk is the command-executing APIs.** Several functions run a caller-supplied string as a command (the `$execute ... run $(cmd)` pattern: `api/cmd/as_player`, `api/cmd/other/run_*`, `api/perm/run`, `api/perm/exec`, `core/lib/queue_add_cmd`, `core/lib/schedule_cmd`). Passing player-controlled text (sign, book, dialog, name tag) into them results in **command injection**. `api/cmd/op`, `ban_ip`, `whitelist` and `publish` also run server administration commands through macros.
+- **The input system does not execute input.** Captured raw text is only written to the `macroengine:input` storage. Validate it with `input/validate/check` (`int`, `float`, `bool`, `tag_safe`) before using it.
+- **The built-in protection is limited.** The "sink guard" in 28 functions only checks that the pack is active; it does not authorize the caller. Any other datapack in the same world can call these functions (there is no isolation between datapacks).
+- **Permission level:** everything runs at the server's function permission level. The pack's own load notice states this and warns about lag, crashes and world changes.
+
+### Can I install it on a server?
+
+Yes. It is a purely server-side datapack, and players do not need any mods. Requirements:
+
+1. **Version:** the pack targets `26.4-snapshot-1` (pack format `122`). The confirm step rejects any other data pack format.
+2. **It starts inactive.** Dropping it into `datapacks/` and running `/reload` is not enough; the pack waits in a "pending" state until an operator confirms it:
+   ```mcfunction
+   /tag <player_name> add macroengine.gate_admin
+   /function macroengine:gate/v26_4/confirm {format:122}
+   ```
+   Confirmation is bound to the pack version and must be repeated for a different version.
+3. **Text rendering:** use it together with `macroEngine-Resourcepack-v26.4`.
+4. **Back up first** and try it on a test server.
+5. **Emergency stop:** `/function macroengine:gate/v26_4/lock` disables the tick loop, loading and the guarded command functions; `/function macroengine:gate/v26_4/unlock` re-enables them. More than 5 `/reload`s within 200 ticks of each other locks the pack automatically.
+6. **Removal:** `/function macroengine:disable`. See the forceload note under Known Issues.
+
+### Is it paid?
+
+No. The pack is released under the **Unlicense** (public domain): free, including commercial use, and no attribution is required. Two notes:
+
+- The header of `data/minecraft/tags/function/_rt_origin.mcfunction` inside the zip says "MIT License". Both licenses permit free use, but the two statements are inconsistent.
+- This is not legal advice.
+
+### Is it still maintained?
+
+No. `pack.mcmeta` describes the pack as `[ARCHIVED]`, and the load notice says "unmaintained, deploy not recommended". No updates are planned before 2027-2028 at the earliest. Do not expect fixes; fork it and patch it yourself if you need changes.
+
+### How is the performance?
+
+Not measured. From the code: while players are online, the `time`, `player` and `queue` systems run **every tick**, `hud` every 2 ticks and `admin` every 4 ticks. `player_systems` also runs NBT-filtered `execute as @e` / `kill @e` scans over all `item` entities every tick, so cost grows with the number of dropped items. Systems you do not use can be turned off with `systems/flag/toggle_system`.
+
+## Known Issues
+
+- **Archived and unmaintained.** No security or compatibility patches will follow.
+- **Snapshot-only target.** `26.4-snapshot-1`, pack format `122`. It may not load on stable releases.
+- **"Initializes automatically" (Installation) is outdated.** The pack stays inert until an operator confirms it (see "Can I install it on a server?").
+- **Forceload side effects.** On load the pack runs `forceload add 0 0` and `forceload add -30000000 1600`. Cleanup only runs `forceload remove 0 0`, which also removes a `0 0` forceload the server owner added themselves, and `-30000000 1600` is **never removed** (if it lies outside the world border, the command may fail silently).
+- **Command-executing APIs do not check who is calling.** See "Is it safe?".
+- **NBT-filtered `@e[type=item]` scan every tick** (performance note above).
+- **License and file inconsistencies.** `LICENSE` and `THIRD_PARTY_LICENSES.md` are not in this zip (the statement "Both files ship inside the distributed zip" above is wrong). `ARCHIVED.md`, referenced by the load notice, is also missing. `_rt_origin.mcfunction` is claimed to be stripped from distribution zips but is present (the game ignores it, so it is harmless) and its license header contradicts the Unlicense.
+- **The restart hint depends on the file name.** After `disable`, the suggested command assumes `file/macroEngine-Datapack-v26.4.zip`; if the zip is named differently (e.g. `v26_4`), the command will not work.
+
 ## License
 
 - macroEngine original code: Unlicense (public domain) — see [`LICENSE`](LICENSE).
