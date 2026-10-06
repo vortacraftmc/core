@@ -142,7 +142,7 @@ def generate_tick(menu: dict[str, Any], out: dict[str, str]) -> None:
             f"run function {menu_function_prefix(menu)}/fill",
             "",
             "# Kill dropped GUI items",
-            dropped_item_kill(menu, "minecraft:custom_data"),
+            dropped_item_kill(menu, '"minecraft:custom_data"'),
             dropped_item_kill(menu, "custom_data"),
             "",
         ]
