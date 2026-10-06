@@ -763,12 +763,23 @@ jobs:
           tag_name: packs-latest
           name: Latest packs
           body: |
-            Automatically updated from main.
+            MAINTENANCE PAUSED (not permanently archived). Since 2026-10-04 the maintainer is expected to be inactive until at least 2027-2028; no fixes or releases are planned and issues may go unanswered. All datapacks are archived reference copies (see archived/README.md); do not deploy them on a live server without review.
 
-            This release reflects the current contents of `packs/` and the
-            merged datapack generated from `packs/merge-manifest.json`.
-          files: release-assets/*.zip
-          fail_on_unmatched_files: true
+            Automatically updated on every push to main. Always reflects the current contents of packs/ and the merged datapack built from packs/merge-manifest.json.
+          # FIX: added build/dist/*.zip so the merged datapack (produced by
+          # mergeDatapacks in the step above) is published as a release
+          # asset alongside the individual pack zips, not just the
+          # per-pack files it published before.
+          files: |
+            build/packs-dist/*.zip
+            build/dist/*.zip
+          # FIX: was make_latest: false. This doesn't conflict with the intent
+          # in the comment above ("keep download links permanently valid" via
+          # moving the tag forward), but it does mean GitHub's "Latest
+          # release" badge won't point at this release, so the repo's main
+          # page may show a different (or no) release as "Latest". Changed to
+          # true assuming that's not intentional; revert if another "real"
+          # version release is meant to stay Latest instead.
           make_latest: true
 
       # Runs AFTER publishing so the release is never left empty, and

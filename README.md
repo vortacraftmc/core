@@ -2,6 +2,19 @@
 
 Consolidated monorepo for the vortacraftmc ecosystem.
 
+## Project status: maintenance paused
+
+> **⚠️ Paused since 2026-10-04 — not permanently archived.**
+> The maintainer expects to be inactive on GitHub until at least 2027–2028.
+
+What that means in practice:
+
+- **No support.** Issues, pull requests, discussions and security reports may sit unanswered for a long time. No fixes, releases or Minecraft-version updates are planned.
+- **No upkeep automation.** Dependabot version updates and the scheduled CODEOWNERS sync are switched off. CI still runs on pushes and pull requests, but nobody is watching the results.
+- **Datapacks are archived.** Everything under `archived/` is a frozen reference copy and must not be deployed on a live server without review (see `archived/README.md`). That archive (2026-10-03) is a separate decision from this pause: those projects are retired, not paused.
+- **Mods will fall behind.** The projects under `mods/` are pinned to specific Minecraft versions (for example 1.21.1 and 1.21.4) and will not follow new releases during the pause.
+- **Not a dead end.** The repository is archived on GitHub (read-only) as a temporary measure; the owner can unarchive it and work may resume later, but there is no commitment and no date. The code is under the Unlicense (see `LICENSE`), so forking is the quickest way to keep something alive.
+
 ## Structure
 
 - `mods/`      — Fabric mods
@@ -13,7 +26,17 @@ Consolidated monorepo for the vortacraftmc ecosystem.
 
 ## Fork status
 
-This fork (`IronCrest-sudo/core`) is **not maintained until 2027-2028**. The datapacks are back under `packs/` without the archive load gates, so they load normally and run commands at the function permission level. Review them before use and back up your world. The maintainer plans to return in 2027-2028 and will bring changes back via pull request. Until then no fixes, reviews or issue triage should be expected.
+> **Superseded (2026-10-03):** every datapack has since been moved to `archived/` (see the registry in `archived/archive.json`). This section and "Note: Moved from Datapacks to Fabric" below describe the earlier maintenance-mode policy and are kept for history; `packs/` now only holds the macroEngine resource pack.
+
+Datapacks under `packs/` are now in maintenance mode. Concretely, that means:
+
+- **In scope:** bug fixes, security hardening, compatibility fixes for new Minecraft versions (pack_format bumps, syntax migrations), and small quality-of-life updates to existing modules.
+- **Out of scope:** new modules, new systems, or any feature work that expands what a pack does beyond its current functionality. If a change would require adding a new top-level system (comparable in scope to, say, the rate-limit or hidden-flag modules already in `macroEngine`), it does not belong here.
+- **Rationale:** datapacks in this repo (particularly `macroEngine`) have grown large enough that further feature growth trades off against maintainability — see the "hard to scale" point in the FAQ below. Fabric mods under `mods/` remain the intended path for new functionality going forward.
+
+This status applies to `packs/` only; it does not affect `mods/`, `scripts/`, or any other top-level directory.
+
+**Every existing top-level directory under `packs/` is additionally locked** in `packs/.datapack-lock.json` (`locked: true`), and CI (`.github/workflows/datapack-immutability.yml`) blocks any PR that touches a file under a locked pack — including the in-scope bug fixes and security hardening described above. To make such a change: open a PR that flips the pack's entry to `locked: false` and get it merged first, then open your actual fix as a separate PR, then open a third PR that sets it back to `locked: true`. See the `$comment` in `packs/.datapack-lock.json` for the exact mechanism.
 
 ## Fabric vs. datapacks — FAQ
 
