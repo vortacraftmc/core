@@ -164,11 +164,11 @@ def test_emit_tab_highlights_active_page():
     w = menu["pages"][0]["widgets"][0]
     lines = emit_tab(menu, w)
     assert any(
-        l.startswith("execute unless score @s guigen_page matches 1 run item replace")
+        l.startswith("execute unless score @s guigen.demo.page matches 1 run item replace")
         for l in lines
     )
     assert any(
-        l.startswith("execute if score @s guigen_page matches 1 run item replace")
+        l.startswith("execute if score @s guigen.demo.page matches 1 run item replace")
         for l in lines
     )
 
@@ -192,7 +192,7 @@ def test_tab_handler_navigates():
     menu = _menu([_tab()])
     w = menu["pages"][0]["widgets"][0]
     text = "\n".join(handler_for(menu, w))
-    assert "scoreboard players set @s guigen_page 1" in text
+    assert "scoreboard players set @s guigen.demo.page 1" in text
     assert "function demo:menu/m/fill" in text
 
 
@@ -256,7 +256,7 @@ def test_full_datapack_with_radio_group_and_tabs():
     page0 = files["data/demo/function/menu/m/page/0.mcfunction"]
     assert "execute if score @s srv_mode matches 0 run item replace" in page0
     assert "execute if score @s srv_mode matches 1 run item replace" in page0
-    assert "execute if score @s guigen_page matches 1 run item replace" in page0
+    assert "execute if score @s guigen.demo.page matches 1 run item replace" in page0
 
     open_fn = files["data/demo/function/menu/m/open.mcfunction"]
     assert "execute unless score @s srv_mode matches 0.. run scoreboard players set @s srv_mode 0" in open_fn
