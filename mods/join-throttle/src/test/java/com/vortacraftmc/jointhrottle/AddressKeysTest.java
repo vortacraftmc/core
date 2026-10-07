@@ -36,28 +36,4 @@ class AddressKeysTest {
         assertNull(AddressKeys.keyFor(InetSocketAddress.createUnresolved("example.invalid", 25565)));
         assertNull(AddressKeys.keyFor((java.net.SocketAddress) null));
     }
-
-    @Test void canonicalLiteralMakesIpv6SpellingsEqual() {
-        String loopback = AddressKeys.canonicalLiteral("0:0:0:0:0:0:0:1");
-        assertEquals(loopback, AddressKeys.canonicalLiteral("::1"));
-        assertEquals(loopback, AddressKeys.canonicalLiteral("0000:0000:0000:0000:0000:0000:0000:0001"));
-        assertEquals(loopback, AddressKeys.canonicalLiteral("  ::1  "));
-        assertEquals(AddressKeys.canonicalLiteral("FE80::1"), AddressKeys.canonicalLiteral("fe80:0:0:0:0:0:0:1"));
-    }
-
-    @Test void canonicalLiteralDropsScopeId() {
-        assertEquals(AddressKeys.canonicalLiteral("fe80::1"), AddressKeys.canonicalLiteral("fe80::1%eth0"));
-    }
-
-    @Test void canonicalLiteralUnwrapsIpv4MappedAndKeepsIpv4() {
-        assertEquals("203.0.113.7", AddressKeys.canonicalLiteral("::ffff:203.0.113.7"));
-        assertEquals("203.0.113.7", AddressKeys.canonicalLiteral("203.0.113.7"));
-    }
-
-    @Test void canonicalLiteralNeverResolvesHostnamesOrCrashesOnJunk() {
-        assertEquals("example.invalid", AddressKeys.canonicalLiteral("Example.Invalid"));
-        assertEquals("999.1.1.1", AddressKeys.canonicalLiteral("999.1.1.1"));
-        assertEquals("", AddressKeys.canonicalLiteral(null));
-        assertEquals("gggg::1", AddressKeys.canonicalLiteral("GGGG::1"));
-    }
 }

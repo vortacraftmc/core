@@ -1,5 +1,6 @@
-# Keeps GitHub Actions, Gradle, Python (pip) and npm dependencies up to date via PRs.
-# Packs under packs/ contain no ecosystem manifests Dependabot would touch.
+# Keeps GitHub Actions, Gradle, Docker, and Python (pip) dependencies up to date via PRs.
+# Packs under packs/ are locked by datapack-immutability.yml and contain no
+# ecosystem manifests Dependabot would touch.
 #
 # MAINTENANCE PAUSE (2026-10-04, expected until at least 2027-2028):
 # open-pull-requests-limit: 0 turns off Dependabot *version* updates for every ecosystem
@@ -20,7 +21,13 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 0
 
-  # Pip (Python) dependency updates. The only requirements.txt /
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+
+  # Pip (Python) bağımlılık güncellemeleri. The only requirements.txt /
   # pyproject.toml in the tree live in scripts/gui_generator, so "/" never
   # matched anything.
   - package-ecosystem: "pip"

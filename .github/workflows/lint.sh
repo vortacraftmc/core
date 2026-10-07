@@ -2,20 +2,8 @@
 
 set -uo pipefail
 
-# ANSI Color Codes
-COLOR_RESET="\033[0m"
-COLOR_INFO="\033[1;34m"      # Blue
-COLOR_SUCCESS="\033[1;32m"   # Green
-COLOR_WARN="\033[1;33m"      # Yellow
-COLOR_PATH="\033[0;36m"      # Cyan
-COLOR_MUTED="\033[0;90m"     # Muted / Gray
-COLOR_SUBHEADER="\033[1;35m" # Magenta
-
-# Pinned: the IGNORE_PATHS below are tied to this grammar version. Bump deliberately.
-MECHA_VERSION="${MECHA_VERSION:-0.101.0}"
-
-echo "::group::📦 Installing Mecha ${MECHA_VERSION}"
-python -m pip install "mecha==${MECHA_VERSION}"
+echo "::group::📦 Installing Mecha"
+python -m pip install mecha
 echo "::endgroup::"
 
 IGNORE_PATHS=(
@@ -31,29 +19,26 @@ IGNORE_PATHS=(
 )
 
 echo "::group::🚫 Ignoring paths"
+
 for path in "${IGNORE_PATHS[@]}"; do
-    echo -e "${COLOR_PATH}  ├─ Ignore:${COLOR_RESET}$path"
+    echo "Ignore: $path"
 done
+
 echo "::endgroup::"
 
 echo "::group::🔧 Preparing validation"
 
-ORIGINAL_DIR="$(pwd)"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-echo -e "${COLOR_SUBHEADER}▶ Copying Repository:${COLOR_RESET}"
 cp -a . "$TMP_DIR/project"
-echo -e "${COLOR_MUTED}  │ Files copied to temporary directory: $TMP_DIR/project${COLOR_RESET}"
 
-cd "$TMP_DIR/project" || exit 1
+cd "$TMP_DIR/project"
 
-echo -e "${COLOR_SUBHEADER}▶ Removing Ignored Paths:${COLOR_RESET}"
 REMOVED_FILES=()
 
 for pattern in "${IGNORE_PATHS[@]}"; do
     while IFS= read -r -d '' target; do
-        echo -e "${COLOR_MUTED}  │ ├─ Removing:${COLOR_RESET}${target#./}"
         echo "::notice::Ignoring ${target#./}"
         REMOVED_FILES+=("${target#./}")
         rm -rf "$target"
@@ -65,43 +50,37 @@ echo "::endgroup::"
 echo "::group::🔍 Mecha validation"
 
 mecha_status=0
-echo -e "${COLOR_INFO}▶ Starting Mecha Analysis...${COLOR_RESET}"
-
 if mecha .; then
-    echo -e "${COLOR_SUCCESS}  └── Mecha validation passed successfully.${COLOR_RESET}"
     echo "::notice::Mecha validation passed."
 else
     mecha_status=$?
-    echo -e "${COLOR_WARN}  └── Mecha reported validation errors (exit status: $mecha_status).${COLOR_RESET}"
-    echo "::warning::Mecha reported validation errors (exit $mecha_status)."
+    echo "::error::Mecha reported validation errors (exit $mecha_status)."
 fi
 
 echo "::endgroup::"
 
-echo "::group::♻️ Cleanup"
+echo "::group::♻️ Restoring deleted files"
 
-# Ignored paths were only removed inside the temporary copy, so the working
-# tree is untouched. (An earlier version ran `git checkout -- <ignored paths>`
-# here, which does nothing useful in CI and silently DISCARDS uncommitted local
-# changes to those paths when the script is run by hand.)
-cd "$ORIGINAL_DIR" || exit 1
-echo -e "${COLOR_MUTED}  └── Working directory untouched (${#REMOVED_FILES[@]} path(s) were removed from the temp copy only).${COLOR_RESET}"
+if [ "${#REMOVED_FILES[@]}" -gt 0 ]; then
+    git checkout -- "${REMOVED_FILES[@]}" 2>/dev/null || true
+    echo "::notice::Restored ${#REMOVED_FILES[@]} file(s)/folder(s) from Git index."
+else
+    echo "::notice::No files to restore."
+fi
 
 echo "::endgroup::"
 
 echo "::group::✅ Validation summary"
-
-echo -e "${COLOR_INFO}Execution Summary:${COLOR_RESET}"
 if [ "$mecha_status" -eq 0 ]; then
-    echo -e "${COLOR_SUCCESS}  Status: PASSED${COLOR_RESET}"
-    echo -e "  Log: Mecha validation finished successfully."
+    echo "Mecha validation finished: PASSED."
 else
-    echo -e "${COLOR_WARN}  Status: PASSED WITH WARNINGS (exit status $mecha_status)${COLOR_RESET}"
-    echo -e "  Log: Validation errors were converted to warnings."
+    echo "Mecha validation finished: FAILED (exit $mecha_status)."
 fi
-echo -e "${COLOR_PATH}  Ignored paths count: ${#IGNORE_PATHS[@]}${COLOR_RESET}"
-
+echo "Ignored paths: ${#IGNORE_PATHS[@]}"
 echo "::endgroup::"
 
-# Always exit 0 to prevent CI job failure (Warning Mode)
-exit 0
+# FIX (audit): this script previously always ended with `exit 0`, so a real
+# Mecha validation failure was logged as a warning and then swallowed -- the
+# "lint" job in build.yml could never actually fail because of it. Propagate
+# Mecha's real exit status so the job goes red when validation fails.
+exit "$mecha_status"

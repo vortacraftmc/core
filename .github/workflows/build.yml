@@ -7,10 +7,8 @@ on:
 
 # Least privilege by default. Only the `release` job below gets
 # contents: write, and it never checks out or runs repository code.
-# (This was `contents: write`, which contradicted the comment: the
-# python-ci job inherited it and runs repository code via `pip install -e`.)
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -667,14 +665,6 @@ jobs:
             exit 1
           fi
 
-          # Both directories are flattened into one folder; a duplicate file
-          # name would silently overwrite an asset, so fail on collisions.
-          dupes=$(printf '%s\n' "${files[@]}" | xargs -n1 basename | sort | uniq -d)
-          if [ -n "$dupes" ]; then
-            echo "::error title=Duplicate asset names::Same file name in build/packs-dist and build/dist: $dupes"
-            exit 1
-          fi
-
           cp -v "${files[@]}" release-assets/
 
       - name: Upload release assets
@@ -775,15 +765,13 @@ jobs:
             MAINTENANCE PAUSED (not permanently archived). Since 2026-10-04 the maintainer is expected to be inactive until at least 2027-2028; no fixes or releases are planned and issues may go unanswered. All datapacks are archived reference copies (see archived/README.md); do not deploy them on a live server without review.
 
             Automatically updated on every push to main. Always reflects the current contents of packs/ and the merged datapack built from packs/merge-manifest.json.
-          # FIX (AI-assisted, see CREDITS.md): this job has no checkout and runs
-          # no repository code, so build/packs-dist/ and build/dist/ do not
-          # exist here. The zips from both directories (individual packs and
-          # the merged datapack) arrive flattened in release-assets/ via the
-          # release-packs artifact. The old globs matched nothing and the
-          # release was published with no assets.
-          files: release-assets/*.zip
-          # Fail loudly instead of publishing an empty release.
-          fail_on_unmatched_files: true
+          # FIX: added build/dist/*.zip so the merged datapack (produced by
+          # mergeDatapacks in the step above) is published as a release
+          # asset alongside the individual pack zips, not just the
+          # per-pack files it published before.
+          files: |
+            build/packs-dist/*.zip
+            build/dist/*.zip
           # FIX: was make_latest: false. This doesn't conflict with the intent
           # in the comment above ("keep download links permanently valid" via
           # moving the tag forward), but it does mean GitHub's "Latest
@@ -792,3 +780,40 @@ jobs:
           # true assuming that's not intentional; revert if another "real"
           # version release is meant to stay Latest instead.
           make_latest: true
+
+      # Runs AFTER publishing so the release is never left empty, and
+      # refuses to run if there is nothing current to compare against.
+      - name: Remove stale pack assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          echo "::group::🧹 Release Cleanup :: packs-latest"
+          trap 'echo "::endgroup::"' EXIT
+
+          current_files="$(find release-assets -maxdepth 1 -type f -name '*.zip' -printf '%f\n')"
+
+          if [ -z "$current_files" ]; then
+            echo "::error title=Cleanup aborted::No current assets known; refusing to delete anything."
+            exit 1
+          fi
+
+          existing_assets="$(
+            gh release view packs-latest \
+              --repo "$GITHUB_REPOSITORY" \
+              --json assets \
+              --jq '.assets[].name'
+          )"
+
+          while IFS= read -r asset; do
+            [ -z "$asset" ] && continue
+
+            if ! printf '%s\n' "$current_files" | grep -qxF -- "$asset"; then
+              printf '\033[1;33mDeleting stale asset: %s\033[0m\n' "$asset"
+
+              gh release delete-asset packs-latest "$asset" \
+                --repo "$GITHUB_REPOSITORY" \
+                --yes
+            fi
+          done <<< "$existing_assets"

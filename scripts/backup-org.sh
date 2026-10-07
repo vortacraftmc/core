@@ -10,11 +10,6 @@
 #
 # Token: uses VC_TOKEN or GH_TOKEN if set, otherwise prompts silently.
 # Keep this script OUTSIDE any git repository folder (e.g. ~/backup-org.sh).
-#
-# Privacy: before archiving, tokens / URL credentials / webhook secrets / e-mail
-# addresses are redacted from config and metadata files (both tar.gz and 7z),
-# and the script aborts if a token pattern is still found there. Git objects and
-# plain source copies are never modified.
 set -euo pipefail
 umask 077
 ORG="${ORG:-vortacraftmc}"
@@ -102,46 +97,6 @@ if command -v gh >/dev/null; then
 else
   log "gh not found, skipping org metadata and repository count check"
 fi
-# ------------------------------------------- extended metadata (more things)
-# Org-level: outside collaborators, webhooks, Actions variables / secret NAMES
-# (never values), permissions, GitHub App installations, pending invitations.
-# Repo-level: collaborators, webhooks, deploy keys (public part), environments,
-# variables / secret names, Pages, rulesets, default-branch protection.
-if command -v gh >/dev/null; then
-  mkdir -p "$BACKUP_DIR/org-meta" "$BACKUP_DIR/repo-meta"
-  save() { # save <outfile> <api path> [jq filter]; missing permission is not fatal
-    local out="$1" path="$2" filter="${3:-.}"
-    if GH_TOKEN="$TOKEN" gh api --paginate "$path" --jq "$filter" > "$out.tmp" 2>/dev/null; then
-      mv "$out.tmp" "$out"
-    else
-      rm -f "$out.tmp"; log "note: $path not available (permission or feature missing)"
-    fi
-  }
-  save "$BACKUP_DIR/org-meta/org.json"                  "/orgs/$ORG"
-  save "$BACKUP_DIR/org-meta/outside-collaborators.json" "/orgs/$ORG/outside_collaborators"
-  save "$BACKUP_DIR/org-meta/hooks.json"                "/orgs/$ORG/hooks"
-  save "$BACKUP_DIR/org-meta/actions-variables.json"    "/orgs/$ORG/actions/variables"
-  save "$BACKUP_DIR/org-meta/actions-secret-names.json" "/orgs/$ORG/actions/secrets" '.secrets[]? | {name, created_at, updated_at, visibility}'
-  save "$BACKUP_DIR/org-meta/actions-permissions.json"  "/orgs/$ORG/actions/permissions"
-  save "$BACKUP_DIR/org-meta/installations.json"        "/orgs/$ORG/installations"
-  save "$BACKUP_DIR/org-meta/invitations.json"          "/orgs/$ORG/invitations"
-  while IFS= read -r repo; do
-    [ -n "$repo" ] || continue
-    d="$BACKUP_DIR/repo-meta/$repo"; mkdir -p "$d"
-    save "$d/repo.json"            "/repos/$ORG/$repo"
-    save "$d/collaborators.json"   "/repos/$ORG/$repo/collaborators"
-    save "$d/hooks.json"           "/repos/$ORG/$repo/hooks"
-    save "$d/deploy-keys.json"     "/repos/$ORG/$repo/keys"
-    save "$d/environments.json"    "/repos/$ORG/$repo/environments"
-    save "$d/actions-variables.json" "/repos/$ORG/$repo/actions/variables"
-    save "$d/actions-secret-names.json" "/repos/$ORG/$repo/actions/secrets" '.secrets[]? | {name, created_at, updated_at}'
-    save "$d/pages.json"           "/repos/$ORG/$repo/pages"
-    save "$d/rulesets.json"        "/repos/$ORG/$repo/rulesets"
-    branch="$(GH_TOKEN="$TOKEN" gh api "/repos/$ORG/$repo" --jq .default_branch 2>/dev/null || true)"
-    [ -z "$branch" ] || save "$d/branch-protection.json" "/repos/$ORG/$repo/branches/$branch/protection"
-    rmdir "$d" 2>/dev/null || true
-  done < <(GH_TOKEN="$TOKEN" gh api --paginate "/orgs/$ORG/repos" --jq '.[].name' 2>/dev/null)
-fi
 # ------------------------------------ integrity check + plain source clones
 shopt -s dotglob nullglob
 for d in "$BACKUP_DIR"/repositories/*/; do
@@ -168,38 +123,6 @@ if [ "$INCLUDE_SOURCE" = 1 ]; then
   log "Plain source files going into the archive: $n"
   if [ "$n" -eq 0 ]; then log "WARNING: source/ folders are empty, source code will not be in the archive."; fi
 fi
-# ----------------------------------------------------------- sanitize
-# Runs on the folder BEFORE archiving, so tar.gz and 7z are both covered.
-# Touches only config/metadata files; never git objects or source copies.
-TOKEN_RE='(gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})'
-sanitize_dir() {
-  local n=0 f
-  # token / credential redaction: git configs, FETCH_HEAD, all metadata json
-  while IFS= read -r -d '' f; do
-    if grep -aEq "$TOKEN_RE|https?://[^/[:space:]@:]+:[^@[:space:]/]+@|\"(secret|token|password|client_secret)\"[[:space:]]*:[[:space:]]*\"[^\"]+\"|hooks\.slack\.com/services|discord(app)?\.com/api/webhooks" "$f"; then
-      perl -0pi -e '
-        s#\b(gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})\b#[REDACTED:token]#g;
-        s#(https?://)[^/\s:@]+:[^@\s/]+@#$1\[REDACTED]@#g;
-        s#("(?:secret|token|password|client_secret)"\s*:\s*)"[^"]+"#$1"[REDACTED]"#gi;
-        s#https://(?:hooks\.slack\.com/services|discord(?:app)?\.com/api/webhooks)/[^\s"\x27]+#[REDACTED:webhook]#g;
-      ' "$f"
-      n=$((n + 1))
-    fi
-  done < <(find "$BACKUP_DIR" \( -path '*/source' -o -path '*/wiki-source' -o -name objects -o -name '*.pack' \) -prune -o \
-             -type f \( -name config -o -name FETCH_HEAD -o -name '*.json' \) -print0)
-  # personal data: e-mail addresses in API metadata only (not in git history/source)
-  while IFS= read -r -d '' f; do
-    perl -0pi -e 's#(?<![\w.+-])[\w.+-]+@(?!users\.noreply\.github\.com)[\w-]+(?:\.[\w-]+)+#[REDACTED:email]#g' "$f"
-  done < <(find "$BACKUP_DIR/org-meta" "$BACKUP_DIR/repo-meta" -type f -name '*.json' -print0 2>/dev/null)
-  log "Sanitized $n config/metadata file(s)"
-  # fail closed: no token may remain in the files we just cleaned
-  if find "$BACKUP_DIR" \( -path '*/source' -o -path '*/wiki-source' -o -name objects -o -name '*.pack' \) -prune -o \
-       -type f \( -name config -o -name FETCH_HEAD -o -name '*.json' \) -print0 \
-       | xargs -0 -r grep -aElq "$TOKEN_RE"; then
-    die "a token pattern is still present in config/metadata files after sanitizing; aborting before archive"
-  fi
-}
-sanitize_dir
 # -------------------------------------------------------------- archive
 PARENT="$(dirname "$BACKUP_DIR")"
 BASE="$(basename "$BACKUP_DIR")"
@@ -228,6 +151,33 @@ else
   log "WARNING: the archive is NOT encrypted. It contains private code; encrypt it before uploading anywhere."
   tar -czf "$ARCHIVE" -C "$PARENT" "$BASE"
   tar -tzf "$ARCHIVE" >/dev/null || die "archive verification failed"
+
+  # ---------------------------------------------------------------- token sanitization
+  # Scan the freshly-built tar.gz for any remaining https://user:token@… credentials
+  # (commonly left in .git/config by github-backup) and redact them.
+  log "Sanitizing embedded tokens in archive..."
+  td="$(mktemp -d)"
+  trap 'rm -rf "$td"; cleanup' EXIT   # extend existing cleanup
+  tar -xzf "$ARCHIVE" -C "$td"
+  changed=0
+  while IFS= read -r -d '' file; do
+    if grep -aEq 'https://[^/[:space:]@:]+:[^@[:space:]]+@' "$file"; then
+      perl -0pi -e \
+        's#(https://[^/\s:@]+:)[^@\s]+(@github\.com/)#$1[REDACTED]$2#g;
+         s#(https://[^/\s:@]+:)[^@\s]+(@[^/\s]+)#$1[REDACTED]$2#g' \
+        "$file"
+      log "  sanitized: ${file#$td/}"
+      changed=$((changed + 1))
+    fi
+  done < <(find "$td" -type f -print0)
+  # Rebuild the archive in-place (overwrite the original)
+  rm -f "$ARCHIVE"
+  tar -czf "$ARCHIVE" -C "$td" .
+  tar -tzf "$ARCHIVE" >/dev/null || die "sanitized archive verification failed"
+  log "Token sanitization complete ($changed file(s) cleaned)"
+  rm -rf "$td"
+  # restore the original trap
+  trap cleanup EXIT
 fi
 (cd "$OUT_DIR" && sha256sum "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256")
 # ------------------------------------------------- prune old archives
