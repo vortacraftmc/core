@@ -3,6 +3,22 @@
 This file records which parts of the repository were written or changed with AI assistance, so that
 AI involvement is visible in the repository itself and not only through commit authorship.
 
+## 2026-10-07 - fix: release assets not found (`packs-latest`)
+
+**Tool:** Claude (Anthropic), working from a prompt by the maintainer. Review status: _pending - update
+when reviewed_.
+
+### Changed (AI-assisted edit)
+
+| Path | Change |
+|---|---|
+| `.github/workflows/build.yml` | `release` job: `files:` now points to `release-assets/*.zip` (the downloaded `release-packs` artifact) instead of `build/packs-dist/*.zip` / `build/dist/*.zip`, which do not exist in that job (no checkout). Added `fail_on_unmatched_files: true` and a duplicate-file-name check in "Collect release assets". |
+
+### Verification status
+
+- Verified: YAML parses; duplicate-name check logic exercised locally with a shell test.
+- **Not verified:** an actual GitHub Actions run (needs a push to `main` / `workflow_dispatch`).
+
 ## 2026-10-04 - improvements batch + two new Fabric mods
 
 **Tool:** Claude (Anthropic), working from a prompt by the maintainer. Reviewed and merged by a human
