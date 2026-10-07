@@ -665,6 +665,14 @@ jobs:
             exit 1
           fi
 
+          # Both directories are flattened into one folder; a duplicate file
+          # name would silently overwrite an asset, so fail on collisions.
+          dupes=$(printf '%s\n' "${files[@]}" | xargs -n1 basename | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "::error title=Duplicate asset names::Same file name in build/packs-dist and build/dist: $dupes"
+            exit 1
+          fi
+
           cp -v "${files[@]}" release-assets/
 
       - name: Upload release assets
@@ -765,13 +773,15 @@ jobs:
             MAINTENANCE PAUSED (not permanently archived). Since 2026-10-04 the maintainer is expected to be inactive until at least 2027-2028; no fixes or releases are planned and issues may go unanswered. All datapacks are archived reference copies (see archived/README.md); do not deploy them on a live server without review.
 
             Automatically updated on every push to main. Always reflects the current contents of packs/ and the merged datapack built from packs/merge-manifest.json.
-          # FIX: added build/dist/*.zip so the merged datapack (produced by
-          # mergeDatapacks in the step above) is published as a release
-          # asset alongside the individual pack zips, not just the
-          # per-pack files it published before.
-          files: |
-            build/packs-dist/*.zip
-            build/dist/*.zip
+          # FIX (AI-assisted, see CREDITS.md): this job has no checkout and runs
+          # no repository code, so build/packs-dist/ and build/dist/ do not
+          # exist here. The zips from both directories (individual packs and
+          # the merged datapack) arrive flattened in release-assets/ via the
+          # release-packs artifact. The old globs matched nothing and the
+          # release was published with no assets.
+          files: release-assets/*.zip
+          # Fail loudly instead of publishing an empty release.
+          fail_on_unmatched_files: true
           # FIX: was make_latest: false. This doesn't conflict with the intent
           # in the comment above ("keep download links permanently valid" via
           # moving the tag forward), but it does mean GitHub's "Latest
