@@ -41,10 +41,12 @@ covers the Gradle side.
   the steps are marked `continue-on-error` so the diagnostics can still run,
   but the "Final summary" step re-fails the job if either one did not
   succeed (see `.github/workflows/build.yml`).
-- CI's separate **datapack** lint (Mecha, `.github/workflows/lint.sh`) is
-  advisory only: the script ends in an unconditional `exit 0` and the step
-  is `continue-on-error`, so it can never fail a build. Treat its output as
-  a warning, not a gate.
+- CI's separate **datapack** lint (Mecha, `scripts/lint_datapacks.sh`) is
+  also enforced: the script propagates Mecha's exit status, so a syntax
+  error in any `.mcfunction` fails the job and blocks the release gate.
+  Note that Mecha only validates command *syntax* — it never loads the
+  pack, so the "you've validated the pack loads correctly" checkbox below
+  still applies. Paths listed in the script's `IGNORE_PATHS` are skipped.
 - Building a single subproject during iteration is fine
   (`./gradlew :mods:<subproject-name>:build`), but run the full `buildAll`
   before opening the PR — cross-subproject breakage is the most common

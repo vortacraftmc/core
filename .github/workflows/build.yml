@@ -521,13 +521,13 @@ jobs:
           echo "::group::📦 Datapack Lint"
           trap 'echo "::endgroup::"' EXIT
 
-          if [ ! -f ".github/workflows/lint.sh" ]; then
-            printf "${RED}✘ .github/workflows/lint.sh is missing${RESET}\n"
-            echo "::error file=.github/workflows/lint.sh,title=Missing lint script::The datapack lint script does not exist."
+          if [ ! -f "scripts/lint_datapacks.sh" ]; then
+            printf "${RED}✘ scripts/lint_datapacks.sh is missing${RESET}\n"
+            echo "::error file=scripts/lint_datapacks.sh,title=Missing lint script::The datapack lint script does not exist."
             exit 1
           fi
 
-          bash .github/workflows/lint.sh
+          bash scripts/lint_datapacks.sh
           rc=$?
 
           if [ "$rc" -eq 0 ]; then
