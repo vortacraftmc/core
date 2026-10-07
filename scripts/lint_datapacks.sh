@@ -96,12 +96,30 @@ if [ "$mecha_status" -eq 0 ]; then
     echo -e "${COLOR_SUCCESS}  Status: PASSED${COLOR_RESET}"
     echo -e "  Log: Mecha validation finished successfully."
 else
-    echo -e "${COLOR_WARN}  Status: PASSED WITH WARNINGS (exit status $mecha_status)${COLOR_RESET}"
-    echo -e "  Log: Validation errors were converted to warnings."
+    echo -e "${COLOR_WARN}  Status: FAILED (exit status $mecha_status)${COLOR_RESET}"
+    echo -e "  Log: Mecha reported validation errors; this now fails the build unless LINT_WARN_ONLY=1."
 fi
 echo -e "${COLOR_PATH}  Ignored paths count: ${#IGNORE_PATHS[@]}${COLOR_RESET}"
 
 echo "::endgroup::"
 
-# Always exit 0 to prevent CI job failure (Warning Mode)
-exit 0
+# Exit status policy (audit 2026-10-07).
+#
+# This used to be an unconditional `exit 0` ("Warning Mode"). Combined with the
+# `continue-on-error: true` on the "Lint datapacks" step in
+# .github/workflows/build.yml, that made the datapack lint a triple no-op: it
+# could never fail a build, so a green CI run said nothing about datapack
+# validity while NOTICE.md claimed CI enforced it.
+#
+# Mecha 0.101.0 validates all 3634 .mcfunction files in this repo and currently
+# passes with zero errors (verified 2026-10-07, including a negative control
+# where a deliberately malformed line produced exit 1). Enforcing it is
+# therefore safe today.
+#
+# Set LINT_WARN_ONLY=1 to restore the old advisory behaviour for a single run.
+if [ "${LINT_WARN_ONLY:-0}" = "1" ]; then
+    echo "LINT_WARN_ONLY=1 - exiting 0 despite validation errors (advisory mode)."
+    exit 0
+fi
+
+exit "$mecha_status"

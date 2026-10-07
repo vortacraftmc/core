@@ -2,14 +2,29 @@
 
 Consolidated monorepo for the vortacraftmc ecosystem.
 
+## Project status (maintenance paused)
+
+**Maintenance paused since 2026-10-04 — not permanently archived.** The
+maintainer is expected to be inactive on GitHub until at least 2027–2028.
+Issues, pull requests and security reports may go unanswered, and no fixes
+or releases are planned during the pause.
+
+The repository is still writable and CI still runs on push; the pause is an
+availability statement, not a read-only archive. `archived/` is a separate,
+per-project concept — see `archived/README.md`.
+
 ## Structure
 
-- `mods/`      — Fabric mods
-- `packs/`     — Datapacks / resource packs
-- `scripts/`   — Helper scripts and tools
-- `examples/`  — Templates, example Fabric mods, example datapacks, test files
-- `archived/`  — Reserved for projects no longer developed but kept for reference (registry: `archived/archive.json`, validate with `scripts/check_archive.py`)
-- `other/`     — Reserved for content that doesn't fit another category (registry: `archived/archive.json`, validate with `scripts/check_archive.py`)
+- `mods/`        — Fabric mods (Gradle subprojects, auto-discovered by `settings.gradle`)
+- `packs/`       — Datapacks / resource packs
+- `scripts/`     — Helper scripts and tools
+- `examples/`    — Templates, example Fabric mods, example datapacks, test files
+- `build-logic/` — Shared Gradle script (`shared-fabric-mod.gradle`) applied by the mod subprojects
+- `archived/`    — Reserved for projects no longer developed but kept for reference (registry: `archived/archive.json`, validate with `scripts/check_archive.py`)
+
+Content that does not fit another category is not given its own directory.
+Register it in `archived/archive.json` with `"kind": "other"` instead; the
+schema (`archived/archive.schema.json`) enumerates the valid kinds.
 
 ---
 
@@ -45,6 +60,26 @@ This runs the build task across every subproject under `mods/` and produces mod 
 ### CI
 
 Pushes and pull requests trigger the `build.yml` workflow (Build & Lint), which runs `buildAll` and `lint` across all subprojects and uploads build artifacts. See `.github/workflows/build.yml` for the full pipeline, including the release-publishing job.
+
+The workflow has three checks with **different levels of enforcement**:
+
+| Check | Enforced? | Notes |
+|---|---|---|
+| `build` (`buildAll`) | yes | failure fails the job |
+| Gradle `lint` | yes | step is `continue-on-error`, but "Final summary" re-fails the job |
+| Datapack lint (`scripts/lint_datapacks.sh`, Mecha) | yes | step is `continue-on-error` for diagnostics, but the script propagates Mecha's exit status, so "Release gate" blocks publishing and "Final summary" fails the job |
+
+All three checks are enforced. (The datapack lint used to be advisory only: the
+script ended in an unconditional `exit 0` while the step was `continue-on-error`,
+making it a no-op that could never fail a build. Mecha 0.101.0 validates all
+3634 `.mcfunction` files here and passes with zero errors, so it was made
+enforcing on 2026-10-07. Set `LINT_WARN_ONLY=1` for a one-off advisory run.)
+
+The datapack lint still skips the paths listed in `IGNORE_PATHS` at the top of
+`scripts/lint_datapacks.sh` (`archived/*`, `packs/cmdTunnel-datapack/*` and two
+26.x `time query` files in `macroEngine-Datapack-v26.4`). Mecha only checks
+command *syntax* — it does not load the pack, so a green run is not proof that a
+datapack behaves correctly.
 
 ## History
 
