@@ -137,9 +137,29 @@ def audit_org(org):
         return None
 
     if not o.get("two_factor_requirement_enabled"):
+        # Do not *assume* that enabling the requirement is dangerous - measure it.
+        # The reliable way to read per-member 2FA state is the 2fa_disabled
+        # filter; the `two_factor_authentication` field on /members is only
+        # populated for some token types and reads as absent otherwise.
+        no2fa = get(f"/orgs/{org}/members?filter=2fa_disabled")
+        if isinstance(no2fa, list):
+            if no2fa:
+                names = ", ".join(m.get("login", "?") for m in no2fa)
+                risk = (f"BLOCKED: {len(no2fa)} member(s) have no 2FA yet ({names}). "
+                        "They must enable 2FA first or they will lose access.")
+            else:
+                risk = ("SAFE to enable: every member already has 2FA, so nobody gets "
+                        "locked out.")
+        else:
+            risk = ("member 2FA state could not be read; check the People tab before "
+                    "enabling")
         add("A", "high", "org.2fa-off", org,
             "two-factor authentication is NOT required org-wide; on a single-seat org, "
-            "losing that one account loses every repository")
+            f"losing that one account loses every repository. {risk} "
+            "Note: a fine-grained PAT cannot change this setting - GitHub returns HTTP "
+            "200 and leaves it disabled. Use Settings > Authentication security, or a "
+            "classic PAT with the admin:org scope.",
+            fix=("patch-org-2fa", org, None))
     if o.get("plan", {}).get("name") == "free":
         add("A", "info", "org.plan-free", org,
             "free plan - Advanced Security features (validity checks, custom secret "
@@ -472,7 +492,24 @@ def apply_fixes(dry_run):
         if dry_run:
             applied.append((f["id"], f["target"], "dry-run"))
             continue
-        if kind == "patch-repo":
+        if kind == "patch-org-2fa":
+            _cat, org_name, _ = f["fix"]
+            r = gh(f"/orgs/{org_name}", "PATCH", {"two_factor_requirement_enabled": True})
+            if "_error" in r:
+                applied.append((f["id"], org_name, f"FAILED: {r['_error']}"))
+                continue
+            # GitHub returns HTTP 200 for this field even when it did not apply
+            # it, so a status code alone would report a false success. Read back.
+            check = gh(f"/orgs/{org_name}")
+            if check.get("two_factor_requirement_enabled") is True:
+                applied.append((f["id"], org_name, "applied"))
+            else:
+                applied.append((f["id"], org_name,
+                                "FAILED: GitHub returned 200 but the field is still "
+                                "false. A fine-grained PAT cannot change the org 2FA "
+                                "requirement; use Settings > Authentication security "
+                                "or a classic PAT with admin:org."))
+        elif kind == "patch-repo":
             _cat, repo, patch = f["fix"]
             r = gh(f"/repos/{repo}", "PATCH", patch)
             ok = "_error" not in r
