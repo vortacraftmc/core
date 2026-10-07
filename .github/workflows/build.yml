@@ -7,8 +7,10 @@ on:
 
 # Least privilege by default. Only the `release` job below gets
 # contents: write, and it never checks out or runs repository code.
+# (This was `contents: write`, which contradicted the comment: the
+# python-ci job inherited it and runs repository code via `pip install -e`.)
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
