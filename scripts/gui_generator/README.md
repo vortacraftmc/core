@@ -375,7 +375,8 @@ guigenmc ui
 2. On PyPI, add a **Trusted Publisher** for this repo:
    - Owner: your GitHub user/org  
    - Repository: `guigenmc`  
-   - Workflow: `publish.yml`  
+
+   - Workflow: `publish.yml`  (retired, pre-monorepo)
    - Environment: `pypi`
 3. No API token needed (OIDC).
 

@@ -13,8 +13,9 @@ your-project/
 ├── scripts/
 │   └── dp-resolve.py            ← CLI resolver tool (no external deps — stdlib only)
 ├── .github/workflows/
-│   ├── datapack-build.yml       ← Main CI/CD pipeline
-│   └── dep-update.yml           ← Weekly automated update check
+
+│   ├── datapack-build.yml       ← Main CI/CD pipeline  (retired, pre-monorepo)
+│   └── dep-update.yml           ← Weekly automated update check  (retired, pre-monorepo)
 ├── deps/                        ← Git submodules land here
 │   └── some-lib/
 └── example-pack/                ← Example datapack (reference implementation)

@@ -521,13 +521,13 @@ jobs:
           echo "::group::📦 Datapack Lint"
           trap 'echo "::endgroup::"' EXIT
 
-          if [ ! -f ".github/workflows/lint.sh" ]; then
-            printf "${RED}✘ .github/workflows/lint.sh is missing${RESET}\n"
-            echo "::error file=.github/workflows/lint.sh,title=Missing lint script::The datapack lint script does not exist."
+          if [ ! -f "scripts/lint_datapacks.sh" ]; then
+            printf "${RED}✘ scripts/lint_datapacks.sh is missing${RESET}\n"
+            echo "::error file=scripts/lint_datapacks.sh,title=Missing lint script::The datapack lint script does not exist."
             exit 1
           fi
 
-          bash .github/workflows/lint.sh
+          bash scripts/lint_datapacks.sh
           rc=$?
 
           if [ "$rc" -eq 0 ]; then
@@ -772,7 +772,9 @@ jobs:
           tag_name: packs-latest
           name: Latest packs
           body: |
-            MAINTENANCE PAUSED (not permanently archived). Since 2026-10-04 the maintainer is expected to be inactive until at least 2027-2028; no fixes or releases are planned and issues may go unanswered. All datapacks are archived reference copies (see archived/README.md); do not deploy them on a live server without review.
+            MAINTENANCE PAUSED (not permanently archived). Since 2026-10-04 the maintainer is expected to be inactive until at least 2027-2028; no fixes or releases are planned and issues may go unanswered.
+
+            The zips attached here are built from the LIVE `packs/` tree (individual packs plus the merged datapack), not from `archived/` - `archived/` holds no datapacks and is never built, zipped or merged. CI's datapack lint is advisory only and cannot fail a build, so a green run is not proof a pack is valid: review a pack before deploying it on a live server.
 
             Automatically updated on every push to main. Always reflects the current contents of packs/ and the merged datapack built from packs/merge-manifest.json.
           # FIX (AI-assisted, see CREDITS.md): this job has no checkout and runs
@@ -784,11 +786,10 @@ jobs:
           files: release-assets/*.zip
           # Fail loudly instead of publishing an empty release.
           fail_on_unmatched_files: true
-          # FIX: was make_latest: false. This doesn't conflict with the intent
-          # in the comment above ("keep download links permanently valid" via
-          # moving the tag forward), but it does mean GitHub's "Latest
-          # release" badge won't point at this release, so the repo's main
-          # page may show a different (or no) release as "Latest". Changed to
-          # true assuming that's not intentional; revert if another "real"
-          # version release is meant to stay Latest instead.
+          # FIX: was make_latest: false. This tag is moved forward on every push
+          # to main, so download URLs stay valid either way; the difference is
+          # only that GitHub's "Latest release" badge now points at this
+          # release. Changed to true assuming the old value was not
+          # intentional; revert if another "real" version release is meant to
+          # stay Latest instead.
           make_latest: true

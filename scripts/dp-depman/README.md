@@ -231,8 +231,9 @@ dp-depman/
 │   └── dp-resolve.py            ← Resolver (no external dependencies)
 ├── .github/
 │   └── workflows/
-│       ├── datapack-build.yml   ← Build + release pipeline
-│       └── dep-update.yml       ← Scheduled update check
+
+│       ├── datapack-build.yml   ← Build + release pipeline  (retired, pre-monorepo)
+│       └── dep-update.yml       ← Scheduled update check  (retired, pre-monorepo)
 └── example-pack/                ← Reference datapack implementation
 ```
 

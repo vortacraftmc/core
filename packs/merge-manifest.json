@@ -4,8 +4,14 @@
     "name": "merged-datapack",
     "description": "Merged vortacraftmc datapack",
     "_comment": "min_format/max_format required for format 82+ (25w31a+); pack_format optional/legacy-only.",
-    "min_format": 122,
-    "max_format": 122
+    "min_format": [
+      122,
+      1
+    ],
+    "max_format": [
+      122,
+      1
+    ]
   },
   "include": [
     "guikit-datapack",
