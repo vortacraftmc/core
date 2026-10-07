@@ -27,8 +27,14 @@ on GitHub. Nothing in this folder will be fixed or re-checked during the pause, 
 
 1. `git mv packs/<name> archived/<name>` (or set `"path": null` if the code lives elsewhere).
    If the pack is `locked: true` in `packs/.datapack-lock.json`, unlock it in a separate
-   PR first (see `datapack-immutability.yml`), otherwise CI blocks the move; remove its
-   entry from the lock file in the same PR as the move.
+   PR first and remove its entry from the lock file in the same PR as the move.
+
+   > **Note:** the lock file is currently **documentation only**. The workflow it
+   > names (`.github/workflows/datapack-immutability.yml`) does not exist in this
+   > repository, and `scripts/datapack_lock/check_lock.py` is not invoked by any
+   > workflow or Gradle task, so CI does **not** block edits to a `locked: true`
+   > pack. Follow the unlock procedure by convention, or add the missing
+   > enforcement workflow first.
 2. Add an entry to `archive.json`: `status`, `archived_on`, `reason`, `last_version`,
    `license`, `deploy`, `successor`, and any `known_issues`.
 3. Remove it from `packs/merge-manifest.json` `include` if listed.

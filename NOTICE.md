@@ -37,8 +37,14 @@ covers the Gradle side.
 - JDK 25, wrapper included — don't add a second build system or bypass the
   wrapper.
 - `./gradlew buildAll` and `./gradlew lint` must both pass before you
-  request review; CI enforces this on every push and PR (see
-  `.github/workflows/build.yml`).
+  request review. CI does enforce **both of these** on every push and PR —
+  the steps are marked `continue-on-error` so the diagnostics can still run,
+  but the "Final summary" step re-fails the job if either one did not
+  succeed (see `.github/workflows/build.yml`).
+- CI's separate **datapack** lint (Mecha, `.github/workflows/lint.sh`) is
+  advisory only: the script ends in an unconditional `exit 0` and the step
+  is `continue-on-error`, so it can never fail a build. Treat its output as
+  a warning, not a gate.
 - Building a single subproject during iteration is fine
   (`./gradlew :mods:<subproject-name>:build`), but run the full `buildAll`
   before opening the PR — cross-subproject breakage is the most common
