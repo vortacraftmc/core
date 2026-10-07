@@ -80,7 +80,7 @@ if [ ! -f "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
   curl -s "https://get.sdkman.io" | bash
 fi
 
-# Güvenli SDKMAN yükleme kontrolü
+# Only source SDKMAN if its init script actually exists
 if [ -f "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
   # shellcheck disable=SC1091
   source "$SDKMAN_DIR/bin/sdkman-init.sh"
@@ -96,7 +96,7 @@ JAVA25_CANDIDATE="$(sdk list java 2>/dev/null | grep -oE '25(\.[0-9]+)*-tem' | h
 if [ -z "$JAVA25_CANDIDATE" ]; then
   JAVA25_CANDIDATE="$(sdk list java 2>/dev/null | grep -oE '25(\.[0-9]+)*-temurin' | head -1 || true)"
 fi
-# Kesin bir aday bulunamazsa güvenli bir varsayılan sürüm ataması
+# Fall back to a known-good default if no candidate could be resolved
 if [ -z "$JAVA25_CANDIDATE" ]; then
   JAVA25_CANDIDATE="25.0.2-tem"
 fi
@@ -110,14 +110,22 @@ sdk use java "$JAVA25_CANDIDATE" || true
 export JAVA_HOME="$SDKMAN_DIR/candidates/java/current"
 append_env "export JAVA_HOME=\"\$HOME/.sdkman/candidates/java/current\"" "JAVA_HOME=SDKMAN"
 
-# ── Gradle 9.4.0 ──────────────────────────────────────────────────────
-echo "🐘 Installing Gradle 9.4.0..."
-if [ ! -f "/opt/gradle/bin/gradle" ]; then
+# ── Gradle (same version as the wrapper) ─────────────────────────────
+# Derived from gradle/wrapper/gradle-wrapper.properties so the system Gradle
+# cannot drift from the wrapper (it used to be hardcoded to 9.4.0 while the
+# wrapper pinned a newer release).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WRAPPER_PROPS="$SCRIPT_DIR/../gradle/wrapper/gradle-wrapper.properties"
+GRADLE_VERSION="$(sed -n 's|.*gradle-\([0-9][0-9.]*\)-bin\.zip.*|\1|p' "$WRAPPER_PROPS" 2>/dev/null | head -n 1)"
+GRADLE_VERSION="${GRADLE_VERSION:-9.8.0}"
+echo "🐘 Installing Gradle ${GRADLE_VERSION}..."
+if [ ! -f "/opt/gradle/bin/gradle" ] || ! /opt/gradle/bin/gradle -v 2>/dev/null | grep -q "Gradle ${GRADLE_VERSION}"; then
   wget -q -O /tmp/gradle.zip \
-    "https://services.gradle.org/distributions/gradle-9.4.0-bin.zip"
+    "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
+  $SUDO rm -rf /tmp/gradle-extract /opt/gradle
   $SUDO mkdir -p /tmp/gradle-extract /opt/gradle
   $SUDO unzip -q /tmp/gradle.zip -d /tmp/gradle-extract
-  $SUDO cp -a /tmp/gradle-extract/gradle-9.4.0/. /opt/gradle/
+  $SUDO cp -a "/tmp/gradle-extract/gradle-${GRADLE_VERSION}/." /opt/gradle/
   $SUDO rm -rf /tmp/gradle-extract /tmp/gradle.zip
 else
   echo "  Already installed: $(/opt/gradle/bin/gradle -v | grep Gradle || true)"
