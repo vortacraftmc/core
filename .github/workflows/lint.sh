@@ -11,8 +11,11 @@ COLOR_PATH="\033[0;36m"      # Cyan
 COLOR_MUTED="\033[0;90m"     # Muted / Gray
 COLOR_SUBHEADER="\033[1;35m" # Magenta
 
-echo "::group::📦 Installing Mecha"
-python -m pip install mecha
+# Pinned: the IGNORE_PATHS below are tied to this grammar version. Bump deliberately.
+MECHA_VERSION="${MECHA_VERSION:-0.101.0}"
+
+echo "::group::📦 Installing Mecha ${MECHA_VERSION}"
+python -m pip install "mecha==${MECHA_VERSION}"
 echo "::endgroup::"
 
 IGNORE_PATHS=(
@@ -43,7 +46,7 @@ echo -e "${COLOR_SUBHEADER}▶ Copying Repository:${COLOR_RESET}"
 cp -a . "$TMP_DIR/project"
 echo -e "${COLOR_MUTED}  │ Files copied to temporary directory: $TMP_DIR/project${COLOR_RESET}"
 
-cd "$TMP_DIR/project"
+cd "$TMP_DIR/project" || exit 1
 
 echo -e "${COLOR_SUBHEADER}▶ Removing Ignored Paths:${COLOR_RESET}"
 REMOVED_FILES=()
@@ -75,25 +78,14 @@ fi
 
 echo "::endgroup::"
 
-echo "::group::♻️ Restoring deleted files"
+echo "::group::♻️ Cleanup"
 
-cd "$ORIGINAL_DIR"
-
-echo -e "${COLOR_SUBHEADER}▶ Working Directory Status:${COLOR_RESET}"
-
-if [ "${#REMOVED_FILES[@]}" -gt 0 ]; then
-    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        git checkout -- "${REMOVED_FILES[@]}" 2>/dev/null || true
-        echo -e "${COLOR_SUCCESS}  └── Restored ${#REMOVED_FILES[@]} item(s) from Git index.${COLOR_RESET}"
-        echo "::notice::Restored ${#REMOVED_FILES[@]} file(s)/folder(s) from Git index."
-    else
-        echo -e "${COLOR_MUTED}  └── Working directory intact (modifications isolated in temp directory).${COLOR_RESET}"
-        echo "::notice::Working directory is intact (files were only modified in temp directory)."
-    fi
-else
-    echo -e "${COLOR_MUTED}  └── No files to restore.${COLOR_RESET}"
-    echo "::notice::No files to restore."
-fi
+# Ignored paths were only removed inside the temporary copy, so the working
+# tree is untouched. (An earlier version ran `git checkout -- <ignored paths>`
+# here, which does nothing useful in CI and silently DISCARDS uncommitted local
+# changes to those paths when the script is run by hand.)
+cd "$ORIGINAL_DIR" || exit 1
+echo -e "${COLOR_MUTED}  └── Working directory untouched (${#REMOVED_FILES[@]} path(s) were removed from the temp copy only).${COLOR_RESET}"
 
 echo "::endgroup::"
 

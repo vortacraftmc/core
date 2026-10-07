@@ -19,3 +19,11 @@ out/
 !mods/*/src/*/**/run
 !mods/*/src/*/**/build
 *.patch
+
+# Python / Node tooling artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+node_modules/
+/scripts/gui_generator/dist/

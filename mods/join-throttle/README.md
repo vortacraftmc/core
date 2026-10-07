@@ -34,6 +34,9 @@ client never enters the world.
 }
 ```
 
+`exemptAddresses` takes IP literals in any spelling (`"::1"` and `"0:0:0:0:0:0:0:1"` are the same address;
+an IPv4-mapped form like `"::ffff:10.0.0.1"` matches `10.0.0.1`). Hostnames are not resolved and never match.
+
 ## Limits - read before relying on it
 
 - **Behind a proxy (Velocity, BungeeCord, a TCP tunnel/reverse proxy) every player appears to come from the
