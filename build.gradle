@@ -143,10 +143,21 @@ def findMissingWatermarks = { List<File> packDirs ->
             resourcePackCount++
             return false
         }
+        // Konum da dogrulanir: hata mesaji "data/<namespace>/function/ altinda"
+        // der, ama onceki kod dosyayi paketin HERHANGI bir yerinde kabul
+        // ediyordu (tags/function/ icine kacmis bir kopya bile yeterli
+        // sayiliyordu). Artik yalnizca dogru agac altindakiler sayilir.
         def hasWatermark = false
-        dir.eachFileRecurse { f ->
-            if (f.name == '_vc_origin.mcfunction') {
-                hasWatermark = true
+        def dataDir = new File(dir, 'data')
+        if (dataDir.exists()) {
+            dataDir.eachFileRecurse { f ->
+                if (f.name != '_vc_origin.mcfunction') return
+                def rel = dataDir.toPath().relativize(f.toPath()).toString()
+                def parts = rel.split(java.util.regex.Pattern.quote(File.separator))
+                // <namespace>/function(s)/...  (pack_format < 48 'functions' kullanir)
+                if (parts.length >= 3 && (parts[1] == 'function' || parts[1] == 'functions')) {
+                    hasWatermark = true
+                }
             }
         }
         !hasWatermark

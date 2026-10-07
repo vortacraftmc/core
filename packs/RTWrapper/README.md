@@ -2,6 +2,30 @@
 
 > ⚠️ **Archived.** This pack is archived and no longer maintained. The `vortacraftmc/core` datapacks are being superseded by [Fabric](https://fabricmc.net/) mods. Existing worlds using this pack will continue to work, but no new features or fixes are planned.
 
+> ⚠️ **Structural exception (audit 2026-10-07) — needs a maintainer decision.**
+> This directory breaks three conventions that the rest of the repo follows, and
+> fixing them means moving ~700 files, so it was deliberately **not** done
+> automatically:
+>
+> 1. **There is no top-level `pack.mcmeta`.** The datapack root is nested at
+>    `datapack/RTWrapper-Datapack/`, so `packs/RTWrapper` itself is not a
+>    loadable pack. Every other entry in `packs/` is. The Gradle pack tasks
+>    (`zipPacks`, `checkPacks`, `mergeDatapacks`) discover packs by locating
+>    `pack.mcmeta`, so they see the nested directory, not this one.
+> 2. **It contains a Fabric mod** (`rtwrapper-fabric/`). `NOTICE.md` puts mods in
+>    `mods/` and datapacks in `packs/`. There is also `mods/rtwrapper-mod`, so
+>    two RTWrapper Fabric mods live in this repo.
+> 3. **It says "Archived" but is not registered.** `archived/archive.json` holds
+>    one entry (`runtoolkit-suite`); this pack is not in it, and it still lives
+>    under `packs/`. `checkArchive` fails for an entry that is registered as
+>    archived while still under `packs/`, so the banner and the registry cannot
+>    both be satisfied as things stand.
+>
+> Related: `packs/RTWrapper-v1.0.1` (format 122, in `merge-manifest.json`) and
+> `packs/RTWrapper-1.21.1` (format 48) are separate generations of the same API.
+> The three naming schemes — no suffix, `-1.21.1` (Minecraft version) and
+> `-v1.0.1` (semver) — are not consistent with each other.
+
 RTWrapper is a datapack for Java Edition 26.3.
 
 ## Layout

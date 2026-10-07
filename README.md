@@ -67,12 +67,19 @@ The workflow has three checks with **different levels of enforcement**:
 |---|---|---|
 | `build` (`buildAll`) | yes | failure fails the job |
 | Gradle `lint` | yes | step is `continue-on-error`, but "Final summary" re-fails the job |
-| Datapack lint (`.github/workflows/lint.sh`, Mecha) | **no — advisory only** | the script ends in an unconditional `exit 0` ("Warning Mode") and the step is `continue-on-error`, so this check cannot fail the build. Mecha errors are reported as warnings only |
+| Datapack lint (`scripts/lint_datapacks.sh`, Mecha) | yes | step is `continue-on-error` for diagnostics, but the script propagates Mecha's exit status, so "Release gate" blocks publishing and "Final summary" fails the job |
 
-The datapack lint also skips the paths listed in `IGNORE_PATHS` at the top of
-`.github/workflows/lint.sh` (`archived/*`, `packs/cmdTunnel-datapack/*` and two
-26.x `time query` files in `macroEngine-Datapack-v26.4`). Do not read a green
-CI run as proof that a datapack change is valid — load the pack.
+All three checks are enforced. (The datapack lint used to be advisory only: the
+script ended in an unconditional `exit 0` while the step was `continue-on-error`,
+making it a no-op that could never fail a build. Mecha 0.101.0 validates all
+3634 `.mcfunction` files here and passes with zero errors, so it was made
+enforcing on 2026-10-07. Set `LINT_WARN_ONLY=1` for a one-off advisory run.)
+
+The datapack lint still skips the paths listed in `IGNORE_PATHS` at the top of
+`scripts/lint_datapacks.sh` (`archived/*`, `packs/cmdTunnel-datapack/*` and two
+26.x `time query` files in `macroEngine-Datapack-v26.4`). Mecha only checks
+command *syntax* — it does not load the pack, so a green run is not proof that a
+datapack behaves correctly.
 
 ## History
 
