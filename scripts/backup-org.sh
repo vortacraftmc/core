@@ -37,24 +37,79 @@
 #
 # Portability: runs on GNU/Linux and on macOS/BSD. Where a GNU-only tool would
 # be needed (sha256sum, find -printf) a portable equivalent is used instead.
+#
+# Interface: every setting can be given either as an environment variable or
+# as a command-line flag of the same name; the flag wins. `--help` prints this
+# header plus the flag list. `--strict` makes any warning a non-zero exit, so
+# CI can tell a complete backup from a partial one.
+#
+# Verified with: shellcheck -S style scripts/backup-org.sh   (clean)
+#                bash scripts/backup-org.sh --dry-run        (no side effects)
 
 set -Eeuo pipefail
 umask 077
 
+SCRIPT_VERSION="3.0"
+
+log()  { printf '[%s] %s\n' "$(date +%T)" "$*"; }
+# warn() counts what it prints. A backup tool that cannot tell "I got
+# everything" from "half the org returned 403" is not much use, so --strict
+# turns WARN_COUNT into a non-zero exit instead of asking the reader to scan
+# the log for the word WARNING.
+WARN_COUNT=0
+warn() { WARN_COUNT=$((WARN_COUNT + 1)); printf '[%s] WARNING: %s\n' "$(date +%T)" "$*" >&2; }
+# note() is the same output with a different severity: an advisory about a
+# choice the caller made deliberately, not something that went wrong. Counting
+# those would make `--strict --encrypt none` fail on every single run, which
+# would teach people to stop using --strict at all.
+note() { printf '[%s] NOTE: %s\n' "$(date +%T)" "$*"; }
+die()  { printf '[%s] ERROR: %s\n' "$(date +%T)" "$*" >&2; exit 1; }
+
+# FIX: --help ran `sed -n '2,32p' "$0"`. The header comment had grown to 38
+# lines, so the last 7 were silently dropped and the output ended mid-sentence
+# ("...found there afterwards. This also" - verified by running --help). Derive
+# the range from the file instead: print every leading comment line, stop at
+# the first line that is not a comment. Help can no longer drift out of sync.
+print_header() {
+  awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"
+}
+
+usage() {
+  print_header
+  cat <<'USAGE'
+
+Command-line flags (each overrides the environment variable of the same name):
+  --org ORG            Organization to back up            [env ORG]
+  --backup-dir DIR     Working directory for the backup   [env BACKUP_DIR]
+  --out-dir DIR        Where the archive is written       [env OUT_DIR]
+  --encrypt METHOD     none | 7z | gpg                    [env ENCRYPT]
+  --keep N             Archives to keep when pruning      [env KEEP]
+  --jobs N             Parallel source-clone workers      [env JOBS]
+  --copy-to DEST       rsync the finished archive here    [env COPY_TO]
+  --with-source        Include plain source checkouts     [env INCLUDE_SOURCE=1]
+  --no-source          Skip plain source checkouts        [env INCLUDE_SOURCE=0]
+  --with-hooks         Include webhook definitions        [env WITH_HOOKS=1]
+  --strict             Exit non-zero if anything was warned about
+  --dry-run            Show what would run, change nothing
+  --verify-only FILE   Verify an existing archive (and its .sha256) and exit
+  --version            Print the script version and exit
+  -h, --help           This text
+
+A flag always wins over its environment variable. Everything is still readable
+from the environment alone, which is how .github/workflows/backup-org.yml
+drives the script.
+USAGE
+}
+
 # ------------------------------------------------------------------ arguments
 DRY_RUN=0
 VERIFY_ONLY=""
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --dry-run)      DRY_RUN=1; shift ;;
-    --verify-only)  VERIFY_ONLY="${2:-}"; shift 2 ;;
-    -h|--help)      sed -n '2,32p' "$0"; exit 0 ;;
-    *) printf 'unknown option: %s\n' "$1" >&2; exit 2 ;;
-  esac
-done
+STRICT=0
 
+# Environment defaults first, so a flag simply overwrites the variable it
+# stands for. BACKUP_DIR is deliberately NOT defaulted here: its default is
+# derived from ORG, and --org has to be parsed first for that to be right.
 ORG="${ORG:-vortacraftmc}"
-BACKUP_DIR="${BACKUP_DIR:-$HOME/backup/$ORG}"
 OUT_DIR="${OUT_DIR:-$HOME/backup-out}"
 ENCRYPT="${ENCRYPT:-none}"
 INCLUDE_SOURCE="${INCLUDE_SOURCE:-1}"
@@ -63,14 +118,39 @@ KEEP="${KEEP:-7}"
 PIP_BREAK_SYSTEM="${PIP_BREAK_SYSTEM:-0}"
 JOBS="${JOBS:-4}"
 COPY_TO="${COPY_TO:-}"
+
+need_arg() { # need_arg <flag> <remaining-arg-count>
+  [ "$2" -ge 2 ] || die "$1 needs a value"
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run)      DRY_RUN=1; shift ;;
+    --strict)       STRICT=1; shift ;;
+    --with-source)  INCLUDE_SOURCE=1; shift ;;
+    --no-source)    INCLUDE_SOURCE=0; shift ;;
+    --with-hooks)   WITH_HOOKS=1; shift ;;
+    --verify-only)  need_arg "$1" $#; VERIFY_ONLY="$2"; shift 2 ;;
+    --org)          need_arg "$1" $#; ORG="$2"; shift 2 ;;
+    --backup-dir)   need_arg "$1" $#; BACKUP_DIR="$2"; shift 2 ;;
+    --out-dir)      need_arg "$1" $#; OUT_DIR="$2"; shift 2 ;;
+    --encrypt)      need_arg "$1" $#; ENCRYPT="$2"; shift 2 ;;
+    --keep)         need_arg "$1" $#; KEEP="$2"; shift 2 ;;
+    --jobs)         need_arg "$1" $#; JOBS="$2"; shift 2 ;;
+    --copy-to)      need_arg "$1" $#; COPY_TO="$2"; shift 2 ;;
+    --version)      printf 'backup-org.sh %s\n' "$SCRIPT_VERSION"; exit 0 ;;
+    -h|--help)      usage; exit 0 ;;
+    *) printf 'unknown option: %s\n' "$1" >&2
+       printf 'try: bash %s --help\n' "$0" >&2
+       exit 2 ;;
+  esac
+done
+
+BACKUP_DIR="${BACKUP_DIR:-$HOME/backup/$ORG}"
 DATE="$(date +%F)"
 RUN_STAMP="$(date +%Y%m%d-%H%M%S)"
 
 LOG_FILE="${LOG_FILE:-$OUT_DIR/backup-$RUN_STAMP.log}"
-
-log()  { printf '[%s] %s\n' "$(date +%T)" "$*"; }
-warn() { printf '[%s] WARNING: %s\n' "$(date +%T)" "$*" >&2; }
-die()  { printf '[%s] ERROR: %s\n' "$(date +%T)" "$*" >&2; exit 1; }
 
 # FIX: `set -e` alone reports no context. Report the failing line instead of
 # leaving the user with a bare non-zero exit.
@@ -127,9 +207,16 @@ if [ -n "$VERIFY_ONLY" ]; then
   case "$VERIFY_ONLY" in
     *.7z)
       command -v 7z >/dev/null || die "7z not installed, cannot verify a .7z archive"
-      read -rsp "Archive password: " PW1; echo
+      # ARCHIVE_PASSWORD is accepted here for the same reason it exists on the
+      # create path: an unattended `--verify-only` (CI, cron) has no tty, and
+      # under `set -e` a failed `read` killed the script with no explanation.
+      if [ -n "${ARCHIVE_PASSWORD:-}" ]; then
+        PW1="$ARCHIVE_PASSWORD"
+      else
+        [ -t 0 ] || die "an encrypted .7z needs ARCHIVE_PASSWORD set, or an interactive terminal"
+        read -rsp "Archive password: " PW1; echo
+      fi
       7z t -p"$PW1" -bd "$VERIFY_ONLY" >/dev/null || die "archive test failed"
-      unset PW1
       ;;
     *.gpg)
       command -v gpg >/dev/null || die "gpg not installed, cannot verify a .gpg archive"
@@ -142,19 +229,51 @@ if [ -n "$VERIFY_ONLY" ]; then
       tar -tzf "$VERIFY_ONLY" >/dev/null || die "archive verification failed"
       ;;
   esac
+  # Checksum first. `tar -tzf`/`7z t` only prove the container is readable, so
+  # a truncated download that still parses would pass. The sidecar written by
+  # hash_archive() is verified when it sits next to the archive; its absence is
+  # a warning, not an error (it may simply not have been copied along).
+  if [ -f "$VERIFY_ONLY.sha256" ]; then
+    if command -v sha256sum >/dev/null 2>&1; then
+      (cd "$(dirname "$VERIFY_ONLY")" && sha256sum -c "$(basename "$VERIFY_ONLY").sha256") \
+        || die "SHA-256 mismatch - the archive is corrupt or was modified"
+    elif command -v shasum >/dev/null 2>&1; then
+      (cd "$(dirname "$VERIFY_ONLY")" && shasum -a 256 -c "$(basename "$VERIFY_ONLY").sha256") \
+        || die "SHA-256 mismatch - the archive is corrupt or was modified"
+    else
+      warn "no sha256sum/shasum available; the .sha256 sidecar was not checked"
+    fi
+    log "SHA-256 sidecar verified"
+  else
+    warn "no $(basename "$VERIFY_ONLY").sha256 next to the archive; checksum not verified"
+  fi
+
   # Report what is inside, so a silently truncated backup is visible.
   [ -n "${TMPV:-}" ] || { TMPV="$(mktemp -d)"; trap 'rm -rf "$TMPV"' EXIT; }
   if [ "${VERIFY_ONLY##*.}" = "7z" ]; then
-    7z l -ba "$VERIFY_ONLY" | awk '{print $NF}' > "$TMPV/list" 2>/dev/null || true
+    # FIX: this listing ran WITHOUT the password, but archives are created with
+    # `-mhe=on` (header encryption), so 7z could not read the file list and
+    # every .7z verification silently reported "0 entries". PW1 is now kept
+    # until after the listing instead of being unset right after `7z t`.
+    7z l -ba -p"$PW1" "$VERIFY_ONLY" | awk '{print $NF}' > "$TMPV/list" 2>/dev/null || true
+    unset PW1
   elif [ "${VERIFY_ONLY##*.}" = "gpg" ]; then
     tar -tzf "$TMPV/decrypted.tar.gz" > "$TMPV/list"
   else
     tar -tzf "$VERIFY_ONLY" > "$TMPV/list"
   fi
-  nrepos=$(grep -c '/repositories/[^/]*/repository/HEAD$' "$TMPV/list" 2>/dev/null || echo 0)
-  nfiles=$(wc -l < "$TMPV/list")
-  log "Archive OK: $nfiles entries, $nrepos bare git repositories"
-  [ "$nrepos" -gt 0 ] || warn "no bare repositories found in the archive"
+  # FIX: this was `grep -c ... || echo 0`. grep -c already prints "0" and then
+  # exits 1, so `|| echo 0` appended a SECOND zero and nrepos became the
+  # two-line string "0\n0" - which made the very next `[ "$nrepos" -gt 0 ]`
+  # fail with "integer expression expected". That is exactly the case
+  # --verify-only exists for: an archive that turned out to hold no repos.
+  nrepos="$(grep -c '/repositories/[^/]*/repository/HEAD$' "$TMPV/list" 2>/dev/null)" || nrepos=0
+  nfiles="$(wc -l < "$TMPV/list" | tr -d ' ')"
+  log "Archive OK: ${nfiles:-0} entries, ${nrepos:-0} bare git repositories"
+  [ "${nrepos:-0}" -gt 0 ] || warn "no bare repositories found in the archive"
+  if [ "$STRICT" = 1 ] && [ "$WARN_COUNT" -gt 0 ]; then
+    die "$WARN_COUNT warning(s) during verification and --strict was given"
+  fi
   exit 0
 fi
 
@@ -181,6 +300,31 @@ fi
 # ---------------------------------------------------------------------- tools
 command -v git >/dev/null || die "git not found"
 command -v perl >/dev/null || warn "perl not found - credential redaction will be skipped"
+# curl is only strictly needed when `gh` is absent (api_get_raw falls back to
+# it), but the token pre-flight below always uses it, so require it outright
+# rather than discovering the gap an hour into a backup.
+command -v curl >/dev/null || die "curl not found - required for the GitHub API calls"
+
+# Fail fast on a bad, expired or under-scoped token. Previously the first sign
+# of trouble was github-backup failing part-way through - after a pip install
+# and possibly after cloning repositories - with an error naming the tool
+# rather than the credential. One cheap API call up front turns that into an
+# immediate, accurate message. Skipped under --dry-run, which must not touch
+# the network at all.
+if [ "$DRY_RUN" != 1 ]; then
+  auth_status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 \
+    -H "Authorization: Bearer $TOKEN" \
+    -H 'Accept: application/vnd.github+json' \
+    "https://api.github.com/orgs/$ORG" 2>/dev/null)" || auth_status="000"
+  case "$auth_status" in
+    200) log "Token accepted; organization '$ORG' is readable." ;;
+    401) die "GitHub rejected the token (HTTP 401): it is empty, expired or revoked." ;;
+    403) die "GitHub refused the request (HTTP 403): the token is valid but cannot see '$ORG', or is rate-limited / SSO-gated." ;;
+    404) die "Organization '$ORG' is not visible to this token (HTTP 404). Check --org and that the token has organization read access." ;;
+    000) die "could not reach api.github.com - check the network or proxy settings." ;;
+    *)   die "unexpected response from api.github.com/orgs/$ORG (HTTP $auth_status)" ;;
+  esac
+fi
 
 if ! command -v github-backup >/dev/null 2>&1; then
   log "installing github-backup"
@@ -319,16 +463,25 @@ PY
 }
 
 # ------------------------------------------------- org-level metadata
-mkdir -p "$BACKUP_DIR/org-meta"
-for ep in teams members rulesets; do
-  if api_get "/orgs/$ORG/$ep" > "$BACKUP_DIR/org-meta/$ep.json.tmp" 2>/dev/null; then
-    mv "$BACKUP_DIR/org-meta/$ep.json.tmp" "$BACKUP_DIR/org-meta/$ep.json"
-    log "saved org-meta/$ep.json"
-  else
-    rm -f "$BACKUP_DIR/org-meta/$ep.json.tmp"
-    warn "could not fetch $ep (missing permission?)"
-  fi
-done
+# FIX: --dry-run is documented as "show what would run, change nothing", but
+# this loop (and the repository-count check below it) ran unconditionally, so a
+# dry run really did call the API and write org-meta/*.json into BACKUP_DIR.
+# Both are now guarded, matching the save() helper further down, which already
+# honoured DRY_RUN.
+if [ "$DRY_RUN" = 1 ]; then
+  log "[dry-run] would fetch org-meta/{teams,members,rulesets}.json"
+else
+  mkdir -p "$BACKUP_DIR/org-meta"
+  for ep in teams members rulesets; do
+    if api_get "/orgs/$ORG/$ep" > "$BACKUP_DIR/org-meta/$ep.json.tmp" 2>/dev/null; then
+      mv "$BACKUP_DIR/org-meta/$ep.json.tmp" "$BACKUP_DIR/org-meta/$ep.json"
+      log "saved org-meta/$ep.json"
+    else
+      rm -f "$BACKUP_DIR/org-meta/$ep.json.tmp"
+      warn "could not fetch $ep (missing permission?)"
+    fi
+  done
+fi
 
 # FIX: the old check was
 #     gh api --jq '.public_repos + .total_private_repos'
@@ -336,15 +489,33 @@ done
 # when it is null, jq errors, `|| true` swallowed that, and the whole
 # repository-count sanity check silently never ran. Read the fields separately
 # with a null default, and say loudly when the check cannot run.
-EXPECTED="$(api_get "/orgs/$ORG" 2>/dev/null | python3 -c \
+EXPECTED=""
+if [ "$DRY_RUN" = 1 ]; then
+  log "[dry-run] would verify the repository count against the org"
+else
+  EXPECTED="$(api_get "/orgs/$ORG" 2>/dev/null | python3 -c \
   'import sys,json
 try:
     d=json.load(sys.stdin)
     print((d.get("public_repos") or 0) + (d.get("total_private_repos") or 0))
 except Exception:
     pass' 2>/dev/null || true)"
-ACTUAL="$(find "$BACKUP_DIR/repositories" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
-if [ -z "$EXPECTED" ]; then
+fi
+
+# FIX (pre-existing, verified against the pre-fix revision): on a first run
+# $BACKUP_DIR/repositories does not exist yet, so `find` exits 1, and under
+# `set -Eeuo pipefail` that status propagates out of the pipeline and aborts
+# the script. `2>/dev/null` hid the message but not the status. The effect was
+# that --dry-run - the mode you reach for precisely BEFORE a first real backup -
+# died here every single time, printing only "command failed (exit 1) at line
+# 346". Guard the path rather than leaning on the shell to swallow the status.
+ACTUAL=0
+if [ -d "$BACKUP_DIR/repositories" ]; then
+  ACTUAL="$(find "$BACKUP_DIR/repositories" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+fi
+if [ "$DRY_RUN" = 1 ]; then
+  : # nothing to compare against; the run is a rehearsal
+elif [ -z "$EXPECTED" ]; then
   warn "could not read the org repository count - skipping the completeness check"
 elif [ "$EXPECTED" != "$ACTUAL" ]; then
   warn "the org reports $EXPECTED repositories but the backup has $ACTUAL folders. Check for missing ones."
@@ -390,11 +561,18 @@ save "$BACKUP_DIR/org-meta/secret-scanning-alerts.json" "/orgs/$ORG/secret-scann
 # be restored, not just the bare team list. Team member objects only carry
 # login/id/avatar_url (no e-mail or real name), so this adds no new PII; the
 # sanitize step below still runs over these files like every other .json.
-TEAM_SLUGS="$(python3 -c \
-  'import sys,json
+# FIX: org-meta/teams.json is absent whenever the fetch was skipped (--dry-run)
+# or failed for lack of a permission. `< missing-file` is a redirection error
+# raised by the shell itself, so the trailing `2>/dev/null || true` never got a
+# chance to absorb it and the run aborted here.
+TEAM_SLUGS=""
+if [ -f "$BACKUP_DIR/org-meta/teams.json" ]; then
+  TEAM_SLUGS="$(python3 -c \
+    'import sys,json
 try:
     for t in json.load(sys.stdin): print(t["slug"])
 except Exception: pass' < "$BACKUP_DIR/org-meta/teams.json" 2>/dev/null || true)"
+fi
 if [ -n "$TEAM_SLUGS" ]; then
   mkdir -p "$BACKUP_DIR/org-meta/teams"
   while IFS= read -r slug; do
@@ -503,13 +681,21 @@ process_repo() {
 export -f log warn process_repo
 export INCLUDE_SOURCE DRY_RUN
 
+# FIX: same missing-directory class of bug as ACTUAL/want above. `find` on an
+# absent $BACKUP_DIR/repositories exits 1 and pipefail aborts the run, so the
+# script never reached the archive step on a first-time --dry-run.
 shopt -s dotglob nullglob
-find "$BACKUP_DIR/repositories" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null \
-  | xargs -0 -P "$JOBS" -I{} bash -c 'process_repo "$@"' _ {}
+if [ -d "$BACKUP_DIR/repositories" ]; then
+  find "$BACKUP_DIR/repositories" -mindepth 1 -maxdepth 1 -type d -print0 \
+    | xargs -0 -P "$JOBS" -I{} bash -c 'process_repo "$@"' _ {}
+fi
 shopt -u dotglob nullglob
 
 if [ "$INCLUDE_SOURCE" = 1 ]; then
-  n="$(find "$BACKUP_DIR/repositories" -path '*/source/*' -not -path '*/.git/*' -type f 2>/dev/null | wc -l | tr -d ' ')"
+  n=0
+  if [ -d "$BACKUP_DIR/repositories" ]; then
+    n="$(find "$BACKUP_DIR/repositories" -path '*/source/*' -not -path '*/.git/*' -type f | wc -l | tr -d ' ')"
+  fi
   log "Plain source files going into the archive: $n"
   if [ "${n:-0}" -eq 0 ] && [ "$DRY_RUN" != 1 ]; then
     warn "source/ folders are empty, source code will not be in the archive."
@@ -683,12 +869,17 @@ else
     log "[dry-run] tar -czf $ARCHIVE -C $PARENT $BASE"
     log "WARNING: the archive would NOT be encrypted."
   else
-    warn "the archive is NOT encrypted. It contains private code; encrypt it before uploading anywhere."
+    note "the archive is NOT encrypted (you asked for --encrypt none). It contains private code; encrypt it before uploading anywhere."
     tar -czf "$ARCHIVE" -C "$PARENT" "$BASE"
     tar -tzf "$ARCHIVE" >/dev/null || die "archive verification failed"
     # FIX: `tar -tzf` only proves the archive is readable, not that it contains
     # the repositories. Count them and compare against what was backed up.
-    want="$(find "$BACKUP_DIR/repositories" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')"
+    # Same missing-directory guard as ACTUAL above: `find` on an absent path
+    # exits 1 and pipefail turns that into an abort.
+    want=0
+    if [ -d "$BACKUP_DIR/repositories" ]; then
+      want="$(find "$BACKUP_DIR/repositories" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+    fi
     got="$(tar -tzf "$ARCHIVE" | grep -c "/repositories/[^/]*/repository/HEAD$" || true)"
     if [ "${want:-0}" -gt 0 ] && [ "${got:-0}" != "${want:-0}" ]; then
       die "archive contains $got bare repositories but $want were backed up - refusing to prune or finish"
@@ -764,3 +955,28 @@ echo "  4. Only then delete the machine this ran on"
 if [ "$DRY_RUN" != 1 ]; then
   echo "  Note: the unencrypted backup folder is still here: $BACKUP_DIR"
 fi
+
+# Report the warning count unconditionally: on a backup tool "it exited 0" has
+# to be distinguishable from "it exited 0 but eleven endpoints 403'd".
+echo
+if [ "$WARN_COUNT" -gt 0 ]; then
+  echo "  Warnings during this run: $WARN_COUNT (re-run with --strict to fail on any)"
+else
+  echo "  Warnings during this run: 0"
+fi
+
+# --strict turns any warning into a failure. Without it the script exited 0
+# even when half the org was skipped for lack of a permission, so CI reported a
+# partial backup as a success. Placed after the summary so the archive path is
+# already on screen when the run is declared incomplete.
+if [ "$STRICT" = 1 ] && [ "$WARN_COUNT" -gt 0 ]; then
+  die "$WARN_COUNT warning(s) during this run and --strict was given; treating the backup as incomplete"
+fi
+
+# `tee` is a coprocess attached to our stdout. Closing our end and reaping it is
+# the only way to be sure the summary above actually reached $LOG_FILE - without
+# this the last lines can still be in tee's buffer when the script exits, so the
+# log silently ends before "Done." and a reader debugging a failed run loses
+# exactly the part they need.
+exec >&- 2>&-
+wait || true
