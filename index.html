@@ -38,6 +38,12 @@
       margin: 0 auto;
       padding: 0 24px 80px;
     }
+    h1.page-title {
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 8px;
+    }
     h2 {
       font-size: 22px;
       font-weight: 600;
@@ -434,9 +440,14 @@
   <img class="banner" src="banner.png" alt="vortacraftmc/core" onerror="this.style.display='none'">
 
   <main>
+    <!-- The page had no <h1>: the section headings below are <h2> with nothing
+         above them, so screen-reader users got no document title and crawlers
+         fell back to <title> plus the banner image. -->
+    <h1 class="page-title">vortacraftmc/core</h1>
     <p class="lead">
-      A consolidated monorepo for the vortacraftmc ecosystem:
-      Fabric mods, datapacks, and helper scripts, all in one place.
+      Monorepo for VortaCraftMC: Fabric mods, Minecraft datapacks and resource
+      packs, plus the datapack tooling built around them. Download the latest
+      release below.
     </p>
     <p id="api-status"></p>
     <div id="refresh-control">
@@ -510,9 +521,15 @@
         github.com/vortacraftmc/core
       </a>
       &nbsp;·&nbsp;
-      <a href="https://github.com/vortacraftmc/core/wiki" target="_blank" rel="noopener noreferrer">Wiki</a>
+      <!-- The Wiki link was removed: the repository has has_wiki = false, so
+           GitHub only ever answered with a "wiki is disabled" page. Replaced
+           with the two destinations a reader of a download page actually
+           wants next. -->
+      <a href="https://github.com/vortacraftmc/core/releases" target="_blank" rel="noopener noreferrer">Releases</a>
       &nbsp;·&nbsp;
       <a href="https://github.com/vortacraftmc/core/issues" target="_blank" rel="noopener noreferrer">Issues</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/vortacraftmc/core/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">Security</a>
       &nbsp;·&nbsp;
       <a href="https://github.com/vortacraftmc/core/fork" target="_blank" rel="noopener noreferrer">Fork</a>
     </footer>
