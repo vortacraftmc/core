@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # backup-org.sh
 # GitHub organization backup: git (bare) + wiki + issues/PRs/releases/labels
-# + Actions/Dependabot/security metadata + optional plain source clones
-# + org metadata -> archive (.tar.gz by default, optional 7z encryption).
+# + Actions/Dependabot/security metadata + team membership/repo access
+# + repo topics/languages + optional plain source clones
+# + org metadata -> archive (.tar.gz by default, optional 7z/gpg encryption).
 #
 # Usage:
 #   bash scripts/backup-org.sh              # full backup
@@ -23,10 +24,14 @@
 # Keep this script OUTSIDE any git repository folder if you are worried about
 # accidentally committing it.
 #
-# Privacy: before archiving, tokens / URL credentials / webhook secrets / e-mail
-# addresses are redacted from config and metadata files (both tar.gz and 7z),
-# and the script aborts if a token pattern is still found there. Git objects and
-# plain source copies are never modified.
+# Privacy: before archiving, tokens / URL credentials / webhook secrets /
+# query-string secrets (?token=, ?api_key=, ...) / e-mail addresses are
+# redacted from config and metadata files (tar.gz, 7z, and gpg alike), and the
+# script aborts if a token pattern is still found there afterwards. This also
+# covers the new team-membership, topics and languages files automatically,
+# since the sanitize step scans every *.json file under org-meta/repo-meta,
+# not a fixed list. Git objects and plain source copies are never modified
+# (commit authorship has to stay intact for a restore to be meaningful).
 #
 # Portability: runs on GNU/Linux and on macOS/BSD. Where a GNU-only tool would
 # be needed (sha256sum, find -printf) a portable equivalent is used instead.
@@ -333,6 +338,24 @@ save "$BACKUP_DIR/org-meta/security-managers.json"      "/orgs/$ORG/security-man
 save "$BACKUP_DIR/org-meta/dependabot-alerts.json"      "/orgs/$ORG/dependabot/alerts"
 save "$BACKUP_DIR/org-meta/secret-scanning-alerts.json" "/orgs/$ORG/secret-scanning/alerts"
 
+# NEW: per-team membership and repository access, so who-can-access-what can
+# be restored, not just the bare team list. Team member objects only carry
+# login/id/avatar_url (no e-mail or real name), so this adds no new PII; the
+# sanitize step below still runs over these files like every other .json.
+TEAM_SLUGS="$(python3 -c \
+  'import sys,json
+try:
+    for t in json.load(sys.stdin): print(t["slug"])
+except Exception: pass' < "$BACKUP_DIR/org-meta/teams.json" 2>/dev/null || true)"
+if [ -n "$TEAM_SLUGS" ]; then
+  mkdir -p "$BACKUP_DIR/org-meta/teams"
+  while IFS= read -r slug; do
+    [ -n "$slug" ] || continue
+    save "$BACKUP_DIR/org-meta/teams/$slug-members.json" "/orgs/$ORG/teams/$slug/members"
+    save "$BACKUP_DIR/org-meta/teams/$slug-repos.json"   "/orgs/$ORG/teams/$slug/repos"
+  done <<< "$TEAM_SLUGS"
+fi
+
 REPO_LIST="$(api_get "/orgs/$ORG/repos" 2>/dev/null | python3 -c \
   'import sys,json
 try:
@@ -361,6 +384,9 @@ else
     save "$d/secret-scanning-alerts.json" "/repos/$ORG/$repo/secret-scanning/alerts?state=open"
     # NEW: community health snapshot
     save "$d/community-profile.json"    "/repos/$ORG/$repo/community/profile"
+    # NEW: topics and language breakdown - plain repo metadata, no PII
+    save "$d/topics.json"               "/repos/$ORG/$repo/topics"
+    save "$d/languages.json"            "/repos/$ORG/$repo/languages"
     branch="$(api_get "/repos/$ORG/$repo" 2>/dev/null | python3 -c \
       'import sys,json
 try: print(json.load(sys.stdin).get("default_branch") or "")
@@ -418,12 +444,15 @@ sanitize_dir() {
   fi
   local n=0 f
   while IFS= read -r -d '' f; do
-    if grep -aEq "$TOKEN_RE|https?://[^/[:space:]@:]+:[^@[:space:]/]+@|\"(secret|token|password|client_secret)\"[[:space:]]*:[[:space:]]*\"[^\"]+\"|hooks\.slack\.com/services|discord(app)?\.com/api/webhooks" "$f"; then
+    if grep -aEq "$TOKEN_RE|https?://[^/[:space:]@:]+:[^@[:space:]/]+@|\"(secret|token|password|client_secret)\"[[:space:]]*:[[:space:]]*\"[^\"]+\"|hooks\.slack\.com/services|discord(app)?\.com/api/webhooks|[?&](token|key|secret|password|api_key|access_token)=" "$f"; then
       perl -0pi -e '
         s#\b(gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})\b#[REDACTED:token]#g;
         s#(https?://)[^/\s:@]+:[^@\s/]+@#$1\[REDACTED]@#g;
         s#("(?:secret|token|password|client_secret)"\s*:\s*)"[^"]+"#$1"[REDACTED]"#gi;
         s#https://(?:hooks\.slack\.com/services|discord(?:app)?\.com/api/webhooks)/[^\s"\x27]+#[REDACTED:webhook]#g;
+        # NEW: secrets embedded as webhook/URL query-string parameters, e.g.
+        # https://example.com/hook?token=abcd or ?api_key=... in hooks.json
+        s#([?&](?:token|key|secret|password|api_key|access_token)=)[^&\s"\x27]+#$1\[REDACTED]#gi;
       ' "$f"
       n=$((n + 1))
     fi
