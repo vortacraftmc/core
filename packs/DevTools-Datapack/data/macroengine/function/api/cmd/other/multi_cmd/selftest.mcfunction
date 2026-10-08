@@ -52,6 +52,12 @@ function macroengine:core/internal/api/cmd/other/multi_cmd/selftest_case {name:"
 function macroengine:core/internal/api/cmd/other/multi_cmd/selftest_case {name:"not false -> run",expect:1,entry:{cmd:"data modify storage macroengine:engine _selftest_ran set value 1",condition:{not:{tag:"macroengine_selftest_absent_xyz"}}}}
 function macroengine:core/internal/api/cmd/other/multi_cmd/selftest_case {name:"not true -> skip",expect:0,entry:{cmd:"data modify storage macroengine:engine _selftest_ran set value 1",condition:{not:{tag:"macroengine_selftest"}}}}
 
+# --- 5b. nesting (regression: a nested group used to clobber the parent's depth) ---
+function macroengine:core/internal/api/cmd/other/multi_cmd/selftest_case {name:"all_of[any_of,tag] -> run",expect:1,entry:{cmd:"data modify storage macroengine:engine _selftest_ran set value 1",condition:{all_of:[{any_of:[{tag:"macroengine_selftest_absent_xyz"},{tag:"macroengine_selftest"}]},{tag:"macroengine_selftest"}]}}}
+function macroengine:core/internal/api/cmd/other/multi_cmd/selftest_case {name:"all_of[any_of,absent] -> skip",expect:0,entry:{cmd:"data modify storage macroengine:engine _selftest_ran set value 1",condition:{all_of:[{any_of:[{tag:"macroengine_selftest_absent_xyz"},{tag:"macroengine_selftest"}]},{tag:"macroengine_selftest_absent_xyz"}]}}}
+function macroengine:core/internal/api/cmd/other/multi_cmd/selftest_case {name:"any_of[all_of false,tag] -> run",expect:1,entry:{cmd:"data modify storage macroengine:engine _selftest_ran set value 1",condition:{any_of:[{all_of:[{tag:"macroengine_selftest"},{tag:"macroengine_selftest_absent_xyz"}]},{tag:"macroengine_selftest"}]}}}
+function macroengine:core/internal/api/cmd/other/multi_cmd/selftest_case {name:"not[any_of none] -> run",expect:1,entry:{cmd:"data modify storage macroengine:engine _selftest_ran set value 1",condition:{not:{any_of:[{tag:"macroengine_selftest_absent_xyz"},{tag:"macroengine_selftest_absent_abc"}]}}}}
+
 # --- 6. nested group gating ----------------------------------------
 function macroengine:core/internal/api/cmd/other/multi_cmd/selftest_case {name:"group gated off -> skip",expect:0,entry:{commands:[{cmd:"data modify storage macroengine:engine _selftest_ran set value 1"}],condition:{tag:"macroengine_selftest_absent_xyz"}}}
 function macroengine:core/internal/api/cmd/other/multi_cmd/selftest_case {name:"group gated on -> run",expect:1,entry:{commands:[{cmd:"data modify storage macroengine:engine _selftest_ran set value 1"}],condition:{tag:"macroengine_selftest"}}}
