@@ -277,7 +277,7 @@ the releases on the project's GitHub page for what's available.
 
 No hidden payloads, no telemetry, nothing phoning home. No tokens or secrets
 are committed to this repo, and please don't add any. There's more detail in
-[SECURITY.md](SECURITY.md) and [.github/SUPPORT.md](.github/SUPPORT.md).
+[SECURITY.md](SECURITY.md); for anything else, open an issue on the repository.
 
 ## License
 

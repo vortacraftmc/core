@@ -17,10 +17,10 @@ next to it:
   touched — a shared dependency bump or API change can silently break a
   sibling mod.
 - `packs/` — Datapacks. These are **not** part of the Gradle build. There is
-  nothing to compile; validity is checked by loading the pack (or by the
-  linting/validation tooling referenced in `SECURITY.md`), not by
-  `buildAll`. Don't assume a green Gradle run says anything about a
-  datapack change.
+  nothing to compile; validity is checked by loading the pack plus the
+  syntax/reference tooling listed in `SECURITY.md` § "Validation tooling"
+  (Mecha lint, `checkPacks`, `mergeDatapacks`), not by `buildAll`. Don't
+  assume a green Gradle run says anything about a datapack change.
 - `scripts/` — Helper tooling, lower trust by default. Review before
   running locally.
 - `examples/` — Templates and sample code. Not shipped, not covered by the
@@ -66,9 +66,12 @@ covers the Gradle side.
   dynamic function generation, or anything that assembles commands from
   external input, call that out explicitly in the PR — it will get closer
   review than an average change.
-- Some packs under `packs/` are archived/frozen (see `SECURITY.md`'s scope
-  table). Don't submit feature PRs against frozen packs; fixes only, and
-  only if the issue is significant.
+- Packs listed in `archived/archive.json` are frozen. Don't submit feature PRs
+  against them; fixes only, and only if the issue is significant. Note that
+  **nothing is currently archived under `packs/`** - the registry's only
+  entry is the retired `runtoolkit/suite` repository with `"path": null`, so
+  today every pack in `packs/` accepts normal PRs. Validate with
+  `./gradlew printArchiveList` rather than trusting this sentence.
 
 ## Do not misuse this project
 

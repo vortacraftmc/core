@@ -143,10 +143,11 @@ def findMissingWatermarks = { List<File> packDirs ->
             resourcePackCount++
             return false
         }
-        // Konum da dogrulanir: hata mesaji "data/<namespace>/function/ altinda"
-        // der, ama onceki kod dosyayi paketin HERHANGI bir yerinde kabul
-        // ediyordu (tags/function/ icine kacmis bir kopya bile yeterli
-        // sayiliyordu). Artik yalnizca dogru agac altindakiler sayilir.
+        // The location is verified too: the error message says the watermark
+        // must live "under data/<namespace>/function/", but the previous code
+        // accepted the file ANYWHERE in the pack (a stray copy that had
+        // drifted into tags/function/ counted as present). Only watermarks
+        // under the correct tree are counted now.
         def hasWatermark = false
         def dataDir = new File(dir, 'data')
         if (dataDir.exists()) {

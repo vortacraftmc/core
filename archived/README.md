@@ -1,6 +1,13 @@
 # archived/
 
 Frozen, reference-only projects. **Do not deploy on a live server without review.**
+
+> **Current contents: none.** `archive.json` has a single entry, the retired
+> `runtoolkit/suite` repository, registered with `"path": null` because its
+> code lives elsewhere - so there is no archived code in this directory, only
+> this README, the registry and its schema. The rules below describe what
+> happens *when* a project is moved here; today `packs/` holds all 14 live
+> packs and nothing has been retired into `archived/`.
 Nothing here is built, zipped or merged: `packs/` is the only tree the Gradle
 tasks (`zipPacks`, `checkPacks`, `mergeDatapacks`) scan, and `archived/` is
 deliberately outside it.
@@ -25,16 +32,16 @@ on GitHub. Nothing in this folder will be fixed or re-checked during the pause, 
 
 ## Archiving a project
 
-1. `git mv packs/<name> archived/<name>` (or set `"path": null` if the code lives elsewhere).
-   If the pack is `locked: true` in `packs/.datapack-lock.json`, unlock it in a separate
-   PR first and remove its entry from the lock file in the same PR as the move.
+1. `git mv packs/<name> archived/<name>` (or set `"path": null` if the code lives
+   elsewhere).
 
-   > **Note:** the lock file is currently **documentation only**. The workflow it
-   > names (`.github/workflows/datapack-immutability.yml`) does not exist in this
-   > repository, and `scripts/datapack_lock/check_lock.py` is not invoked by any
-   > workflow or Gradle task, so CI does **not** block edits to a `locked: true`
-   > pack. Follow the unlock procedure by convention, or add the missing
-   > enforcement workflow first.
+   > **Note:** this repository used to ship a datapack immutability lock
+   > (`packs/.datapack-lock.json` + `scripts/datapack_lock/check_lock.py`). It was
+   > removed on 2026-10-08 because it enforced nothing: the workflow it named
+   > (`.github/workflows/datapack-immutability.yml`) never existed and no workflow
+   > or Gradle task invoked the checker, so `locked: true` was a label, not a
+   > guard. Archiving is therefore a plain `git mv` plus a registry entry - there
+   > is no unlock step.
 2. Add an entry to `archive.json`: `status`, `archived_on`, `reason`, `last_version`,
    `license`, `deploy`, `successor`, and any `known_issues`.
 3. Remove it from `packs/merge-manifest.json` `include` if listed.

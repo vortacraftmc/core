@@ -1,6 +1,18 @@
 # vortacraftmc/core
 
-Consolidated monorepo for the vortacraftmc ecosystem.
+Monorepo for VortaCraftMC: Fabric mods, Minecraft datapacks and resource
+packs, plus the datapack tooling built around them.
+
+<!--
+This opening line is the repository's GitHub description verbatim. Change one,
+change the other:
+  curl -X PATCH -H "Authorization: Bearer $TOKEN" \
+    https://api.github.com/repos/vortacraftmc/core \
+    -d '{"description": "<the new line>"}'
+They had already drifted apart once ("Consolidated monorepo for the
+vortacraftmc ecosystem."), which is circular - the organization *is*
+vortacraftmc, so the description said nothing about what is in here.
+-->
 
 ## Project status (maintenance paused)
 
@@ -59,7 +71,7 @@ This runs the build task across every subproject under `mods/` and produces mod 
 
 ### CI
 
-Pushes and pull requests trigger the `build.yml` workflow (Build & Lint), which runs `buildAll` and `lint` across all subprojects and uploads build artifacts. See `.github/workflows/build.yml` for the full pipeline, including the release-publishing job.
+Pushes and pull requests trigger the `build.yml` workflow, named **`CI`**. Its two jobs are `Verify & package` and `Publish release`; the first runs `buildAll` and `lint` across all subprojects and uploads build artifacts. See `.github/workflows/build.yml` for the full pipeline, including the release-publishing job.
 
 The workflow has three checks with **different levels of enforcement**:
 
@@ -72,7 +84,7 @@ The workflow has three checks with **different levels of enforcement**:
 All three checks are enforced. (The datapack lint used to be advisory only: the
 script ended in an unconditional `exit 0` while the step was `continue-on-error`,
 making it a no-op that could never fail a build. Mecha 0.101.0 validates all
-3634 `.mcfunction` files here and passes with zero errors, so it was made
+3681 `.mcfunction` files here and passes with zero errors, so it was made
 enforcing on 2026-10-07. Set `LINT_WARN_ONLY=1` for a one-off advisory run.)
 
 The datapack lint still skips the paths listed in `IGNORE_PATHS` at the top of
@@ -86,18 +98,22 @@ datapack behaves correctly.
 This monorepo consolidates projects that were previously scattered across
 individual repositories under the `runtoolkit` GitHub organization
 (TunnelScript, LeftClickDetection, dp-depman, RTWrapper, datapack-fixer, template-datapack, InteractionClickDetection,
-cmdTunnel-datapack, dpgen, TEMPLATE-MOD, inv_gui, macroEngine, guigen). That
+cmdTunnel-datapack, dpgen, TEMPLATE-MOD, macroEngine, guigen). That
 organization has since been retired in favor of `vortacraftmc`; the old repos
 are archived with a pointer to this monorepo, and are not otherwise
 maintained.
+
+> **Correction (2026-10-08).** Earlier revisions of this list also named
+> `inv_gui`, and a later paragraph warned against using it because its
+> licensing as a [rarula/Sketch](https://github.com/rarula/Sketch) fork had
+> never been cleared. **No `inv_gui` pack has ever existed in this
+> repository** - `git log --all --diff-filter=A -- '*inv_gui*'` returns
+> nothing, and no directory, `pack.mcmeta` or namespace by that name is
+> present. The warning was about a project that was discussed but never
+> merged in, so both the list entry and the paragraph have been removed
+> rather than kept as a caveat about absent code.
 
 **Original source:** this project originated as [`runtoolkit/suite`](https://github.com/runtoolkit/suite)
 by **Runtoolkit**. It is maintained here as `vortacraftmc/core`; the original
 copyright notices in each `LICENSE`/`NOTICE` file are preserved.
 
-**Note on `inv_gui`:** this pack was originally brought in as a renamed fork
-of [rarula/Sketch](https://github.com/rarula/Sketch). Its licensing relative
-to the upstream project was never properly cleared before the fork was
-built out, so **use of `inv_gui` is not recommended** until that is
-resolved. It is kept in this monorepo for reference and possible
-reimplementation, not as a supported component.
