@@ -1,0 +1,10 @@
+{
+  "pack": {
+    "description": "vortacraftmc DevTools | selftests and debug helpers (development only, never ship)",
+    "min_format": [122, 0],
+    "max_format": [122, 0]
+  },
+  "features": {
+    "enabled": ["minecraft:vanilla"]
+  }
+}
