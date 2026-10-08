@@ -6,34 +6,34 @@ on:
   workflow_dispatch:
 
 # ---------------------------------------------------------------------------
-# SECURITY TRADE-OFF (read this before merging)
+# SUPPLY-CHAIN BOUNDARY
 #
-# This workflow used to be three jobs:
-#   python-ci  (matrix)  contents: read
-#   build-lint           contents: read
-#   release              contents: write, no checkout, runs no repository code
+# This workflow is deliberately split into two jobs:
 #
-# That split existed so the only job holding `contents: write` never executed
-# repository code. Collapsing everything into ONE job removes that boundary:
-# the job below both runs repository code and holds write access. A malicious
-# dependency or a compromised build step can now move tags and publish
-# releases.
+#   ci       contents: read   - checks out the repo and runs repository code
+#                               (Gradle, pip, third-party dependencies)
+#   publish  contents: write  - no checkout, runs no repository code; it only
+#                               downloads the artifact `ci` produced and moves
+#                               the packs-latest tag
 #
-# Mitigations kept: publishing is still gated on a green build + lint and on
-# the ref being main; the token is the default GITHUB_TOKEN, not a PAT; and
-# pull_request runs never reach the publish path.
+# The boundary matters: a malicious dependency or a compromised build step can
+# only reach the release if it can also hold write access. Keeping those in
+# separate jobs means the code-executing job has a read-only token, and the job
+# with the writable token never executes anything from this repository.
 #
-# Also lost: the macOS leg of the Python matrix. A single job runs on a single
-# runner OS, so only ubuntu-latest is exercised now. Both Python versions are
-# still tested, each behind its own setup-python step.
+# The cost is an artifact round-trip between the two jobs. That is the point -
+# the artifact is the only thing that crosses the boundary.
+#
+# `publish` additionally requires the `release` environment when one is
+# configured with required reviewers, which turns publication into an approval
+# step rather than an automatic one.
 #
 # The organisation backup is NOT run here - it has its own dedicated workflow
 # (.github/workflows/backup-org.yml) with its own secrets and encryption
-# options. Duplicating it in this job would mean a second, differently
-# configured copy of the same secret handling.
+# options.
 # ---------------------------------------------------------------------------
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -42,8 +42,16 @@ concurrency:
 
 jobs:
   ci:
-    name: CI • guigenmc • build • lint • release
+    name: CI • guigenmc • build • lint
     runs-on: ubuntu-latest
+
+    # Read-only: this job checks out the repository and runs repository code.
+    permissions:
+      contents: read
+
+    # The publish job gates on this instead of re-deriving it.
+    outputs:
+      publish: ${{ steps.release-gate.outputs.PUBLISH }}
 
     env:
       FORCE_COLOR: "1"
@@ -55,20 +63,20 @@ jobs:
       # GROUP 1 - toolchain
       # ==================================================================
       - name: Checkout full repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # Required for the optional source-with-history archive.
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
         with:
           distribution: temurin
           java-version: '25'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
 
       - name: Environment
         shell: bash
@@ -131,7 +139,7 @@ jobs:
       # installed - it would silently re-test the first one.
       # ==================================================================
       - name: Set up Python 3.9
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.9"
 
@@ -181,7 +189,7 @@ jobs:
           fi
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
 
@@ -259,7 +267,7 @@ jobs:
 
       - name: Upload generated datapack
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: datapack-generated
           path: shop-*.zip
@@ -296,7 +304,7 @@ jobs:
 
       - name: Upload build artifacts
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: build-outputs
           path: |
@@ -395,7 +403,7 @@ jobs:
 
       - name: Upload source archive
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: source-code-with-history
           path: source-with-history.zip
@@ -506,24 +514,20 @@ jobs:
           cp -v "${files[@]}" release-assets/
 
       # ==================================================================
-      # GROUP 10 - publish (same job now, so no artifact round-trip)
+      # GROUP 10 - hand the assets across the boundary
+      #
+      # This job stops here. It has a read-only token, so it cannot publish
+      # anything; the `publish` job below owns that. The artifact is the only
+      # thing that crosses.
       # ==================================================================
-      - name: Publish packs-latest
+      - name: Upload release assets
         if: steps.release-gate.outputs.PUBLISH == 'true'
-        uses: softprops/action-gh-release@v3
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          tag_name: packs-latest
-          name: Latest packs
-          body: |
-            MAINTENANCE PAUSED (not permanently archived). Since 2026-10-04 the maintainer is expected to be inactive until at least 2027-2028; no fixes or releases are planned and issues may go unanswered.
-
-            The zips attached here are built from the LIVE `packs/` tree (individual packs plus the merged datapack), not from `archived/` - `archived/` holds no datapacks and is never built, zipped or merged. CI's datapack lint is advisory only and cannot fail a build, so a green run is not proof a pack is valid: review a pack before deploying it on a live server.
-
-            Automatically updated on every push to main. Always reflects the current contents of packs/ and the merged datapack built from packs/merge-manifest.json.
-          files: release-assets/*.zip
-          # Fail loudly instead of publishing an empty release.
-          fail_on_unmatched_files: true
-          make_latest: true
+          name: release-packs
+          path: release-assets/*.zip
+          if-no-files-found: error
+          retention-days: 7
 
       # ==================================================================
       # GROUP 11 - diagnostics
@@ -656,3 +660,69 @@ jobs:
             echo "::error title=CI failed::One or more checks did not succeed."
             exit 1
           fi
+
+  # ======================================================================
+  # PUBLISH: the only job with write access. No checkout, no repository
+  # code - it downloads the artifact produced by `ci` and moves the tag.
+  # ======================================================================
+  publish:
+    name: Publish • packs-latest
+    needs: ci
+    if: needs.ci.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    # When a `release` environment with required reviewers exists, this turns
+    # publication into a manual approval instead of an automatic step.
+    environment: release
+
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: release-packs
+          path: release-assets
+
+      # Fail before touching the tag if the artifact came across empty - an
+      # artifact can exist and still contain nothing, and publishing an empty
+      # release over a good one is not recoverable by simply re-running.
+      - name: Verify assets arrived
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::🔎 Verify release assets"
+          trap 'echo "::endgroup::"' EXIT
+
+          shopt -s nullglob
+          files=(release-assets/*.zip)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error title=No release assets::The release-packs artifact contained no zips."
+            exit 1
+          fi
+          empty=0
+          for f in "${files[@]}"; do
+            if [ ! -s "$f" ]; then
+              echo "::error title=Empty release asset::$f is zero bytes."
+              empty=1
+            fi
+          done
+          [ "$empty" -eq 0 ] || exit 1
+          echo "✔ ${#files[@]} asset(s) present and non-empty"
+
+      - name: Publish packs-latest
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        with:
+          tag_name: packs-latest
+          name: Latest packs
+          body: |
+            MAINTENANCE PAUSED (not permanently archived). Since 2026-10-04 the maintainer is expected to be inactive until at least 2027-2028; no fixes or releases are planned and issues may go unanswered.
+
+            The zips attached here are built from the LIVE `packs/` tree (individual packs plus the merged datapack), not from `archived/` - `archived/` holds no datapacks and is never built, zipped or merged. CI's datapack lint is advisory only and cannot fail a build, so a green run is not proof a pack is valid: review a pack before deploying it on a live server.
+
+            Automatically updated on every push to main. Always reflects the current contents of packs/ and the merged datapack built from packs/merge-manifest.json.
+          files: release-assets/*.zip
+          # Fail loudly instead of publishing an empty release.
+          fail_on_unmatched_files: true
+          make_latest: true
