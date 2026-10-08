@@ -21,6 +21,8 @@
 #                     # working `rsync`/`ssh` locally - no cloud API involved)
 #
 # Token: uses VC_TOKEN or GH_TOKEN if set, otherwise prompts (interactive only).
+# ARCHIVE_PASSWORD: passphrase for ENCRYPT=7z/gpg when run unattended (CI, cron
+# with no tty); omit it to be prompted interactively as before.
 # Keep this script OUTSIDE any git repository folder if you are worried about
 # accidentally committing it.
 #
@@ -161,7 +163,7 @@ TOKEN="${VC_TOKEN:-${GH_TOKEN:-}}"
 TOKEN_FILE=""
 cleanup() {
   [ -n "$TOKEN_FILE" ] && rm -f -- "$TOKEN_FILE"
-  unset TOKEN VC_TOKEN GH_TOKEN PW1 PW2 2>/dev/null || true
+  unset TOKEN VC_TOKEN GH_TOKEN PW1 PW2 ARCHIVE_PASSWORD 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -524,14 +526,20 @@ if [ "$ENCRYPT" = 7z ]; then
   fi
   ARCHIVE="$OUT_DIR/$ORG-$DATE.7z"
   rm -f "$ARCHIVE"
-  log "Set an archive password (ASCII characters only)."
-  if [ ! -t 0 ]; then die "ENCRYPT=7z needs an interactive password prompt"; fi
-  while :; do
-    read -rsp "Archive password: " PW1; echo
-    read -rsp "Password (again): " PW2; echo
-    if [ -n "$PW1" ] && [ "$PW1" = "$PW2" ]; then break; fi
-    log "Passwords are empty or do not match, try again."
-  done
+  # NEW: ARCHIVE_PASSWORD lets this run unattended (CI, a cron job with no
+  # tty) instead of only ever prompting interactively.
+  if [ -n "${ARCHIVE_PASSWORD:-}" ]; then
+    PW1="$ARCHIVE_PASSWORD"
+  else
+    log "Set an archive password (ASCII characters only)."
+    if [ ! -t 0 ]; then die "ENCRYPT=7z needs ARCHIVE_PASSWORD set, or an interactive password prompt"; fi
+    while :; do
+      read -rsp "Archive password: " PW1; echo
+      read -rsp "Password (again): " PW2; echo
+      if [ -n "$PW1" ] && [ "$PW1" = "$PW2" ]; then break; fi
+      log "Passwords are empty or do not match, try again."
+    done
+  fi
   if [ "$DRY_RUN" = 1 ]; then
     log "[dry-run] 7z a -t7z -mhe=on -p*** $ARCHIVE $BASE"
   else
@@ -551,18 +559,38 @@ elif [ "$ENCRYPT" = gpg ]; then
   rm -f "$ARCHIVE"
   if [ "$DRY_RUN" = 1 ]; then
     log "[dry-run] tar -czf - $BASE | gpg --symmetric -o $ARCHIVE"
-    log "WARNING: ENCRYPT=gpg will prompt interactively for a passphrase (twice, via gpg's own prompt)."
+    if [ -n "${ARCHIVE_PASSWORD:-}" ]; then
+      log "ARCHIVE_PASSWORD is set - would encrypt non-interactively."
+    else
+      log "WARNING: ENCRYPT=gpg will prompt interactively for a passphrase (twice, via gpg's own prompt)."
+    fi
   else
-    if [ ! -t 0 ]; then die "ENCRYPT=gpg needs an interactive passphrase prompt"; fi
+    # NEW: ARCHIVE_PASSWORD lets this run unattended (CI, a cron job with no
+    # tty) instead of only ever using gpg's interactive pinentry prompt.
+    if [ -z "${ARCHIVE_PASSWORD:-}" ] && [ ! -t 0 ]; then
+      die "ENCRYPT=gpg needs ARCHIVE_PASSWORD set, or an interactive passphrase prompt"
+    fi
     TMPTAR="$(mktemp)"
     tar -czf "$TMPTAR" -C "$PARENT" "$BASE" || die "could not create archive"
-    # gpg's own pinentry/tty prompt asks for and confirms the passphrase;
-    # nothing sensitive goes on the command line or into argv.
-    gpg --symmetric --cipher-algo AES256 -o "$ARCHIVE" "$TMPTAR" \
-      || { rm -f "$TMPTAR"; die "gpg encryption failed"; }
+    if [ -n "${ARCHIVE_PASSWORD:-}" ]; then
+      # Passphrase goes in on fd 0, never argv/ps, same as the interactive path.
+      gpg --batch --yes --passphrase-fd 0 --symmetric --cipher-algo AES256 \
+        -o "$ARCHIVE" "$TMPTAR" <<<"$ARCHIVE_PASSWORD" \
+        || { rm -f "$TMPTAR"; die "gpg encryption failed"; }
+    else
+      # gpg's own pinentry/tty prompt asks for and confirms the passphrase;
+      # nothing sensitive goes on the command line or into argv.
+      gpg --symmetric --cipher-algo AES256 -o "$ARCHIVE" "$TMPTAR" \
+        || { rm -f "$TMPTAR"; die "gpg encryption failed"; }
+    fi
     rm -f "$TMPTAR"
     log "Testing archive"
-    gpg --batch --yes -d -o /dev/null "$ARCHIVE" || die "archive test (decrypt) failed"
+    if [ -n "${ARCHIVE_PASSWORD:-}" ]; then
+      gpg --batch --yes --passphrase-fd 0 -d -o /dev/null "$ARCHIVE" \
+        <<<"$ARCHIVE_PASSWORD" || die "archive test (decrypt) failed"
+    else
+      gpg --batch --yes -d -o /dev/null "$ARCHIVE" || die "archive test (decrypt) failed"
+    fi
     log "Archive test passed"
   fi
 else

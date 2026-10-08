@@ -1,0 +1,112 @@
+# .github/workflows/backup-org.yml
+#
+# Runs scripts/backup-org.sh on a GitHub-hosted runner and uploads the
+# resulting archive as a workflow artifact. Entirely non-interactive - the
+# script is the same one used locally, driven here through environment
+# variables instead of prompts (see ARCHIVE_PASSWORD below).
+#
+# Required repo secrets:
+#   ORG_READ_TOKEN        Fine-grained PAT or GitHub App token with read
+#                          access to the org: repo contents, metadata,
+#                          members, teams, security events (Dependabot /
+#                          secret scanning), and Actions. Reused from the
+#                          CODEOWNERS Sync workflow - the same token already
+#                          has org-read access.
+#   BACKUP_ARCHIVE_PASSWORD   Passphrase for the encrypted archive. Required
+#                          whenever `encrypt` (below) is 7z or gpg; leave the
+#                          secret unset only if you intend to always run this
+#                          with encrypt=none.
+#
+# Optional repo/environment variable:
+#   BACKUP_ORG             Organization to back up. Defaults to vortacraftmc
+#                          (the script's own default) when unset.
+#
+# Manual-trigger only by default, same reasoning as CODEOWNERS Sync's
+# maintenance pause: no unattended token use while the org is quiet. Uncomment
+# the schedule block to back up automatically again.
+on:
+  workflow_dispatch:
+    inputs:
+      encrypt:
+        description: "Archive encryption"
+        type: choice
+        default: gpg
+        options: [gpg, 7z, none]
+      include_source:
+        description: "Also include plain (non-bare) source checkouts"
+        type: boolean
+        default: false
+  # schedule:
+  #   - cron: "0 4 * * 1" # Weekly, Monday 04:00 UTC
+
+permissions: {}
+
+concurrency:
+  # Never run two backups of the same org at once - github-backup isn't
+  # designed for concurrent runs against one organization.
+  group: backup-org
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    permissions:
+      contents: read
+
+    env:
+      ORG: ${{ vars.BACKUP_ORG || 'vortacraftmc' }}
+      OUT_DIR: ${{ runner.temp }}/backup-out
+      BACKUP_DIR: ${{ runner.temp }}/backup-work
+      ENCRYPT: ${{ inputs.encrypt || 'gpg' }}
+      INCLUDE_SOURCE: ${{ (inputs.include_source && '1') || '0' }}
+      JOBS: "2" # matches the standard ubuntu-latest runner's 2 vCPUs
+      KEEP: "1" # the runner is thrown away after the run; no history to prune
+      PIP_BREAK_SYSTEM: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+
+      - name: Check required secrets
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::ORG_READ_TOKEN secret is missing or empty."
+            exit 1
+          fi
+          if [ "$ENCRYPT" != none ] && [ -z "${ARCHIVE_PASSWORD:-}" ]; then
+            echo "::error::encrypt=$ENCRYPT needs the BACKUP_ARCHIVE_PASSWORD secret set."
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+          ARCHIVE_PASSWORD: ${{ secrets.BACKUP_ARCHIVE_PASSWORD }}
+
+      - name: Run backup
+        run: bash scripts/backup-org.sh
+        env:
+          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+          ARCHIVE_PASSWORD: ${{ secrets.BACKUP_ARCHIVE_PASSWORD }}
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ORG }}-backup-${{ github.run_id }}
+          path: |
+            ${{ env.OUT_DIR }}/*.tar.gz
+            ${{ env.OUT_DIR }}/*.tar.gz.gpg
+            ${{ env.OUT_DIR }}/*.7z
+            ${{ env.OUT_DIR }}/*.sha256
+          # Keep for a while on the Actions side too, independent of KEEP
+          # (which only prunes files inside a single, ephemeral runner).
+          retention-days: 14
+          if-no-files-found: error
