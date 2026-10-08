@@ -23,5 +23,5 @@ $data modify storage macroengine:engine _trunc_t set value $(truncated)
 scoreboard players set #trunc_flag macroengine.tmp 0
 execute store result score #trunc_flag macroengine.tmp run data get storage macroengine:engine _trunc_t
 
-$execute if score #trunc_flag macroengine.tmp matches 0 run title @a[name=$(player),limit=1] actionbar {"plain":true ,"storage":"macroengine:output","nbt":"text"}
-$execute if score #trunc_flag macroengine.tmp matches 1.. run title @a[name=$(player),limit=1] actionbar ["",{"plain":true ,"storage":"macroengine:output","nbt":"text"},{"text":"$(suffix)","color":"gray"}]
+$execute if score #trunc_flag macroengine.tmp matches 0 run title @a[name=$(player),limit=1] actionbar {"plain":true ,"storage":"macroengine:output","nbt":"text","interpret":false}
+$execute if score #trunc_flag macroengine.tmp matches 1.. run title @a[name=$(player),limit=1] actionbar ["",{"plain":true ,"storage":"macroengine:output","nbt":"text","interpret":false},{"text":"$(suffix)","color":"gray"}]

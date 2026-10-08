@@ -6,6 +6,6 @@ execute if data storage tunnelscript:gate pending run data modify storage tunnel
 execute if data storage tunnelscript:gate pending store result score #gate_requested tunnelscript.vars run data get storage tunnelscript_core:gatework tocheck
 execute if data storage tunnelscript:gate pending run scoreboard players operation #gate_elapsed tunnelscript.vars = #gate_now tunnelscript.vars
 execute if data storage tunnelscript:gate pending run scoreboard players operation #gate_elapsed tunnelscript.vars -= #gate_requested tunnelscript.vars
-execute if data storage tunnelscript:gate pending if score #gate_elapsed tunnelscript.vars matches 600.. run tellraw @a [{"text":"[TunnelScript] ","color":"aqua"},{"text":"Confirmation timed out: ","color":"gray"},{"storage":"tunnelscript:gate","nbt":"pending.label","color":"white"}]
+execute if data storage tunnelscript:gate pending if score #gate_elapsed tunnelscript.vars matches 600.. run tellraw @a [{"text":"[TunnelScript] ","color":"aqua"},{"text":"Confirmation timed out: ","color":"gray"},{"storage":"tunnelscript:gate","nbt":"pending.label","color":"white","plain":true,"interpret":false}]
 execute if data storage tunnelscript:gate pending if score #gate_elapsed tunnelscript.vars matches 600.. run data remove storage tunnelscript:gate pending
 execute if score #gate_elapsed tunnelscript.vars matches 600.. run tag @a remove tunnelscript_gate_owner

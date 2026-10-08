@@ -1,23 +1,18 @@
 # ─────────────────────────────────────────────────────────────────
-# macroengine:api/cmd/other/multi_cmd/internal/check_condition
-# Check condition and write result to $mcmd_cond_result
-# _mcmd_current.condition: {tag:"...", score:{...}, predicate:"..."}
+# macroengine:core/internal/api/cmd/other/multi_cmd/check_condition
+# Public entry point. Evaluates the condition attached to the command
+# currently being executed and writes the verdict to
+# $mcmd_cond_result macroengine.tmp (1 = passed, 0 = not passed).
+#
+# INPUT (storage macroengine:engine _mcmd_current.condition)
+#
+# The full supported schema is documented in cond_eval_core.mcfunction.
 # ─────────────────────────────────────────────────────────────────
 
-# Default: condition passed
-scoreboard players set $mcmd_cond_result macroengine.tmp 1
+# Depth 0 for a top-level evaluation.
+scoreboard players set $mcmd_cond_depth macroengine.tmp 0
 
-# Tag check
-execute if data storage macroengine:engine _mcmd_current.condition.tag run function macroengine:core/internal/api/cmd/other/multi_cmd/cond_check_tag
+data modify storage macroengine:engine _mcmd_cond_eval set from storage macroengine:engine _mcmd_current.condition
+function macroengine:core/internal/api/cmd/other/multi_cmd/cond_eval_core
 
-# Score check
-execute if data storage macroengine:engine _mcmd_current.condition.score run function macroengine:core/internal/api/cmd/other/multi_cmd/cond_check_score
-
-# Predicate check
-execute if data storage macroengine:engine _mcmd_current.condition.predicate run function macroengine:core/internal/api/cmd/other/multi_cmd/cond_check_predicate
-
-# Entity check (selector)
-execute if data storage macroengine:engine _mcmd_current.condition.entity run function macroengine:core/internal/api/cmd/other/multi_cmd/cond_check_entity
-
-# Storage check
-execute if data storage macroengine:engine _mcmd_current.condition.storage run function macroengine:core/internal/api/cmd/other/multi_cmd/cond_check_storage
+data remove storage macroengine:engine _mcmd_cond_eval
