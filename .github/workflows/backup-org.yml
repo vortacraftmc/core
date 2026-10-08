@@ -57,8 +57,6 @@ jobs:
 
     env:
       ORG: ${{ vars.BACKUP_ORG || 'vortacraftmc' }}
-      OUT_DIR: ${{ runner.temp }}/backup-out
-      BACKUP_DIR: ${{ runner.temp }}/backup-work
       ENCRYPT: ${{ inputs.encrypt || 'gpg' }}
       INCLUDE_SOURCE: ${{ (inputs.include_source && '1') || '0' }}
       JOBS: "2" # matches the standard ubuntu-latest runner's 2 vCPUs
@@ -75,6 +73,16 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: "3.x"
+
+      # The `runner` context (runner.temp) isn't available in a job-level
+      # `env:` block, only in steps - so OUT_DIR/BACKUP_DIR are derived here
+      # from $RUNNER_TEMP (the equivalent shell env var) and exported via
+      # $GITHUB_ENV for every later step to see.
+      - name: Set work directories
+        run: |
+          set -euo pipefail
+          echo "OUT_DIR=$RUNNER_TEMP/backup-out" >> "$GITHUB_ENV"
+          echo "BACKUP_DIR=$RUNNER_TEMP/backup-work" >> "$GITHUB_ENV"
 
       - name: Check required secrets
         run: |
