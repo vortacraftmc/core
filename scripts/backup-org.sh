@@ -248,7 +248,7 @@ HAVE_GH=0
 command -v gh >/dev/null 2>&1 && HAVE_GH=1
 API_BASE="https://api.github.com"
 
-api_get() { # api_get <path> -> raw JSON on stdout, paginated; non-zero on error
+api_get_raw() { # api_get_raw <path> -> JSON on stdout, one document PER PAGE; non-zero on error
   local path="$1" sep="?"
   case "$path" in *\?*) sep="&" ;; esac
   if [ "$HAVE_GH" = 1 ]; then
@@ -270,6 +270,52 @@ print(len(d) if isinstance(d,list) else 0)' 2>/dev/null || echo 0)"
     page=$((page + 1))
     printf '\n'
   done
+}
+
+
+# FIX: `gh api --paginate` (and the curl fallback) emit one JSON document per
+# page, back to back. The saved files were therefore not valid JSON as soon as
+# a listing spanned more than one page (e.g. actions-runs-recent.json was 9
+# concatenated documents), and every python json.load() consumer of api_get
+# (REPO_LIST, TEAM_SLUGS, ...) failed silently on orgs with >100 items. Merge
+# the pages into ONE valid document here, so all callers get the same shape.
+# Fail-soft: if the pages cannot be merged unambiguously, the raw text is
+# passed through unchanged rather than dropping data.
+api_get() { # api_get <path> -> a single valid JSON document on stdout
+  local tmp rc=0
+  tmp="$(mktemp)"
+  api_get_raw "$@" > "$tmp" || rc=$?
+  if [ "$rc" -eq 0 ]; then
+    python3 - "$tmp" <<'PY' || cat "$tmp"
+import json, sys
+raw = open(sys.argv[1], encoding="utf-8").read()
+dec, i, docs = json.JSONDecoder(), 0, []
+while True:
+    while i < len(raw) and raw[i].isspace():
+        i += 1
+    if i >= len(raw):
+        break
+    obj, i = dec.raw_decode(raw, i)
+    docs.append(obj)
+if len(docs) <= 1:
+    sys.stdout.write(raw)
+elif all(isinstance(d, list) for d in docs):
+    json.dump([x for d in docs for x in d], sys.stdout)
+elif all(isinstance(d, dict) for d in docs):
+    merged = dict(docs[0])
+    keys = [k for k, v in docs[0].items() if isinstance(v, list)]
+    if not keys:
+        sys.stdout.write(raw)
+        sys.exit(0)
+    for k in keys:
+        merged[k] = [x for d in docs for x in d.get(k, [])]
+    json.dump(merged, sys.stdout)
+else:
+    sys.stdout.write(raw)
+PY
+  fi
+  rm -f "$tmp"
+  return "$rc"
 }
 
 # ------------------------------------------------- org-level metadata
@@ -374,10 +420,43 @@ else
     save "$d/hooks.json"                "/repos/$ORG/$repo/hooks"
     save "$d/deploy-keys.json"          "/repos/$ORG/$repo/keys"
     save "$d/environments.json"         "/repos/$ORG/$repo/environments"
+    # FIX: environments.json only names the protection rule types; the custom
+    # deployment-branch policies (which refs may deploy) live in a sub-endpoint.
+    if [ "$DRY_RUN" != 1 ] && [ -f "$d/environments.json" ]; then
+      ENV_NAMES="$(python3 -c \
+        'import sys,json,urllib.parse
+try:
+    for e in json.load(sys.stdin).get("environments", []): print(urllib.parse.quote(e["name"], safe=""))
+except Exception: pass' < "$d/environments.json" 2>/dev/null || true)"
+      if [ -n "$ENV_NAMES" ]; then
+        mkdir -p "$d/environments-detail"
+        while IFS= read -r en; do
+          [ -n "$en" ] || continue
+          save "$d/environments-detail/$en-branch-policies.json" \
+               "/repos/$ORG/$repo/environments/$en/deployment-branch-policies"
+        done <<< "$ENV_NAMES"
+      fi
+    fi
     save "$d/actions-variables.json"    "/repos/$ORG/$repo/actions/variables"
     save "$d/actions-secret-names.json" "/repos/$ORG/$repo/actions/secrets"
     save "$d/pages.json"                "/repos/$ORG/$repo/pages"
     save "$d/rulesets.json"             "/repos/$ORG/$repo/rulesets"
+    # FIX: the ruleset LIST only has id/name/enforcement; the rules, conditions
+    # and bypass actors needed for a restore are in the per-ruleset endpoint.
+    if [ "$DRY_RUN" != 1 ] && [ -f "$d/rulesets.json" ]; then
+      RS_IDS="$(python3 -c \
+        'import sys,json
+try:
+    for r in json.load(sys.stdin): print(r["id"])
+except Exception: pass' < "$d/rulesets.json" 2>/dev/null || true)"
+      if [ -n "$RS_IDS" ]; then
+        mkdir -p "$d/rulesets-detail"
+        while IFS= read -r rid; do
+          [ -n "$rid" ] || continue
+          save "$d/rulesets-detail/$rid.json" "/repos/$ORG/$repo/rulesets/$rid"
+        done <<< "$RS_IDS"
+      fi
+    fi
     # NEW: Actions definitions and recent history (metadata only, no logs)
     save "$d/actions-workflows.json"    "/repos/$ORG/$repo/actions/workflows"
     save "$d/actions-runs-recent.json"  "/repos/$ORG/$repo/actions/runs?per_page=100"
@@ -394,6 +473,7 @@ else
 try: print(json.load(sys.stdin).get("default_branch") or "")
 except Exception: pass' 2>/dev/null || true)"
     [ -z "$branch" ] || save "$d/branch-protection.json" "/repos/$ORG/$repo/branches/$branch/protection"
+    rmdir "$d/rulesets-detail" "$d/environments-detail" 2>/dev/null || true
     rmdir "$d" 2>/dev/null || true
   done <<< "$REPO_LIST"
 fi
@@ -488,6 +568,9 @@ if [ "$DRY_RUN" != 1 ]; then
       "$ORG" "$(date -u +%FT%TZ)" "$(hostname 2>/dev/null || echo unknown)"
     printf '  "repositories": ['
     first=1
+    # FIX: a plain */ glob skips dot-directories, so the `.github` repository
+    # was in the backup but missing from the manifest.
+    shopt -s dotglob nullglob
     for d in "$BACKUP_DIR"/repositories/*/; do
       [ -d "$d" ] || continue
       name="$(basename "${d%/}")"
@@ -497,6 +580,7 @@ if [ "$DRY_RUN" != 1 ]; then
         "$([ "$head_sha" = null ] && echo null || echo "\"$head_sha\"")"
       first=0
     done
+    shopt -u dotglob nullglob
     printf '\n  ],\n  "encrypted": %s,\n  "include_source": %s\n}\n' \
       "$([ "$ENCRYPT" = 7z ] || [ "$ENCRYPT" = gpg ] && echo true || echo false)" \
       "$([ "$INCLUDE_SOURCE" = 1 ] && echo true || echo false)"
