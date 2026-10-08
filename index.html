@@ -548,26 +548,51 @@
   // modsFromContents() also excludes when the live API is available).
   // zip names follow the zipPacks Gradle task's naming: the pack's path
   // under packs/, with path separators replaced by "-".
+  //
+  // `zip` is derived, `name` is a human-readable label (so it is curated by
+  // hand and cannot be regenerated). Verify the `zip` values against the
+  // tree with (run from the repository root):
+  //   find packs -name pack.mcmeta -exec dirname {} \; \
+  //     | sed 's|^packs/||; s|/|-|g; s|$|.zip|' | sort
+  //   grep -o 'zip: "[^"]*\.zip"' index.html | sed 's/^zip: "//; s/"$//' | sort
+  // The two sorted lists must be identical. (The `\.zip` anchor matters:
+  // without it the grep also matches this comment's own sed fragments.)
+  //
+  // Regenerated 2026-10-08. The previous list was wrong in five places, and
+  // because this array is what renders when the GitHub API is unreachable
+  // (rate limit, network error, timeout) every mistake was a download card
+  // that 404'd:
+  //   - "BorderPing" and "inv_gui" have never existed under packs/
+  //     (inv_gui was also claimed in README.md's history - see that file)
+  //   - both macroEngine entries said v26.3; the directories are v26.4, so
+  //     the zip names never matched what zipPacks produces
+  //   - DevTools-Datapack was missing entirely
   const FALLBACK_PACKS = [
-    { name: "BorderPing", zip: "BorderPing.zip" },
     { name: "cmdTunnel-datapack", zip: "cmdTunnel-datapack.zip" },
     { name: "DailyBonus", zip: "DailyBonus.zip" },
+    { name: "DevTools-Datapack", zip: "DevTools-Datapack.zip" },
     { name: "guikit-datapack", zip: "guikit-datapack.zip" },
     { name: "guikit-demo", zip: "guikit-demo.zip" },
     { name: "InteractionClickDetection", zip: "InteractionClickDetection.zip" },
-    { name: "inv_gui", zip: "inv_gui.zip" },
     { name: "LeftClickDetection", zip: "LeftClickDetection.zip" },
-    { name: "macroEngine (Datapack, v26.3)", zip: "macroEngine-Datapack-v26.3.zip" },
-    { name: "macroEngine (Resource pack, v26.3)", zip: "macroEngine-Resourcepack-v26.3.zip" },
+    { name: "macroEngine (Datapack, v26.4)", zip: "macroEngine-Datapack-v26.4.zip" },
+    { name: "macroEngine (Resource pack, v26.4)", zip: "macroEngine-Resourcepack-v26.4.zip" },
     { name: "QuickShare", zip: "QuickShare.zip" },
     { name: "RTWrapper (1.21.1)", zip: "RTWrapper-1.21.1.zip" },
     { name: "RTWrapper (v1.0.1)", zip: "RTWrapper-v1.0.1.zip" },
-    { name: "RTWrapper (archived, original)", zip: "RTWrapper-datapack-RTWrapper-Datapack.zip" },
+    { name: "RTWrapper (original, nested)", zip: "RTWrapper-datapack-RTWrapper-Datapack.zip" },
     { name: "TunnelScript", zip: "TunnelScript.zip" }
   ];
+  // Only subprojects `./gradlew buildAll` actually builds, i.e. mods/ minus
+  // TEMPLATE-MOD (scaffold) minus everything in settings.gradle's
+  // EXCLUDED_PROJECT_DIRS (mods/datapack-fixer: "legacy tool, not yet
+  // migrated to the shared build"). Listing datapack-fixer here - as the
+  // previous version did - advertised a download for an artifact CI never
+  // produces.
   const FALLBACK_MODS = [
+    { name: "AFK Manager", dir: "afk-manager" },
     { name: "Datapack Blocker", dir: "datapack-blocker" },
-    { name: "Datapack Fixer", dir: "datapack-fixer" },
+    { name: "Join Throttle", dir: "join-throttle" },
     { name: "RTWrapper", dir: "rtwrapper-mod" }
   ];
 
@@ -1051,9 +1076,16 @@
 
   function modsFromContents(items) {
     if (!Array.isArray(items)) return [];
+    // TEMPLATE-MOD is a scaffold, not a shipped mod. datapack-fixer is a real
+    // mod directory but is listed in settings.gradle's EXCLUDED_PROJECT_DIRS
+    // ("legacy tool, not yet migrated to the shared build"), so `buildAll`
+    // never produces a jar for it and there is nothing to download. Both must
+    // be filtered here too, not just in FALLBACK_MODS, otherwise the live-API
+    // path advertises an artifact that does not exist.
+    const EXCLUDED = ["TEMPLATE-MOD", "datapack-fixer"];
     return items
       .filter(function (item) {
-        return item && item.type === "dir" && item.name && item.name !== "TEMPLATE-MOD";
+        return item && item.type === "dir" && item.name && EXCLUDED.indexOf(item.name) === -1;
       })
       .map(function (item) {
         return { name: item.name, dir: item.name };
