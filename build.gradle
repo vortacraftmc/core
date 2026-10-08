@@ -444,40 +444,115 @@ tasks.register('zipPacks') {
             return
         }
 
-        // 3. Fresh remap workspace every run, so stale copies never linger.
-        if (remapDir.exists()) {
-            println "[zipPacks] clearing stale remap workspace at ${remapDir}"
-            remapDir.deleteDir()
-        }
-        remapDir.mkdirs()
-        outDir.mkdirs()
+          // 3. Fresh remap workspace every run, so stale copies never linger.
+          if (remapDir.exists()) {
+              println "[zipPacks] clearing stale remap workspace at ${remapDir}"
+              remapDir.deleteDir()
+          }
+          remapDir.mkdirs()
 
-        packDirs.each { dir ->
-            def relPath = packsRoot.toPath().relativize(dir.toPath()).toString()
-            def safeName = relPath.replace(File.separator, '-').replace('/', '-')
+          // 3b. Clear the output directory too. mergeDatapacks already did this
+          //     for its own outDir; zipPacks only called mkdirs(), so a zip left
+          //     over from a pack that has since been renamed or deleted stayed in
+          //     build/packs-dist/ forever. The release workflow globs
+          //     build/packs-dist/*.zip, which means a stale archive was silently
+          //     published as a current release asset.
+          if (outDir.exists()) {
+              def stale = outDir.listFiles()?.findAll { it.name.endsWith('.zip') }?.size() ?: 0
+              if (stale > 0) {
+                  println "[zipPacks] clearing ${stale} stale zip(s) from ${outDir} (only packs that exist right now will be rebuilt)"
+              }
+              outDir.deleteDir()
+          }
+          outDir.mkdirs()
 
-            // Copy source pack -> build/packs-remap/<safeName>/ (packs/ untouched).
-            def remapPackDir = new File(remapDir, safeName)
-            remapPackDir.mkdirs()
-            copyDirRecursive(dir, remapPackDir)
+          // 3c. Collision guard. safeName flattens the relative path with '-', so
+          //     two different pack paths can map to the same name (packs/a/b and
+          //     packs/a-b both become 'a-b'). Without this, the second one
+          //     silently overwrites the first and the release ships one archive
+          //     labelled as the other.
+          def nameOwners = [:]
+          def collisions = []
+          packDirs.each { dir ->
+              def relPath = packsRoot.toPath().relativize(dir.toPath()).toString()
+              def safeName = relPath.replace(File.separator, '-').replace('/', '-')
+              if (nameOwners.containsKey(safeName)) {
+                  collisions << "  - '${safeName}.zip' <- ${nameOwners[safeName]} AND ${relPath}"
+              } else {
+                  nameOwners[safeName] = relPath
+              }
+          }
+          if (collisions) {
+              throw new GradleException(
+                  "[zipPacks] failed: these pack paths would produce the same archive name " +
+                  "and overwrite each other:\n${collisions.join('\n')}\n" +
+                  "Rename one of the pack directories so the flattened names are unique."
+              )
+          }
 
-            // 4. Strip the watermark from the remap copy only.
-            def stripped = 0
-            remapPackDir.eachFileRecurse { f ->
-                if (f.name == '_vc_origin.mcfunction') {
-                    f.delete()
-                    stripped++
-                }
-            }
+          def zipped = 0
+          packDirs.each { dir ->
+              def relPath = packsRoot.toPath().relativize(dir.toPath()).toString()
+              def safeName = relPath.replace(File.separator, '-').replace('/', '-')
 
-            // 5. Zip from the cleaned remap copy.
-            def zipName = "${safeName}.zip"
-            def zipFile = new File(outDir, zipName)
-            println "[zipPacks] zipping ${remapPackDir} -> build/packs-dist/${zipName} (stripped ${stripped} watermark(s) from remap copy)"
-            zipDirectory(remapPackDir, zipFile)
-        }
-        println "[zipPacks] done: ${packDirs.size()} pack(s) zipped into ${outDir}. packs/ source tree left untouched."
-    }
+              // Copy source pack -> build/packs-remap/<safeName>/ (packs/ untouched).
+              def remapPackDir = new File(remapDir, safeName)
+              remapPackDir.mkdirs()
+              copyDirRecursive(dir, remapPackDir)
+
+              // 4. Strip the watermark from the remap copy only.
+              def stripped = 0
+              remapPackDir.eachFileRecurse { f ->
+                  if (f.name == '_vc_origin.mcfunction') {
+                      f.delete()
+                      stripped++
+                  }
+              }
+
+              // 5. Zip from the cleaned remap copy.
+              def zipName = "${safeName}.zip"
+              def zipFile = new File(outDir, zipName)
+              println "[zipPacks] zipping ${remapPackDir} -> build/packs-dist/${zipName} (stripped ${stripped} watermark(s) from remap copy)"
+              zipDirectory(remapPackDir, zipFile)
+
+              // 5b. Verify what was actually written. zipDirectory swallows
+              //     nothing, but an unreadable source, a permission problem or an
+              //     empty remap copy would still produce a zip that the release
+              //     workflow happily publishes. Check it here instead.
+              if (!zipFile.exists() || zipFile.length() == 0) {
+                  throw new GradleException("[zipPacks] failed: ${zipName} is missing or empty.")
+              }
+              def entries = 0
+              def hasMeta = false
+              def slurper = new groovy.json.JsonSlurper()
+              new java.util.zip.ZipFile(zipFile).withCloseable { zf ->
+                  entries = zf.size()
+                  def meta = zf.getEntry('pack.mcmeta')
+                  if (meta == null) {
+                      throw new GradleException(
+                          "[zipPacks] failed: ${zipName} has no pack.mcmeta at its root, " +
+                          "so it is not a loadable pack.")
+                  }
+                  hasMeta = true
+                  // A pack.mcmeta that does not parse would only surface in game.
+                  try {
+                      zf.getInputStream(meta).withReader('UTF-8') { r -> slurper.parseText(r.text) }
+                  } catch (Exception e) {
+                      throw new GradleException("[zipPacks] failed: pack.mcmeta in ${zipName} is not valid JSON: ${e.message}")
+                  }
+              }
+              if (!hasMeta || entries == 0) {
+                  throw new GradleException("[zipPacks] failed: ${zipName} verification failed (${entries} entries).")
+              }
+              println "[zipPacks] verified ${zipName}: ${entries} entries, ${zipFile.length()} bytes, pack.mcmeta parses"
+              zipped++
+          }
+          println "[zipPacks] done: ${zipped} pack(s) zipped and verified into ${outDir}. packs/ source tree left untouched."
+          if (zipped != packDirs.size()) {
+              throw new GradleException(
+                  "[zipPacks] failed: ${packDirs.size()} pack(s) were found but only ${zipped} were zipped and verified.")
+          }
+      }
 }
 
 // Make zipPacks run as part of the normal build
