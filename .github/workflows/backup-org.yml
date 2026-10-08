@@ -67,12 +67,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.x"
 
@@ -107,8 +107,27 @@ jobs:
           GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
           ARCHIVE_PASSWORD: ${{ secrets.BACKUP_ARCHIVE_PASSWORD }}
 
+      # The checksum file travels INSIDE the artifact, so on its own it only
+      # catches corruption, not tampering. Writing the hash to the run's job
+      # summary stores it somewhere the artifact's contents cannot change.
+      - name: Publish checksum to job summary
+        run: |
+          set -euo pipefail
+          {
+            echo "### Backup checksum (SHA-256)"
+            echo
+            echo '```'
+            cat "$OUT_DIR"/*.sha256
+            echo '```'
+            echo
+            echo "Encryption: \`$ENCRYPT\` | Include source: \`$INCLUDE_SOURCE\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$ENCRYPT" = none ]; then
+            echo "::warning::Archive is NOT encrypted (encrypt=none) and stays downloadable as an artifact for 14 days."
+          fi
+
       - name: Upload archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ env.ORG }}-backup-${{ github.run_id }}
           path: |
