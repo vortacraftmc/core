@@ -1,11 +1,9 @@
 # ─────────────────────────────────────────────────────────────────
-# macroengine:api/cmd/other/multi_cmd/internal/cond_check_tag
-# Tag check — @s must have the specified tag
-# condition.tag: "admin" or {name:"admin", has:1b}
+# macroengine:core/internal/api/cmd/other/multi_cmd/cond_check_tag
+# Tag leaf. Two accepted shapes:
+#   condition.tag = "admin"                  shorthand for {name:"admin",has:1b}
+#   condition.tag = {name:"admin",has:1b|0b} has:0b asserts the tag is ABSENT
 # ─────────────────────────────────────────────────────────────────
 
-# Simple string format
-execute unless data storage macroengine:engine _mcmd_current.condition.tag{} run function macroengine:core/internal/api/cmd/other/multi_cmd/cond_tag_simple
-
-# Object format {name:"...", has:1b/0b}
-execute if data storage macroengine:engine _mcmd_current.condition.tag{} run function macroengine:core/internal/api/cmd/other/multi_cmd/cond_tag_object
+execute unless data storage macroengine:engine _mcmd_cond_eval.tag{} run function macroengine:core/internal/api/cmd/other/multi_cmd/cond_tag_simple
+execute if data storage macroengine:engine _mcmd_cond_eval.tag{} run function macroengine:core/internal/api/cmd/other/multi_cmd/cond_tag_object

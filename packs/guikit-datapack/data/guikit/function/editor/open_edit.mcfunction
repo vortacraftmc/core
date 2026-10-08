@@ -12,4 +12,4 @@ function guikit:internal/clear/in
 data merge storage guikit:in {menu:"guikit:editor",timer:6000}
 function guikit:api/open
 data remove storage guikit:ed pending
-execute if score #ok guikit.const matches 1 run tellraw @s [{"text":"[guikit] Editing ","color":"gray"},{"nbt":"menu.name","storage":"guikit:work","interpret":false,"color":"gold"},{"text":". Bottom-right is Tools, not part of the menu.","color":"gray"}]
+execute if score #ok guikit.const matches 1 run tellraw @s [{"text":"[guikit] Editing ","color":"gray"},{"nbt":"menu.name","storage":"guikit:work","interpret":false,"color":"gold","plain":true},{"text":". Bottom-right is Tools, not part of the menu.","color":"gray"}]

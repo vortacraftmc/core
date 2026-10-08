@@ -27,4 +27,4 @@ data modify storage macroengine:input _sound.volume set from storage macroengine
 function macroengine:systems/sound/play with storage macroengine:engine _sound
 data remove storage macroengine:engine _sound
 
-execute if data storage macroengine:engine event_context.slot run tellraw @s ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"Circuit trim (Overload) detected on ","color":"aqua"},{"nbt":"event_context.slot","storage":"macroengine:engine","color":"white"},{"text":" slot.","color":"aqua"}]
+execute if data storage macroengine:engine event_context.slot run tellraw @s ["",{"text":"[MACROENGINE] ","color":"#00AAAA","bold":true},{"text":"Circuit trim (Overload) detected on ","color":"aqua"},{"nbt":"event_context.slot","storage":"macroengine:engine","color":"white","plain":true,"interpret":false},{"text":" slot.","color":"aqua"}]
