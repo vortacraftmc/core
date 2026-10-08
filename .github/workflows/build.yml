@@ -343,9 +343,13 @@ jobs:
           set -uo pipefail
           GREEN=$'\033[1;32m'; RED=$'\033[1;31m'; RESET=$'\033[0m'
 
-          echo "::group::📦 Datapack Lint"
-          trap 'echo "::endgroup::"' EXIT
-
+          # FIX: this step used to wrap the script in "::group::Datapack Lint".
+          # scripts/lint_datapacks.sh emits its OWN ::group:: markers (Installing
+          # Mecha, Ignoring paths, Preparing validation, Mecha validation,
+          # Cleanup, Validation summary), so wrapping it produced exactly the
+          # nested-group bug being fixed here - confirmed in a real CI log, where
+          # the stream reached depth 2 with six nested opens. The script's own
+          # groups are the real structure; this step only reports the result.
           if [ ! -f "scripts/lint_datapacks.sh" ]; then
             printf '%s✘ scripts/lint_datapacks.sh is missing%s\n' "$RED" "$RESET"
             echo "::error file=scripts/lint_datapacks.sh,title=Missing lint script::The datapack lint script does not exist."
