@@ -14,18 +14,36 @@ Both require permission level 3 to run, same as vanilla `/op`.
 
 ## ⚠️ Known risk: Loom is pinned to 1.15.5
 
-This subproject is deliberately pinned to `fabric-loom` **1.15.5** to match
-the other subprojects in this monorepo (`mods/datapack-blocker`) and the root CI's Gradle 9.4.0. This was chosen
-over bumping to a newer Loom for consistency — **but it means MC 26.3
-support is not guaranteed** and needs verifying:
+This subproject is pinned to `fabric-loom` **1.15.5**. The pin is stale and
+should move, but note first that three of the reasons previously given here for
+it were wrong — they are corrected below rather than repeated, because each one
+points a reader at the wrong conclusion:
 
-- MC 26.x ships **unobfuscated** (Mojang stopped shipping a Yarn-mappable
-  obfuscation layer for these drops) — there is no `net.fabricmc:yarn` for
-  26.3 to depend on.
-- Loom only gained the ability to handle unobfuscated jars
-  (`MinecraftJarProcessor.isUnobfuscated()`) starting at **1.15.5**, which is
-  why 1.15.5 happens to still work here at all — it's the floor, not a
-  comfortable margin.
+- ~~"to match the other subprojects in this monorepo (`mods/datapack-blocker`)"~~
+  **Not true.** `mods/datapack-blocker` targets Minecraft **1.21.1**, which is
+  obfuscated and still resolves Yarn mappings. This subproject targets **26.3**,
+  which ships unobfuscated with no Yarn layer at all. They share a version
+  number by coincidence; there is no consistency being preserved by keeping
+  them equal, and bumping this one breaks nothing over there.
+- ~~"the root CI's Gradle 9.4.0"~~ **Not true.** The wrapper is Gradle
+  **9.8.0** (`gradle/wrapper/gradle-wrapper.properties`). Loom 1.16 requires
+  Gradle 9.4 as a *minimum*, which may be where the number came from; it is not
+  what this repository runs.
+- ~~"Loom only gained the ability to handle unobfuscated jars … starting at
+  1.15.5 … it's the floor"~~ **Not true.** Unobfuscated-jar support landed in
+  **Loom 1.14**, which also introduced the dedicated `net.fabricmc.fabric-loom`
+  plugin id for non-remapping builds. 1.15.5 is therefore comfortably above the
+  floor, not sitting on it.
+
+What *is* true:
+
+- MC 26.x ships **unobfuscated** — there is no `net.fabricmc:yarn` for 26.3 to
+  depend on, and 1.21.11 was the last obfuscated release.
+- FabricMC recommends **Loom 1.17 with Gradle 9.6+** for Minecraft 26.3
+  ([fabricmc.net/2026/09/15/263.html](https://fabricmc.net/2026/09/15/263.html));
+  **1.18** is the current release. So the pin is roughly three minors behind
+  the recommendation for its own target version, and the gap is the actual
+  risk — not the floor argument above.
 - `gradle.properties` sets `fabric.loom.disableObfuscation=true` to tell Loom
   to skip mapping resolution. Because of this, `build.gradle` uses plain
   `implementation` for `fabric-loader` and `fabric-api` instead of
