@@ -29,22 +29,50 @@ already read it.
 
 ## Branch naming
 
-No strict convention is enforced. Use a branch name that describes the change (e.g. `fix-gui-crash`, `add-slot-source-support`).
+Use `<type>/<short-description>` in kebab-case, matching the commit type below:
+
+```
+fix/macroengine-condition-gate      feat/guikit-radio-tabs
+ci/consolidate-lint-jobs            chore/bump-fabric-loader
+docs/security-validation-table
+```
+
+Avoid the names GitHub generates for web edits (`<user>-patch-1`) and avoid
+long-lived catch-all branches. Historical branches in this repository used
+`devlop` (a misspelling of "develop") and `<user>-patch-N`; neither is a
+pattern to copy.
 
 ## Commit messages
 
-Keep commit messages short and descriptive. Reference related issues or PRs where relevant.
+This repository uses [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <imperative summary, <= 72 chars>
+
+<optional body: what changed and why, wrapped at 72>
+```
+
+`type` is one of `feat`, `fix`, `ci`, `docs`, `chore`, `refactor`, `test`,
+`perf`, `build`, `revert`. `scope` is the area touched (`macroEngine`,
+`guikit`, `backup`, `deps`, ...) and is optional for repo-wide changes.
+
+A one-word or placeholder subject is not acceptable: an audit of this
+repository's history found 34 of 379 commits whose entire message was `.`,
+which makes `git log`, `git blame` and every generated changelog useless for
+those changes. If you cannot summarise the change in one line, the commit is
+probably two commits. Reference related issues or PRs in the body
+(`Fixes #123`).
 
 ## Pull requests
 
 - Open a PR against the `main` branch.
-- Make sure `Build all subprojects` and `Lint all subprojects` pass in CI before requesting review.
+- Make sure the **`CI`** workflow is green before requesting review. Inside its `Verify & package` job the steps that can fail you are `Build all subprojects` (`./gradlew buildAll`), `Gradle lint` (`./gradlew lint`) and `Lint datapacks` (`scripts/lint_datapacks.sh`, Mecha); `Release gate` then blocks publishing if any of them failed.
 - Describe what changed and why in the PR description — and whether the change touches `mods/`, `packs/`, or both, since only the former is covered by `buildAll`.
 - Run through the checklist at the bottom of [NOTICE.md](NOTICE.md) before requesting review.
 
 ## Security
 
-This project follows a security-first development philosophy, particularly around Minecraft datapack macro injection risks and namespace isolation. If you find a security issue, avoid opening a public issue — contact a maintainer directly instead.
+This project follows a security-first development philosophy, particularly around Minecraft datapack macro injection risks and namespace isolation. If you find a security issue, do **not** open a public issue - use [GitHub's private vulnerability reporting](https://github.com/vortacraftmc/core/security/advisories/new), and fall back to a detail-free public issue only if that is unavailable to you. The full procedure, including what must not be included in a report, is in [SECURITY.md](SECURITY.md).
 
 ## Provenance watermark (`_vc_origin.mcfunction`)
 

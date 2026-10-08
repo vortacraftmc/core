@@ -111,9 +111,10 @@ echo "::endgroup::"
 # could never fail a build, so a green CI run said nothing about datapack
 # validity while NOTICE.md claimed CI enforced it.
 #
-# Mecha 0.101.0 validates all 3634 .mcfunction files in this repo and currently
+# Mecha 0.101.0 validates all 3681 .mcfunction files in this repo and currently
 # passes with zero errors (verified 2026-10-07, including a negative control
-# where a deliberately malformed line produced exit 1). Enforcing it is
+# where a deliberately malformed line produced exit 1; count re-verified
+# 2026-10-08 with `find . -name '*.mcfunction' | wc -l`). Enforcing it is
 # therefore safe today.
 #
 # Set LINT_WARN_ONLY=1 to restore the old advisory behaviour for a single run.

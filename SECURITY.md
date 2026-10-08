@@ -41,7 +41,7 @@ This repo consolidates multiple projects with different security postures:
 | Area | Status |
 |---|---|
 | `mods/` | Fabric mods. Maintenance paused (see Status above). Compiled, type-safe. |
-| `packs/` | Only the macroEngine resource pack. All datapacks are archived and frozen (see `archived/`). |
+| `packs/` | 14 live packs (datapacks + the macroEngine resource pack), all under active layout. **Not** archived: `archived/` currently holds no packs at all (see `archived/archive.json`, whose only entry is the retired `runtoolkit/suite` repo with `"path": null`). |
 | `scripts/` | Helper tooling. Treat as lower trust; review before running. |
 | `examples/` | Templates and sample code. Not intended for production use. |
 | `archived/` | Reserved for no-longer-maintained projects, kept for reference only — do not deploy on a live server without review. Tracked in `archived/archive.json`; see `archived/README.md`. |
@@ -50,6 +50,23 @@ Datapacks and Fabric mods carry different security postures by nature; where
 practical, security-sensitive logic lives in a Fabric mod rather than a
 datapack. Projects that have stopped receiving updates are frozen and marked
 archived rather than left in an inconsistent, partially-hardened state.
+
+## Validation tooling
+
+`NOTICE.md` refers readers here for the tooling that validates a change. What
+actually runs, and what each tool does and does not prove:
+
+| Tool | Invoked by | Checks | Does **not** check |
+|---|---|---|---|
+| `scripts/lint_datapacks.sh` (Mecha 0.101.0) | `build.yml`, step `Lint datapacks` - enforced | `.mcfunction` **command syntax** for every pack not in `IGNORE_PATHS` | Whether the pack **loads**, whether references resolve, whether behaviour is correct |
+| `./gradlew checkPacks` | `build.yml` via `check` | `pack.mcmeta` shape and format range, JSON validity, cross-references between packs | Command semantics |
+| `./gradlew checkOriginWatermarks` | `build.yml` via `zipPacks` | every pack carries `data/<namespace>/function/_vc_origin.mcfunction` | Content of the watermark |
+| `./gradlew mergeDatapacks` | `build.yml`, step `Build merged datapack` | load/tick reference resolution (`strictLoadRefs`), pack-format agreement across the merged set | Runtime behaviour |
+| `./gradlew buildAll` / `lint` | `build.yml` | the **Gradle** side only (`mods/`) | Anything under `packs/` |
+
+A green CI run therefore says the repository *parses and builds*. It has never
+said a datapack behaves correctly - that still needs a load test in a real
+world, which is what the `NOTICE.md` checklist asks for.
 
 ## Prohibited content and practices
 
