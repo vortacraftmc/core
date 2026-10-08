@@ -467,7 +467,7 @@ def audit_mods():
 
 
 # --------------------------------------------------------------------------- #
-# 4. manifest / lock / registry coherence
+# 4. manifest / registry coherence
 # --------------------------------------------------------------------------- #
 
 
@@ -512,15 +512,13 @@ def audit_registries(pack_info):
                 "mismatch guard cannot catch it and the merged pack under-declares its requirement)",
             )
 
-    lock_path = os.path.join(packs_root, ".datapack-lock.json")
-    lock, err = read_json(lock_path)
-    if err:
-        add("registry.lock-invalid", "critical", lock_path, err)
-    elif isinstance(lock, dict):
-        for pname in (lock.get("packs") or {}):
-            if not os.path.isdir(os.path.join(packs_root, pname)):
-                add("registry.lock-stale-entry", "medium", lock_path,
-                    f"lock entry exists but the directory does not: {pname}")
+    # packs/.datapack-lock.json used to be validated here. The lock system was
+    # removed: the file declared itself "DOCUMENTATION ONLY - NOT ENFORCED",
+    # the workflow it named (.github/workflows/datapack-immutability.yml) never
+    # existed, and scripts/datapack_lock/check_lock.py was invoked by nothing.
+    # Reading a now-absent file would raise a spurious `critical` finding
+    # through read_json()'s OSError branch, so the check is gone rather than
+    # guarded - there is no lock file to check any more.
 
     arch_path = os.path.join(REPO, "archived", "archive.json")
     arch, err = read_json(arch_path)
@@ -704,9 +702,15 @@ def audit_docs():
         txt = re.sub(r"<!--.*?-->", "", read_text(p), flags=re.S)
         for i, line in enumerate(txt.splitlines(), 1):
             low = line.lower()
-            # skip lines that already state the file does not exist / is retired
+            # Skip lines that already state the file does not exist / is retired.
+            # "never existed" was missing from this list, so a historically
+            # accurate note ("the workflow it named never existed") was reported
+            # as a dangling reference - the exact opposite of what the check is
+            # for. Past-tense phrasings belong here too.
             if any(k in low for k in ("does not exist", "do **not** exist", "historical note",
-                                      "does **not** exist", "not exist in", "retired")):
+                                      "does **not** exist", "not exist in", "retired",
+                                      "never existed", "no longer exists", "was removed",
+                                      "has been removed", "did not exist")):
                 continue
             for m in re.finditer(r"([\w\-]+\.yml)", line):
                 n = m.group(1)
