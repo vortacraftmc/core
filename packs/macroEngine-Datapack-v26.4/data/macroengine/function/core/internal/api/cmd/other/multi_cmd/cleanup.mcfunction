@@ -28,6 +28,7 @@ data remove storage macroengine:engine _sort_cur
 # evaluators are allowed to use (see cond_depth_error).
 function macroengine:core/internal/api/cmd/other/multi_cmd/cleanup_cond_depth
 
+scoreboard players reset $mcmd_skipped macroengine.tmp
 scoreboard players reset $mcmd_cond_result macroengine.tmp
 scoreboard players reset $mcmd_cond_score macroengine.tmp
 scoreboard players reset $mcmd_cond_ok macroengine.tmp
