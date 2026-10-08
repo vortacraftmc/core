@@ -29,6 +29,7 @@ append_path() {
   for RC in "$HOME/.bashrc" "$HOME/.profile"; do
     [ -f "$RC" ] || touch "$RC"
     grep -qF "$MARKER" "$RC" 2>/dev/null && continue
+    # shellcheck disable=SC2016  # $PATH must stay literal: it expands when the rc file is sourced, not now
     printf '\n%s\nexport PATH="%s:$PATH"\n' "$MARKER" "$DIR" >> "$RC"
   done
   export PATH="$DIR:$PATH"
@@ -52,7 +53,7 @@ if [ "$PKG" = "apk" ]; then
     python3 py3-pip ca-certificates gnupg coreutils bash \
     jq git-lfs python3-venv diffutils patch file shellcheck
 else
-  $SUDO $PKG update -y && $SUDO $PKG install -y \
+  "$SUDO" "$PKG" update -y && "$SUDO" "$PKG" install -y \
     git curl wget unzip zip build-essential \
     python3 python3-pip python3-venv ca-certificates gnupg lsb-release \
     jq git-lfs diffutils patch file shellcheck
@@ -86,6 +87,7 @@ if [ -f "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
   source "$SDKMAN_DIR/bin/sdkman-init.sh"
 fi
 
+# shellcheck disable=SC2016  # literal rc-file line: $HOME expands when the rc file is sourced
 append_env \
   '[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"' \
   'sdkman-init.sh'
@@ -137,6 +139,7 @@ mkdir -p /workspaces/core
 cd /workspaces/core
 
 # Commit
+# shellcheck disable=SC2016  # literal alias body: expands when `gh commit` runs, not here
 gh alias set --shell commit '
 msg="";
 push=false;
@@ -183,6 +186,7 @@ fi
 '
 
 # Save
+# shellcheck disable=SC2016  # literal alias body: expands when `gh save` runs, not here
 gh alias set --shell save '
 msg="$*";
 
@@ -196,11 +200,13 @@ git add . && git commit -m "$msg"
 '
 
 # Sync
+# shellcheck disable=SC2016  # literal alias body: expands when `gh sync` runs, not here
 gh alias set --shell sync '
 git pull --rebase && git push
 '
 
 # Bash
+# shellcheck disable=SC2016  # literal alias body: expands when `gh run-bash` runs, not here
 gh alias set --shell run-bash '
 if [ "$#" -eq 0 ]; then
   echo "Error: No command provided."
@@ -264,6 +270,7 @@ mkdir -p .vscode && cat << 'EOF' > .vscode/settings.json
 EOF
 
 # Push
+# shellcheck disable=SC2016  # literal alias body: expands when `gh push` runs, not here
 gh alias set --shell push '
 gh run-bash "git push -u origin {branch}"
 '
