@@ -12,8 +12,12 @@
 #
 # Settings (override with environment variables):
 #   ORG=vortacraftmc  BACKUP_DIR=~/backup/ORG  OUT_DIR=~/backup-out
-#   ENCRYPT=none|7z   INCLUDE_SOURCE=1|0       WITH_HOOKS=0|1
+#   ENCRYPT=none|7z|gpg  INCLUDE_SOURCE=1|0    WITH_HOOKS=0|1
 #   KEEP=7            PIP_BREAK_SYSTEM=0|1
+#   JOBS=4            # parallel `git clone` workers for plain source copies
+#   COPY_TO=          # optional rsync destination for the finished archive,
+#                     # e.g. /mnt/nas/backups or user@host:/path (needs a
+#                     # working `rsync`/`ssh` locally - no cloud API involved)
 #
 # Token: uses VC_TOKEN or GH_TOKEN if set, otherwise prompts (interactive only).
 # Keep this script OUTSIDE any git repository folder if you are worried about
@@ -50,6 +54,8 @@ INCLUDE_SOURCE="${INCLUDE_SOURCE:-1}"
 WITH_HOOKS="${WITH_HOOKS:-0}"
 KEEP="${KEEP:-7}"
 PIP_BREAK_SYSTEM="${PIP_BREAK_SYSTEM:-0}"
+JOBS="${JOBS:-4}"
+COPY_TO="${COPY_TO:-}"
 DATE="$(date +%F)"
 RUN_STAMP="$(date +%Y%m%d-%H%M%S)"
 
@@ -67,7 +73,12 @@ on_err() {
 }
 trap 'on_err $LINENO' ERR
 
-case "$ENCRYPT" in 7z|none) ;; *) die "ENCRYPT must be 7z or none" ;; esac
+case "$ENCRYPT" in 7z|gpg|none) ;; *) die "ENCRYPT must be 7z, gpg, or none" ;; esac
+
+case "$JOBS" in
+  ''|*[!0-9]*) die "JOBS must be a positive integer, got: $JOBS" ;;
+esac
+[ "$JOBS" -ge 1 ] || die "JOBS must be >= 1"
 
 # FIX: KEEP=0 used to make `tail -n +1` emit every archive, i.e. the pruning
 # step deleted the entire history including the archive just created.
@@ -113,14 +124,23 @@ if [ -n "$VERIFY_ONLY" ]; then
       7z t -p"$PW1" -bd "$VERIFY_ONLY" >/dev/null || die "archive test failed"
       unset PW1
       ;;
+    *.gpg)
+      command -v gpg >/dev/null || die "gpg not installed, cannot verify a .gpg archive"
+      TMPV="$(mktemp -d)"; trap 'rm -rf "$TMPV"' EXIT
+      gpg --batch --yes -d -o "$TMPV/decrypted.tar.gz" "$VERIFY_ONLY" \
+        || die "gpg decryption failed (wrong passphrase or corrupt archive)"
+      tar -tzf "$TMPV/decrypted.tar.gz" >/dev/null || die "archive verification failed"
+      ;;
     *)
       tar -tzf "$VERIFY_ONLY" >/dev/null || die "archive verification failed"
       ;;
   esac
   # Report what is inside, so a silently truncated backup is visible.
-  TMPV="$(mktemp -d)"; trap 'rm -rf "$TMPV"' EXIT
+  [ -n "${TMPV:-}" ] || { TMPV="$(mktemp -d)"; trap 'rm -rf "$TMPV"' EXIT; }
   if [ "${VERIFY_ONLY##*.}" = "7z" ]; then
     7z l -ba "$VERIFY_ONLY" | awk '{print $NF}' > "$TMPV/list" 2>/dev/null || true
+  elif [ "${VERIFY_ONLY##*.}" = "gpg" ]; then
+    tar -tzf "$TMPV/decrypted.tar.gz" > "$TMPV/list"
   else
     tar -tzf "$VERIFY_ONLY" > "$TMPV/list"
   fi
@@ -351,9 +371,11 @@ except Exception: pass' 2>/dev/null || true)"
 fi
 
 # ------------------------------------ integrity check + plain source clones
-shopt -s dotglob nullglob
-for d in "$BACKUP_DIR"/repositories/*/; do
-  r="${d%/}"
+# NEW: done in parallel (JOBS workers) instead of one repo at a time - on an
+# org with many repositories the serial `git clone` loop was the slowest part
+# of the whole backup.
+process_repo() {
+  local r="${1%/}"
   if [ -d "$r/repository" ]; then
     git --git-dir="$r/repository" fsck --no-progress >/dev/null 2>&1 \
       || warn "git fsck failed: $r/repository"
@@ -369,7 +391,13 @@ for d in "$BACKUP_DIR"/repositories/*/; do
         || warn "could not clone $r/wiki-source (empty wiki?)"
     fi
   fi
-done
+}
+export -f log warn process_repo
+export INCLUDE_SOURCE DRY_RUN
+
+shopt -s dotglob nullglob
+find "$BACKUP_DIR/repositories" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null \
+  | xargs -0 -P "$JOBS" -I{} bash -c 'process_repo "$@"' _ {}
 shopt -u dotglob nullglob
 
 if [ "$INCLUDE_SOURCE" = 1 ]; then
@@ -439,7 +467,7 @@ if [ "$DRY_RUN" != 1 ]; then
       first=0
     done
     printf '\n  ],\n  "encrypted": %s,\n  "include_source": %s\n}\n' \
-      "$([ "$ENCRYPT" = 7z ] && echo true || echo false)" \
+      "$([ "$ENCRYPT" = 7z ] || [ "$ENCRYPT" = gpg ] && echo true || echo false)" \
       "$([ "$INCLUDE_SOURCE" = 1 ] && echo true || echo false)"
   } > "$MANIFEST"
   log "Wrote $MANIFEST"
@@ -485,6 +513,29 @@ if [ "$ENCRYPT" = 7z ]; then
     log "Archive test passed"
   fi
   unset PW1 PW2
+elif [ "$ENCRYPT" = gpg ]; then
+  # NEW: GPG symmetric encryption as a lighter alternative to 7z - no extra
+  # package on most systems (gpg ships with git/ssh toolchains already).
+  command -v gpg >/dev/null 2>&1 \
+    || die "gpg is required for ENCRYPT=gpg. Install it (apt/dnf: gnupg, brew: gnupg) or use ENCRYPT=none/7z."
+  ARCHIVE="$OUT_DIR/$ORG-$DATE.tar.gz.gpg"
+  rm -f "$ARCHIVE"
+  if [ "$DRY_RUN" = 1 ]; then
+    log "[dry-run] tar -czf - $BASE | gpg --symmetric -o $ARCHIVE"
+    log "WARNING: ENCRYPT=gpg will prompt interactively for a passphrase (twice, via gpg's own prompt)."
+  else
+    if [ ! -t 0 ]; then die "ENCRYPT=gpg needs an interactive passphrase prompt"; fi
+    TMPTAR="$(mktemp)"
+    tar -czf "$TMPTAR" -C "$PARENT" "$BASE" || die "could not create archive"
+    # gpg's own pinentry/tty prompt asks for and confirms the passphrase;
+    # nothing sensitive goes on the command line or into argv.
+    gpg --symmetric --cipher-algo AES256 -o "$ARCHIVE" "$TMPTAR" \
+      || { rm -f "$TMPTAR"; die "gpg encryption failed"; }
+    rm -f "$TMPTAR"
+    log "Testing archive"
+    gpg --batch --yes -d -o /dev/null "$ARCHIVE" || die "archive test (decrypt) failed"
+    log "Archive test passed"
+  fi
 else
   ARCHIVE="$OUT_DIR/$ORG-$DATE.tar.gz"
   if [ "$DRY_RUN" = 1 ]; then
@@ -509,6 +560,22 @@ if [ "$DRY_RUN" != 1 ]; then
   hash_archive "$ARCHIVE" || true
 fi
 
+# ------------------------------------------- NEW: secondary copy via rsync
+# Local disk, mounted NAS, or an SSH host - no cloud API/account involved.
+if [ -n "$COPY_TO" ]; then
+  if ! command -v rsync >/dev/null 2>&1; then
+    warn "COPY_TO is set but rsync is not installed; skipping secondary copy"
+  elif [ "$DRY_RUN" = 1 ]; then
+    log "[dry-run] rsync -a $ARCHIVE ${ARCHIVE}.sha256 $COPY_TO/"
+  else
+    if rsync -a "$ARCHIVE" "$ARCHIVE.sha256" "$COPY_TO/" 2>/dev/null; then
+      log "Copied archive to $COPY_TO"
+    else
+      warn "rsync to $COPY_TO failed; the primary archive in $OUT_DIR is still intact"
+    fi
+  fi
+fi
+
 # ------------------------------------------------- prune old archives
 # FIX: the old pipeline used `find -printf '%T@ %p\n' | cut -d' ' -f2-`, which
 # is GNU-only and breaks on filenames containing spaces. Sort by mtime
@@ -516,7 +583,7 @@ fi
 if [ "$DRY_RUN" != 1 ]; then
   pruned=0
   tmplist="$(mktemp)"
-  for f in "$OUT_DIR/$ORG"-*.7z "$OUT_DIR/$ORG"-*.tar.gz; do
+  for f in "$OUT_DIR/$ORG"-*.7z "$OUT_DIR/$ORG"-*.tar.gz "$OUT_DIR/$ORG"-*.tar.gz.gpg; do
     [ -f "$f" ] || continue
     printf '%s %s\n' "$(mtime_of "$f")" "$f" >> "$tmplist"
   done
