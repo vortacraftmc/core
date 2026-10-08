@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # backup-org.sh
 # GitHub organization backup: git (bare) + wiki + issues/PRs/releases/labels
-# + Actions/Dependabot/security metadata + optional plain source clones
-# + org metadata -> archive (.tar.gz by default, optional 7z encryption).
+# + Actions/Dependabot/security metadata + team membership/repo access
+# + repo topics/languages + optional plain source clones
+# + org metadata -> archive (.tar.gz by default, optional 7z/gpg encryption).
 #
 # Usage:
 #   bash scripts/backup-org.sh              # full backup
@@ -12,17 +13,27 @@
 #
 # Settings (override with environment variables):
 #   ORG=vortacraftmc  BACKUP_DIR=~/backup/ORG  OUT_DIR=~/backup-out
-#   ENCRYPT=none|7z   INCLUDE_SOURCE=1|0       WITH_HOOKS=0|1
+#   ENCRYPT=none|7z|gpg  INCLUDE_SOURCE=1|0    WITH_HOOKS=0|1
 #   KEEP=7            PIP_BREAK_SYSTEM=0|1
+#   JOBS=4            # parallel `git clone` workers for plain source copies
+#   COPY_TO=          # optional rsync destination for the finished archive,
+#                     # e.g. /mnt/nas/backups or user@host:/path (needs a
+#                     # working `rsync`/`ssh` locally - no cloud API involved)
 #
 # Token: uses VC_TOKEN or GH_TOKEN if set, otherwise prompts (interactive only).
+# ARCHIVE_PASSWORD: passphrase for ENCRYPT=7z/gpg when run unattended (CI, cron
+# with no tty); omit it to be prompted interactively as before.
 # Keep this script OUTSIDE any git repository folder if you are worried about
 # accidentally committing it.
 #
-# Privacy: before archiving, tokens / URL credentials / webhook secrets / e-mail
-# addresses are redacted from config and metadata files (both tar.gz and 7z),
-# and the script aborts if a token pattern is still found there. Git objects and
-# plain source copies are never modified.
+# Privacy: before archiving, tokens / URL credentials / webhook secrets /
+# query-string secrets (?token=, ?api_key=, ...) / e-mail addresses are
+# redacted from config and metadata files (tar.gz, 7z, and gpg alike), and the
+# script aborts if a token pattern is still found there afterwards. This also
+# covers the new team-membership, topics and languages files automatically,
+# since the sanitize step scans every *.json file under org-meta/repo-meta,
+# not a fixed list. Git objects and plain source copies are never modified
+# (commit authorship has to stay intact for a restore to be meaningful).
 #
 # Portability: runs on GNU/Linux and on macOS/BSD. Where a GNU-only tool would
 # be needed (sha256sum, find -printf) a portable equivalent is used instead.
@@ -50,6 +61,8 @@ INCLUDE_SOURCE="${INCLUDE_SOURCE:-1}"
 WITH_HOOKS="${WITH_HOOKS:-0}"
 KEEP="${KEEP:-7}"
 PIP_BREAK_SYSTEM="${PIP_BREAK_SYSTEM:-0}"
+JOBS="${JOBS:-4}"
+COPY_TO="${COPY_TO:-}"
 DATE="$(date +%F)"
 RUN_STAMP="$(date +%Y%m%d-%H%M%S)"
 
@@ -67,7 +80,12 @@ on_err() {
 }
 trap 'on_err $LINENO' ERR
 
-case "$ENCRYPT" in 7z|none) ;; *) die "ENCRYPT must be 7z or none" ;; esac
+case "$ENCRYPT" in 7z|gpg|none) ;; *) die "ENCRYPT must be 7z, gpg, or none" ;; esac
+
+case "$JOBS" in
+  ''|*[!0-9]*) die "JOBS must be a positive integer, got: $JOBS" ;;
+esac
+[ "$JOBS" -ge 1 ] || die "JOBS must be >= 1"
 
 # FIX: KEEP=0 used to make `tail -n +1` emit every archive, i.e. the pruning
 # step deleted the entire history including the archive just created.
@@ -113,14 +131,23 @@ if [ -n "$VERIFY_ONLY" ]; then
       7z t -p"$PW1" -bd "$VERIFY_ONLY" >/dev/null || die "archive test failed"
       unset PW1
       ;;
+    *.gpg)
+      command -v gpg >/dev/null || die "gpg not installed, cannot verify a .gpg archive"
+      TMPV="$(mktemp -d)"; trap 'rm -rf "$TMPV"' EXIT
+      gpg --batch --yes -d -o "$TMPV/decrypted.tar.gz" "$VERIFY_ONLY" \
+        || die "gpg decryption failed (wrong passphrase or corrupt archive)"
+      tar -tzf "$TMPV/decrypted.tar.gz" >/dev/null || die "archive verification failed"
+      ;;
     *)
       tar -tzf "$VERIFY_ONLY" >/dev/null || die "archive verification failed"
       ;;
   esac
   # Report what is inside, so a silently truncated backup is visible.
-  TMPV="$(mktemp -d)"; trap 'rm -rf "$TMPV"' EXIT
+  [ -n "${TMPV:-}" ] || { TMPV="$(mktemp -d)"; trap 'rm -rf "$TMPV"' EXIT; }
   if [ "${VERIFY_ONLY##*.}" = "7z" ]; then
     7z l -ba "$VERIFY_ONLY" | awk '{print $NF}' > "$TMPV/list" 2>/dev/null || true
+  elif [ "${VERIFY_ONLY##*.}" = "gpg" ]; then
+    tar -tzf "$TMPV/decrypted.tar.gz" > "$TMPV/list"
   else
     tar -tzf "$VERIFY_ONLY" > "$TMPV/list"
   fi
@@ -136,7 +163,7 @@ TOKEN="${VC_TOKEN:-${GH_TOKEN:-}}"
 TOKEN_FILE=""
 cleanup() {
   [ -n "$TOKEN_FILE" ] && rm -f -- "$TOKEN_FILE"
-  unset TOKEN VC_TOKEN GH_TOKEN PW1 PW2 2>/dev/null || true
+  unset TOKEN VC_TOKEN GH_TOKEN PW1 PW2 ARCHIVE_PASSWORD 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -313,6 +340,24 @@ save "$BACKUP_DIR/org-meta/security-managers.json"      "/orgs/$ORG/security-man
 save "$BACKUP_DIR/org-meta/dependabot-alerts.json"      "/orgs/$ORG/dependabot/alerts"
 save "$BACKUP_DIR/org-meta/secret-scanning-alerts.json" "/orgs/$ORG/secret-scanning/alerts"
 
+# NEW: per-team membership and repository access, so who-can-access-what can
+# be restored, not just the bare team list. Team member objects only carry
+# login/id/avatar_url (no e-mail or real name), so this adds no new PII; the
+# sanitize step below still runs over these files like every other .json.
+TEAM_SLUGS="$(python3 -c \
+  'import sys,json
+try:
+    for t in json.load(sys.stdin): print(t["slug"])
+except Exception: pass' < "$BACKUP_DIR/org-meta/teams.json" 2>/dev/null || true)"
+if [ -n "$TEAM_SLUGS" ]; then
+  mkdir -p "$BACKUP_DIR/org-meta/teams"
+  while IFS= read -r slug; do
+    [ -n "$slug" ] || continue
+    save "$BACKUP_DIR/org-meta/teams/$slug-members.json" "/orgs/$ORG/teams/$slug/members"
+    save "$BACKUP_DIR/org-meta/teams/$slug-repos.json"   "/orgs/$ORG/teams/$slug/repos"
+  done <<< "$TEAM_SLUGS"
+fi
+
 REPO_LIST="$(api_get "/orgs/$ORG/repos" 2>/dev/null | python3 -c \
   'import sys,json
 try:
@@ -341,6 +386,9 @@ else
     save "$d/secret-scanning-alerts.json" "/repos/$ORG/$repo/secret-scanning/alerts?state=open"
     # NEW: community health snapshot
     save "$d/community-profile.json"    "/repos/$ORG/$repo/community/profile"
+    # NEW: topics and language breakdown - plain repo metadata, no PII
+    save "$d/topics.json"               "/repos/$ORG/$repo/topics"
+    save "$d/languages.json"            "/repos/$ORG/$repo/languages"
     branch="$(api_get "/repos/$ORG/$repo" 2>/dev/null | python3 -c \
       'import sys,json
 try: print(json.load(sys.stdin).get("default_branch") or "")
@@ -351,9 +399,11 @@ except Exception: pass' 2>/dev/null || true)"
 fi
 
 # ------------------------------------ integrity check + plain source clones
-shopt -s dotglob nullglob
-for d in "$BACKUP_DIR"/repositories/*/; do
-  r="${d%/}"
+# NEW: done in parallel (JOBS workers) instead of one repo at a time - on an
+# org with many repositories the serial `git clone` loop was the slowest part
+# of the whole backup.
+process_repo() {
+  local r="${1%/}"
   if [ -d "$r/repository" ]; then
     git --git-dir="$r/repository" fsck --no-progress >/dev/null 2>&1 \
       || warn "git fsck failed: $r/repository"
@@ -369,7 +419,13 @@ for d in "$BACKUP_DIR"/repositories/*/; do
         || warn "could not clone $r/wiki-source (empty wiki?)"
     fi
   fi
-done
+}
+export -f log warn process_repo
+export INCLUDE_SOURCE DRY_RUN
+
+shopt -s dotglob nullglob
+find "$BACKUP_DIR/repositories" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null \
+  | xargs -0 -P "$JOBS" -I{} bash -c 'process_repo "$@"' _ {}
 shopt -u dotglob nullglob
 
 if [ "$INCLUDE_SOURCE" = 1 ]; then
@@ -390,12 +446,15 @@ sanitize_dir() {
   fi
   local n=0 f
   while IFS= read -r -d '' f; do
-    if grep -aEq "$TOKEN_RE|https?://[^/[:space:]@:]+:[^@[:space:]/]+@|\"(secret|token|password|client_secret)\"[[:space:]]*:[[:space:]]*\"[^\"]+\"|hooks\.slack\.com/services|discord(app)?\.com/api/webhooks" "$f"; then
+    if grep -aEq "$TOKEN_RE|https?://[^/[:space:]@:]+:[^@[:space:]/]+@|\"(secret|token|password|client_secret)\"[[:space:]]*:[[:space:]]*\"[^\"]+\"|hooks\.slack\.com/services|discord(app)?\.com/api/webhooks|[?&](token|key|secret|password|api_key|access_token)=" "$f"; then
       perl -0pi -e '
         s#\b(gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})\b#[REDACTED:token]#g;
         s#(https?://)[^/\s:@]+:[^@\s/]+@#$1\[REDACTED]@#g;
         s#("(?:secret|token|password|client_secret)"\s*:\s*)"[^"]+"#$1"[REDACTED]"#gi;
         s#https://(?:hooks\.slack\.com/services|discord(?:app)?\.com/api/webhooks)/[^\s"\x27]+#[REDACTED:webhook]#g;
+        # NEW: secrets embedded as webhook/URL query-string parameters, e.g.
+        # https://example.com/hook?token=abcd or ?api_key=... in hooks.json
+        s#([?&](?:token|key|secret|password|api_key|access_token)=)[^&\s"\x27]+#$1\[REDACTED]#gi;
       ' "$f"
       n=$((n + 1))
     fi
@@ -439,7 +498,7 @@ if [ "$DRY_RUN" != 1 ]; then
       first=0
     done
     printf '\n  ],\n  "encrypted": %s,\n  "include_source": %s\n}\n' \
-      "$([ "$ENCRYPT" = 7z ] && echo true || echo false)" \
+      "$([ "$ENCRYPT" = 7z ] || [ "$ENCRYPT" = gpg ] && echo true || echo false)" \
       "$([ "$INCLUDE_SOURCE" = 1 ] && echo true || echo false)"
   } > "$MANIFEST"
   log "Wrote $MANIFEST"
@@ -467,14 +526,20 @@ if [ "$ENCRYPT" = 7z ]; then
   fi
   ARCHIVE="$OUT_DIR/$ORG-$DATE.7z"
   rm -f "$ARCHIVE"
-  log "Set an archive password (ASCII characters only)."
-  if [ ! -t 0 ]; then die "ENCRYPT=7z needs an interactive password prompt"; fi
-  while :; do
-    read -rsp "Archive password: " PW1; echo
-    read -rsp "Password (again): " PW2; echo
-    if [ -n "$PW1" ] && [ "$PW1" = "$PW2" ]; then break; fi
-    log "Passwords are empty or do not match, try again."
-  done
+  # NEW: ARCHIVE_PASSWORD lets this run unattended (CI, a cron job with no
+  # tty) instead of only ever prompting interactively.
+  if [ -n "${ARCHIVE_PASSWORD:-}" ]; then
+    PW1="$ARCHIVE_PASSWORD"
+  else
+    log "Set an archive password (ASCII characters only)."
+    if [ ! -t 0 ]; then die "ENCRYPT=7z needs ARCHIVE_PASSWORD set, or an interactive password prompt"; fi
+    while :; do
+      read -rsp "Archive password: " PW1; echo
+      read -rsp "Password (again): " PW2; echo
+      if [ -n "$PW1" ] && [ "$PW1" = "$PW2" ]; then break; fi
+      log "Passwords are empty or do not match, try again."
+    done
+  fi
   if [ "$DRY_RUN" = 1 ]; then
     log "[dry-run] 7z a -t7z -mhe=on -p*** $ARCHIVE $BASE"
   else
@@ -485,6 +550,49 @@ if [ "$ENCRYPT" = 7z ]; then
     log "Archive test passed"
   fi
   unset PW1 PW2
+elif [ "$ENCRYPT" = gpg ]; then
+  # NEW: GPG symmetric encryption as a lighter alternative to 7z - no extra
+  # package on most systems (gpg ships with git/ssh toolchains already).
+  command -v gpg >/dev/null 2>&1 \
+    || die "gpg is required for ENCRYPT=gpg. Install it (apt/dnf: gnupg, brew: gnupg) or use ENCRYPT=none/7z."
+  ARCHIVE="$OUT_DIR/$ORG-$DATE.tar.gz.gpg"
+  rm -f "$ARCHIVE"
+  if [ "$DRY_RUN" = 1 ]; then
+    log "[dry-run] tar -czf - $BASE | gpg --symmetric -o $ARCHIVE"
+    if [ -n "${ARCHIVE_PASSWORD:-}" ]; then
+      log "ARCHIVE_PASSWORD is set - would encrypt non-interactively."
+    else
+      log "WARNING: ENCRYPT=gpg will prompt interactively for a passphrase (twice, via gpg's own prompt)."
+    fi
+  else
+    # NEW: ARCHIVE_PASSWORD lets this run unattended (CI, a cron job with no
+    # tty) instead of only ever using gpg's interactive pinentry prompt.
+    if [ -z "${ARCHIVE_PASSWORD:-}" ] && [ ! -t 0 ]; then
+      die "ENCRYPT=gpg needs ARCHIVE_PASSWORD set, or an interactive passphrase prompt"
+    fi
+    TMPTAR="$(mktemp)"
+    tar -czf "$TMPTAR" -C "$PARENT" "$BASE" || die "could not create archive"
+    if [ -n "${ARCHIVE_PASSWORD:-}" ]; then
+      # Passphrase goes in on fd 0, never argv/ps, same as the interactive path.
+      gpg --batch --yes --passphrase-fd 0 --symmetric --cipher-algo AES256 \
+        -o "$ARCHIVE" "$TMPTAR" <<<"$ARCHIVE_PASSWORD" \
+        || { rm -f "$TMPTAR"; die "gpg encryption failed"; }
+    else
+      # gpg's own pinentry/tty prompt asks for and confirms the passphrase;
+      # nothing sensitive goes on the command line or into argv.
+      gpg --symmetric --cipher-algo AES256 -o "$ARCHIVE" "$TMPTAR" \
+        || { rm -f "$TMPTAR"; die "gpg encryption failed"; }
+    fi
+    rm -f "$TMPTAR"
+    log "Testing archive"
+    if [ -n "${ARCHIVE_PASSWORD:-}" ]; then
+      gpg --batch --yes --passphrase-fd 0 -d -o /dev/null "$ARCHIVE" \
+        <<<"$ARCHIVE_PASSWORD" || die "archive test (decrypt) failed"
+    else
+      gpg --batch --yes -d -o /dev/null "$ARCHIVE" || die "archive test (decrypt) failed"
+    fi
+    log "Archive test passed"
+  fi
 else
   ARCHIVE="$OUT_DIR/$ORG-$DATE.tar.gz"
   if [ "$DRY_RUN" = 1 ]; then
@@ -509,6 +617,22 @@ if [ "$DRY_RUN" != 1 ]; then
   hash_archive "$ARCHIVE" || true
 fi
 
+# ------------------------------------------- NEW: secondary copy via rsync
+# Local disk, mounted NAS, or an SSH host - no cloud API/account involved.
+if [ -n "$COPY_TO" ]; then
+  if ! command -v rsync >/dev/null 2>&1; then
+    warn "COPY_TO is set but rsync is not installed; skipping secondary copy"
+  elif [ "$DRY_RUN" = 1 ]; then
+    log "[dry-run] rsync -a $ARCHIVE ${ARCHIVE}.sha256 $COPY_TO/"
+  else
+    if rsync -a "$ARCHIVE" "$ARCHIVE.sha256" "$COPY_TO/" 2>/dev/null; then
+      log "Copied archive to $COPY_TO"
+    else
+      warn "rsync to $COPY_TO failed; the primary archive in $OUT_DIR is still intact"
+    fi
+  fi
+fi
+
 # ------------------------------------------------- prune old archives
 # FIX: the old pipeline used `find -printf '%T@ %p\n' | cut -d' ' -f2-`, which
 # is GNU-only and breaks on filenames containing spaces. Sort by mtime
@@ -516,7 +640,7 @@ fi
 if [ "$DRY_RUN" != 1 ]; then
   pruned=0
   tmplist="$(mktemp)"
-  for f in "$OUT_DIR/$ORG"-*.7z "$OUT_DIR/$ORG"-*.tar.gz; do
+  for f in "$OUT_DIR/$ORG"-*.7z "$OUT_DIR/$ORG"-*.tar.gz "$OUT_DIR/$ORG"-*.tar.gz.gpg; do
     [ -f "$f" ] || continue
     printf '%s %s\n' "$(mtime_of "$f")" "$f" >> "$tmplist"
   done
