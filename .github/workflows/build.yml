@@ -42,7 +42,7 @@ concurrency:
 
 jobs:
   ci:
-    name: CI • guigenmc • build • lint
+    name: Verify & package
     runs-on: ubuntu-latest
 
     # Read-only: this job checks out the repository and runs repository code.
@@ -666,7 +666,7 @@ jobs:
   # code - it downloads the artifact produced by `ci` and moves the tag.
   # ======================================================================
   publish:
-    name: Publish • packs-latest
+    name: Publish release
     needs: ci
     if: needs.ci.outputs.publish == 'true'
     runs-on: ubuntu-latest

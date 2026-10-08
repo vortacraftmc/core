@@ -6,12 +6,18 @@
 # variables instead of prompts (see ARCHIVE_PASSWORD below).
 #
 # Required repo secrets:
-#   ORG_READ_TOKEN        Fine-grained PAT or GitHub App token with read
-#                          access to the org: repo contents, metadata,
-#                          members, teams, security events (Dependabot /
-#                          secret scanning), and Actions. Reused from the
-#                          CODEOWNERS Sync workflow - the same token already
-#                          has org-read access.
+#   ORG_READ_TOKEN        Fine-grained PAT or GitHub App token. The name is
+#                          shared with the CODEOWNERS Sync workflow, but the
+#                          scopes are NOT: that workflow only reads org
+#                          members, while this one also reads repository
+#                          contents, metadata, teams and team membership,
+#                          security events (Dependabot / secret scanning) and
+#                          Actions data. A token scoped for CODEOWNERS Sync
+#                          will authenticate here and then produce a backup
+#                          that is silently missing most of its sections -
+#                          the script reports each gap as a warning, so check
+#                          the warning count in the job summary rather than
+#                          trusting a green run.
 #   BACKUP_ARCHIVE_PASSWORD   Passphrase for the encrypted archive. Required
 #                          whenever `encrypt` (below) is 7z or gpg; leave the
 #                          secret unset only if you intend to always run this
@@ -51,6 +57,10 @@ concurrency:
 
 jobs:
   backup:
+    # Named for consistency with build.yml, which names both of its jobs
+    # (`CI • guigenmc • build • lint`, `Publish • packs-latest`). Without this
+    # the run page showed the bare job id "backup".
+    name: Back up organization
     runs-on: ubuntu-latest
     timeout-minutes: 180
 
@@ -101,6 +111,17 @@ jobs:
           GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
           ARCHIVE_PASSWORD: ${{ secrets.BACKUP_ARCHIVE_PASSWORD }}
 
+      # Rehearse first. --dry-run exercises argument parsing, the token
+      # pre-flight and every stage's branch selection without writing an
+      # archive, so a broken script fails here in seconds instead of forty
+      # minutes into a real backup. (Until the 2026-10-08 fixes --dry-run
+      # itself aborted on a fresh BACKUP_DIR, so this step would not have
+      # been meaningful before.)
+      - name: Dry run
+        run: bash scripts/backup-org.sh --dry-run --no-source
+        env:
+          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+
       - name: Run backup
         run: bash scripts/backup-org.sh
         env:
@@ -121,6 +142,13 @@ jobs:
             echo '```'
             echo
             echo "Encryption: \`$ENCRYPT\` | Include source: \`$INCLUDE_SOURCE\`"
+            echo
+            warns="$(grep -c 'WARNING:' "$OUT_DIR"/backup-*.log 2>/dev/null | tail -1 || true)"
+            echo "Warnings during the run: \`${warns:-unknown}\`"
+            echo
+            echo "A non-zero count means sections were skipped (usually a"
+            echo "missing token scope). The archive is still usable, but it is"
+            echo "not a complete backup of the organization."
           } >> "$GITHUB_STEP_SUMMARY"
           if [ "$ENCRYPT" = none ]; then
             echo "::warning::Archive is NOT encrypted (encrypt=none) and stays downloadable as an artifact for 14 days."
