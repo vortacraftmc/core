@@ -55,7 +55,7 @@ EXTRA = {
 
 def _core_js() -> str:
     html = HTML.read_text(encoding="utf-8")
-    scripts = [m.group(1) for m in re.finditer(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S)]
+    scripts = [m.group(1) for m in re.finditer(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script\s*>", html, re.S | re.IGNORECASE)]
     js = max(scripts, key=len)
     start = js.index("// guigen core")
     j = js.index("function generateDatapack")
