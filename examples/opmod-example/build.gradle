@@ -1,8 +1,14 @@
 plugins {
-	// Pinned to match the version used elsewhere in vortacraftmc/core
-	// (mods/datapack-blocker). 1.15.5 is also the
-	// minimum Loom version with unobfuscated-jar support (needed for MC 26.x,
-	// which ships without Yarn mappings) via MinecraftJarProcessor.isUnobfuscated().
+	// Loom 1.15.5. Two claims that used to sit here were wrong and are now
+	// corrected rather than repeated:
+	//   * it is NOT "pinned to match mods/datapack-blocker" - that subproject
+	//     targets MC 1.21.1 (obfuscated, Yarn mappings) and shares only the
+	//     number, not the setup;
+	//   * 1.15.5 is NOT the minimum Loom with unobfuscated-jar support - that
+	//     landed in Loom 1.14, which also added the dedicated
+	//     `net.fabricmc.fabric-loom` plugin id used for non-remapping builds.
+	// FabricMC recommends Loom 1.17 + Gradle 9.6+ for MC 26.3; 1.18 is current.
+	// The pin itself is changed in the Gradle-consistency work, not here.
 	id 'fabric-loom' version '1.15.5'
 	id 'maven-publish'
 }
