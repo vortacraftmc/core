@@ -77,6 +77,26 @@ def walk(top, exts=None, skip_dirs=(".git", "build", ".gradle", "node_modules"))
                 yield os.path.join(root, f)
 
 
+# A documentation line that explains a removal is not a dangling reference -
+# it is the opposite. Both the unknown-workflow and unknown-gradle-task checks
+# need this, so it lives in one place: they had drifted, one tolerating
+# historical notes and the other reporting them, which made a paragraph that
+# documented a deletion get flagged for the deletion it was documenting.
+RETIRED_PHRASES = (
+    "does not exist", "do **not** exist", "does **not** exist", "not exist in",
+    "did not exist", "never existed", "no longer exists",
+    "was removed", "were removed", "has been removed", "have been removed",
+    "was deleted", "were deleted", "has been deleted", "have been deleted",
+    "is gone", "are gone", "retired", "historical note",
+)
+
+
+def line_documents_a_removal(line):
+    """True when the line's own wording says the referenced thing is gone."""
+    low = line.lower()
+    return any(k in low for k in RETIRED_PHRASES)
+
+
 def read_json(p):
     try:
         with open(p, encoding="utf-8") as fh:
@@ -683,6 +703,12 @@ def audit_docs():
     for p in walk(REPO, {".md"}):
         txt = re.sub(r"<!--.*?-->", "", read_text(p), flags=re.S)
         for i, line in enumerate(txt.splitlines(), 1):
+            # Same test as docs.unknown-workflow: prose that explains a task no
+            # longer exists must not be reported as documenting a task that
+            # should. This check previously had no such test at all, while its
+            # sibling did.
+            if line_documents_a_removal(line):
+                continue
             for m in GRADLE_TASK_RE.finditer(line):
                 t = m.group(1)
                 if t in GRADLE_BUILTIN:
@@ -701,16 +727,7 @@ def audit_docs():
     for p in walk(REPO, {".md", ".json"}):
         txt = re.sub(r"<!--.*?-->", "", read_text(p), flags=re.S)
         for i, line in enumerate(txt.splitlines(), 1):
-            low = line.lower()
-            # Skip lines that already state the file does not exist / is retired.
-            # "never existed" was missing from this list, so a historically
-            # accurate note ("the workflow it named never existed") was reported
-            # as a dangling reference - the exact opposite of what the check is
-            # for. Past-tense phrasings belong here too.
-            if any(k in low for k in ("does not exist", "do **not** exist", "historical note",
-                                      "does **not** exist", "not exist in", "retired",
-                                      "never existed", "no longer exists", "was removed",
-                                      "has been removed", "did not exist")):
+            if line_documents_a_removal(line):
                 continue
             for m in re.finditer(r"([\w\-]+\.yml)", line):
                 n = m.group(1)
