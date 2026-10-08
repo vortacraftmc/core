@@ -37,5 +37,5 @@ The generator is deterministic, so output is reproducible across branches.
 
 1. Keep changes focused and documented.
 2. Update `CHANGELOG.md`.
-3. Make sure the secret-scan workflow passes.
+3. Make sure CI passes (`scripts/lint_datapacks.sh` covers this pack's `.mcfunction` files).
 4. Fill in the pull request template.
