@@ -14,6 +14,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
+import re
 
 from . import __version__
 from .generators import generate_datapack, summarize
@@ -48,6 +49,15 @@ class C:
     MAGENTA = "\033[35m" if _USE_COLOR else ""
     BLUE = "\033[34m" if _USE_COLOR else ""
     WHITE = "\033[37m" if _USE_COLOR else ""
+
+
+def _safe_content_disposition_filename(value: Any, default: str = "datapack") -> str:
+    """Return a conservative token safe for Content-Disposition filename usage."""
+    s = str(value) if value is not None else default
+    s = s.replace("\r", "").replace("\n", "").replace("\x00", "")
+    s = s.replace('"', "_")
+    s = re.sub(r"[^A-Za-z0-9._-]", "_", s)
+    return s or default
 
 
 def ok(msg: str) -> None:
@@ -337,6 +347,7 @@ class GuigenHandler(SimpleHTTPRequestHandler):
             menu = self._read_config(raw)
             files = generate_datapack(menu)
             menu_id = menu.get("menu_id") or "datapack"
+            safe_menu_id = _safe_content_disposition_filename(menu_id, "datapack")
             import io
 
             buf = io.BytesIO()
@@ -349,7 +360,7 @@ class GuigenHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/zip")
             self.send_header(
                 "Content-Disposition",
-                f'attachment; filename="{menu_id}_datapack.zip"',
+                f'attachment; filename="{safe_menu_id}_datapack.zip"',
             )
             self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
