@@ -24,6 +24,8 @@
 # Manual-trigger only by default, same reasoning as CODEOWNERS Sync's
 # maintenance pause: no unattended token use while the org is quiet. Uncomment
 # the schedule block to back up automatically again.
+name: Organization Backup
+
 on:
   workflow_dispatch:
     inputs:
