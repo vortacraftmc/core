@@ -1,38 +1,35 @@
 # ─────────────────────────────────────────────────────────────────
 # macroengine:core/internal/api/cmd/other/multi_cmd/exec_object
-# Executes one object-shaped queue entry.
+# Evaluates the entry's condition, then dispatches.
 #
 # _mcmd_current shapes:
 #   {cmd:"...", condition:{}, priority:0, pre_hook:"...", post_hook:"..."}
 #   {func:"...", condition:{}}
 #   {commands:[...], condition:{}}     nested group, expanded in place
 #
-# `condition` is evaluated first and may skip the entry entirely. The
-# supported schema is documented in cond_eval_core.mcfunction.
+# THE GATE IS POSITIVE ON PURPOSE. An earlier revision read:
+#
+#     execute ... matches 0 run return run function .../exec_object_skipped
+#
+# That silently disabled every condition. exec_object_skipped's only line
+# was gated on _mcmd_options.profile:1b, and all four entry points default
+# profile to 0b, so the function ran no command at all; `return run` does
+# not return from the caller when the command it wraps fails, so
+# exec_object fell straight through to the execution lines. The condition
+# was evaluated, its verdict was correct, and then it was ignored.
+#
+# The body now lives only on the branch where the verdict is known good,
+# so no `return` semantics are involved anywhere in the decision.
 # ─────────────────────────────────────────────────────────────────
 
-# Condition gate. `return run` is required here: a plain
-# `execute ... run function` would return from the CALLED function only
-# and the rest of this file would still execute.
 execute if data storage macroengine:engine _mcmd_current.condition run function macroengine:core/internal/api/cmd/other/multi_cmd/check_condition
-execute if data storage macroengine:engine _mcmd_current.condition if score $mcmd_cond_result macroengine.tmp matches 0 run return run function macroengine:core/internal/api/cmd/other/multi_cmd/exec_object_skipped
 
-# Run pre-hook (if present)
-execute if data storage macroengine:engine _mcmd_current.pre_hook run function macroengine:core/internal/api/cmd/other/multi_cmd/run_pre_hook
+# No condition attached -> always run.
+execute unless data storage macroengine:engine _mcmd_current.condition run function macroengine:core/internal/api/cmd/other/multi_cmd/exec_object_body
 
-# Start profiling (if present)
-execute if data storage macroengine:engine _mcmd_options{profile:1b} run execute store result score $mcmd_exec_start macroengine.tmp run time query gametime
+# Condition attached and passed -> run.
+execute if data storage macroengine:engine _mcmd_current.condition if score $mcmd_cond_result macroengine.tmp matches 1 run function macroengine:core/internal/api/cmd/other/multi_cmd/exec_object_body
 
-# A group entry is expanded rather than run, so `commands` wins when both
-# it and cmd/func are present.
-execute if data storage macroengine:engine _mcmd_current.commands run function macroengine:core/internal/api/cmd/other/multi_cmd/exec_group
-execute unless data storage macroengine:engine _mcmd_current.commands if data storage macroengine:engine _mcmd_current.cmd run function macroengine:core/internal/api/cmd/other/multi_cmd/exec_macro with storage macroengine:engine _mcmd_current
-execute unless data storage macroengine:engine _mcmd_current.commands if data storage macroengine:engine _mcmd_current.func run function macroengine:core/internal/api/cmd/other/multi_cmd/exec_func_macro with storage macroengine:engine _mcmd_current
-
-# End profiling (if present)
-execute if data storage macroengine:engine _mcmd_options{profile:1b} run function macroengine:core/internal/api/cmd/other/multi_cmd/record_exec_time
-
-# Run post-hook (if present)
-execute if data storage macroengine:engine _mcmd_current.post_hook run function macroengine:core/internal/api/cmd/other/multi_cmd/run_post_hook
-
-execute if data storage macroengine:engine _mcmd_options{profile:1b} run scoreboard players add $mcmd_success macroengine.tmp 1
+# Condition attached and not passed -> skip. `unless ... matches 1` rather
+# than `matches 0` so an unset or corrupt verdict also fails closed.
+execute if data storage macroengine:engine _mcmd_current.condition unless score $mcmd_cond_result macroengine.tmp matches 1 run function macroengine:core/internal/api/cmd/other/multi_cmd/exec_object_skipped
