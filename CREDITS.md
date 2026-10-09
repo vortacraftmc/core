@@ -3,6 +3,30 @@
 This file records which parts of the repository were written or changed with AI assistance, so that
 AI involvement is visible in the repository itself and not only through commit authorship.
 
+## 2026-10-09 - docs: "Open in GitHub Codespaces" buttons for datapack READMEs
+
+**Tool:** Claude (Anthropic), working from a prompt by the maintainer. Review status: _pending - update
+when reviewed_.
+
+### New (AI-written)
+
+| Path | What |
+|---|---|
+| `.devcontainer/<slug>/devcontainer.json` (10 files) | One minimal dev container per datapack; `workspaceFolder` points at the pack so the Codespace opens in that pack |
+
+### Changed (AI-assisted edit)
+
+| Path | Change |
+|---|---|
+| `examples/template-datapack/README.md`, `mods/datapack-fixer/examples/datapack-fixer-sample-1.21.4/README.md`, `packs/{DevTools-Datapack,InteractionClickDetection,LeftClickDetection,RTWrapper,TunnelScript,cmdTunnel-datapack,guikit-datapack,macroEngine-Datapack-v26.4}/README.md` | Badge line inserted directly under the `#` title; links to `codespaces.new/vortacraftmc/core` with `devcontainer_path` of that pack's config |
+
+### Verification status
+
+- Verified: every new `devcontainer.json` parses as JSON; only README line insertions, no other text touched.
+- **Not verified:** an actual Codespace launch. Whether `workspaceFolder` opens the pack folder as intended
+  needs one manual click-through per button (the pack configs deliberately skip `setup.sh`, so Java/Gradle are
+  not installed in them).
+
 ## 2026-10-07 - fix: release assets not found (`packs-latest`)
 
 **Tool:** Claude (Anthropic), working from a prompt by the maintainer. Review status: _pending - update

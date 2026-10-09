@@ -1,0 +1,16 @@
+{
+  "name": "packs/macroEngine-Datapack-v26.4",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "workspaceFolder": "/workspaces/core/packs/macroEngine-Datapack-v26.4",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "misode.vscode-datapack-helper",
+        "SPGoding.datapack-language-server"
+      ]
+    }
+  }
+}

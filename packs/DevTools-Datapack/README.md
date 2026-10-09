@@ -1,5 +1,7 @@
 # DevTools-Datapack
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/vortacraftmc/core?ref=main&devcontainer_path=.devcontainer%2Fpacks-DevTools-Datapack%2Fdevcontainer.json)
+
 Development-only helpers split out of the production packs. **Not** listed in
 `merge-manifest.json`, so it never reaches a release build. Load it next to the
 pack under test; the files live in that pack's own namespace.

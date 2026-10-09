@@ -1,5 +1,7 @@
 # template-datapack
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/vortacraftmc/core?ref=main&devcontainer_path=.devcontainer%2Fexamples-template-datapack%2Fdevcontainer.json)
+
 A minimal, loadable starting point for a new datapack in this repository. Its
 only content is the load/tick wiring; you replace the namespace and fill in the
 two functions.

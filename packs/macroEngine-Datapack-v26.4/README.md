@@ -1,5 +1,7 @@
 # macroEngine (v26.4-snapshot-1)
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/vortacraftmc/core?ref=main&devcontainer_path=.devcontainer%2Fpacks-macroEngine-Datapack-v26.4%2Fdevcontainer.json)
+
 **macroEngine** is a macro/module framework datapack for Minecraft Java Edition, providing a large library of reusable command-based systems (math, string, NBT, geo, permissions, UUID cache, hooks, rate limiting, and more) plus a multi-source text/value input system (dialogs, books, signs, lecterns, name tags, command block minecarts).
 
 > Maintained by: [vortacraftmc](https://github.com/vortacraftmc) — repository [`vortacraftmc/core`](https://github.com/vortacraftmc/core), path `packs/macroEngine-Datapack-v26.4`

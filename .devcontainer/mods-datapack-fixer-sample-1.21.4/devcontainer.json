@@ -1,0 +1,16 @@
+{
+  "name": "mods/datapack-fixer/examples/datapack-fixer-sample-1.21.4",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "workspaceFolder": "/workspaces/core/mods/datapack-fixer/examples/datapack-fixer-sample-1.21.4",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "misode.vscode-datapack-helper",
+        "SPGoding.datapack-language-server"
+      ]
+    }
+  }
+}

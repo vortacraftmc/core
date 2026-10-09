@@ -1,5 +1,7 @@
 # guikit — in-game GUI editor
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/vortacraftmc/core?ref=main&devcontainer_path=.devcontainer%2Fpacks-guikit-datapack%2Fdevcontainer.json)
+
 Menus are built **in the world**, not by writing `.mcfunction` files.
 A chest minecart is the screen. Left-click is the click. Definitions live in
 `storage guikit:lib` (saved with the world) and survive `/reload`.

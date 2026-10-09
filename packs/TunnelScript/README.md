@@ -1,5 +1,7 @@
 # TunnelScript
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/vortacraftmc/core?ref=main&devcontainer_path=.devcontainer%2Fpacks-TunnelScript%2Fdevcontainer.json)
+
 > ⚠️ **Archived.** This pack is archived and no longer maintained. The `vortacraftmc/core` datapacks are being superseded by [Fabric](https://fabricmc.net/) mods. Existing worlds using this pack will continue to work, but no new features or fixes are planned.
 
 A small command-running library for Minecraft data packs. The idea is simple:
