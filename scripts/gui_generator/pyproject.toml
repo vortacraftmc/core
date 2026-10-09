@@ -1,15 +1,20 @@
 [build-system]
-# Pin upper bounds for reproducible builds; setuptools>=61 needed for pyproject.toml.
-requires = ["setuptools>=61,<85", "wheel>=0.40,<1"]
+# Pin upper bounds for reproducible builds. The lower bound is 77, not 61:
+# `license` as a SPDX string needs setuptools>=77, and the table form it
+# replaces stops being supported on 2027-Feb-18.
+requires = ["setuptools>=77,<85", "wheel>=0.40,<1"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "guigenmc"
-version = "1.3.0"
+# Single source of truth: read from guigenmc/__init__.py rather than repeated
+# here, so the installed metadata and `guigenmc --version` cannot disagree.
+dynamic = ["version"]
 description = "JSON → Minecraft GUI datapack generator (CLI + web UI)"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+# SPDX expression, not the deprecated table form.
+license = "MIT"
 authors = [{ name = "guigenmc" }]
 keywords = ["minecraft", "datapack", "gui", "generator", "cli"]
 classifiers = [
@@ -17,7 +22,6 @@ classifiers = [
   "Environment :: Console",
   "Intended Audience :: Developers",
   "Intended Audience :: End Users/Desktop",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.9",
@@ -30,15 +34,22 @@ classifiers = [
 ]
 dependencies = []
 
+# These pointed at github.com/guigenmc/guigenmc, an org/repo that does not
+# exist: all four answered 404. The tool lives in the vortacraftmc/core
+# monorepo, so the URLs point there - including the subdirectory, since the
+# monorepo root is not this tool's documentation.
 [project.urls]
-Homepage = "https://github.com/guigenmc/guigenmc"
-Documentation = "https://github.com/guigenmc/guigenmc#readme"
-Repository = "https://github.com/guigenmc/guigenmc"
-Issues = "https://github.com/guigenmc/guigenmc/issues"
-Changelog = "https://github.com/guigenmc/guigenmc/releases"
+Homepage = "https://github.com/vortacraftmc/core/tree/main/scripts/gui_generator"
+Documentation = "https://github.com/vortacraftmc/core/blob/main/scripts/gui_generator/README.md"
+Repository = "https://github.com/vortacraftmc/core"
+Issues = "https://github.com/vortacraftmc/core/issues"
+Changelog = "https://github.com/vortacraftmc/core/releases"
 
 [project.scripts]
 guigenmc = "guigenmc.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "guigenmc.__version__" }
 
 [tool.setuptools.packages.find]
 where = ["."]
