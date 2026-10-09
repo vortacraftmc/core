@@ -35,8 +35,8 @@
 - **Text-component rendering** (`systems/text/`) — helpers for NBT-backed components. On 26.1+ a `{"storage":...,"nbt":...}` component renders a string *with its quotes* and a number or boolean *with vanilla colouring* unless `interpret` and `plain` are both set. Every such component in this pack now sets both explicitly; `scripts/fix_text_components.py` at the repository root enforces it
 
 - **Placeholder module** (`api/placeholder/`) — `%player%`, `%score:<objective>%`, `%nl%`, `%%` and your own `%name%` tokens resolve to a text component list built on `core/internal/text`. Untrusted text is never substituted into a command or JSON string, so chat/sign/book input is safe; see [`docs/placeholder.md`](docs/placeholder.md)
-- **Title / action bar with placeholders** (`api/title/*_p`, plus `clear`, `reset`, `times`) — storage-driven (no quote/backslash breakage), per-recipient placeholder resolution
-- **Data helpers** (`api/data/`) — `get`, `set`, `set_default`, `append`, `merge`, `remove`, `exists`, `count`, `copy`, `add`, `toggle`, `pop`, `shift` over any storage/path; values pass through storage so nothing needs escaping. Migration notes: [`docs/migrating-from-data-api.md`](docs/migrating-from-data-api.md)
+- **Title / action bar with placeholders** (`api/title/*_p`, plus `clear`, `reset`, `times`; see [`docs/title.md`](docs/title.md)) — storage-driven (no quote/backslash breakage), per-recipient placeholder resolution
+- **Data helpers** (`api/data/`, see [`docs/data.md`](docs/data.md)) — `get`, `set`, `set_default`, `append`, `merge`, `remove`, `exists`, `count`, `copy`, `add`, `toggle`, `pop`, `shift` over any storage/path; values pass through storage so nothing needs escaping. Migration notes: [`docs/migrating-from-data-api.md`](docs/migrating-from-data-api.md)
 
 ---
 
