@@ -18,7 +18,7 @@
 
 ![macroEngine layers](docs/media/architecture.svg)
 
-- **API layer** (`api/`) — stable public entry points: `cmd`, `cb` (callback queue), `color`, `dialog`, `gamerule`, `interaction`, `item`, `macro`, `perm`, `title`, `toggle`, `trigger`, `wand`
+- **API layer** (`api/`) — stable public entry points: `cmd`, `cb` (callback queue), `color`, `dialog`, `gamerule`, `interaction`, `data`, `item`, `macro`, `perm`, `placeholder`, `title`, `toggle`, `trigger`, `wand`
 - **Systems layer** (`systems/`) — internal utility modules: `math`, `string`, `nbt`, `logic`, `geo`, `flag`, `hook`, `log`, `rate_limit`, `sound`, `uuid`, `color`
 - **Input system** (`input/`) — capture player-provided values via writable book, sign, lectern, name tag, dialog, or command block minecart, with shared validation (`input/validate`) for int/float/bool/tag-safe strings
 - **Toggle system** — per-module runtime enable/disable for `cb`, `perm`, `geo`, `wand`, `interaction`, `hook`, and `experimental` features
@@ -33,6 +33,10 @@
 - **Command conditions and nested groups** (`api/cmd/other/multi_cmd/`) — queue entries accept a `condition` object with boolean composition (`all_of`, `any_of`, `not`, nestable to depth 8) and a `commands` list that expands in place, so a group can be gated as a unit. Leaves: `tag`, `score` (target and bounds now optional), `predicate`, `entity`, `storage` (existence), and `data` (numeric range). Every leaf fails closed — a missing required key or an unreadable path reports *not passed* rather than silently passing
 - **Deterministic RNG** (`systems/rng/`) — `seed`, `state`, `next`, `int`, `chance`, `pick`. Seeding makes randomised behaviour reproducible, which the previous generator could not do: it kept an undocumented `_rng_state` key with no way to set it. `systems/math/random` is now a thin wrapper over `systems/rng/int`, so there is one generator rather than two
 - **Text-component rendering** (`systems/text/`) — helpers for NBT-backed components. On 26.1+ a `{"storage":...,"nbt":...}` component renders a string *with its quotes* and a number or boolean *with vanilla colouring* unless `interpret` and `plain` are both set. Every such component in this pack now sets both explicitly; `scripts/fix_text_components.py` at the repository root enforces it
+
+- **Placeholder module** (`api/placeholder/`) — `%player%`, `%score:<objective>%`, `%nl%`, `%%` and your own `%name%` tokens resolve to a text component list built on `core/internal/text`. Untrusted text is never substituted into a command or JSON string, so chat/sign/book input is safe; see [`docs/placeholder.md`](docs/placeholder.md)
+- **Title / action bar with placeholders** (`api/title/*_p`, plus `clear`, `reset`, `times`) — storage-driven (no quote/backslash breakage), per-recipient placeholder resolution
+- **Data helpers** (`api/data/`) — `get`, `set`, `append`, `merge`, `remove`, `exists`, `count`, `copy` over any storage/path; values pass through storage so nothing needs escaping. Migration notes: [`docs/migrating-from-data-api.md`](docs/migrating-from-data-api.md)
 
 ---
 
