@@ -67,9 +67,19 @@ Registration arguments are developer input (like every other macro API in this p
 Only *text being parsed* is treated as untrusted. Placeholder names are validated
 against quotes, backslashes and the `deny_name` table before they reach a macro.
 
+## Checking results
+
+`parse` returns the number of components it produced, and `exists` returns 1 or 0. `execute if function`
+cannot pass macro arguments, so store the return value instead:
+
+```mcfunction
+execute store result score #r mypack.tmp run function macroengine:api/placeholder/exists {name:"rank"}
+execute if score #r mypack.tmp matches 1 run say registered
+```
+
 ## Title and action bar
 
-`api/title/show_p`, `show_to_p`, `broadcast_p`, `show_team_p {team}`, `show_tag_p {tag}`,
+[title.md](title.md) documents the title functions. `api/title/show_p`, `show_to_p`, `broadcast_p`, `show_team_p {team}`, `show_tag_p {tag}`,
 `show_area_p {radius}`, `actionbar_p`, `actionbar_all_p` and `actionbar_tag_p {tag}` take
 their text from `macroengine:title in` and support the same placeholders; see the
 header of each function.
