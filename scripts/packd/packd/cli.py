@@ -105,7 +105,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         return _die(f"{path} already exists (use --force to overwrite)", EXIT_USAGE)
     path.write_text(config_template(args.world or "/path/to/world"), encoding="utf-8")
     print(f"wrote {path}")
-    print(f"  set your world directory, then export {PASSWORD_ENV} to use the server commands")
+    print("  set your world directory, then set the RCON password environment variable to use the server commands")
     return EXIT_OK
 
 
