@@ -1,4 +1,4 @@
-# macroengine:systems/rng/_swap_bounds
+# macroengine:core/internal/systems/rng/_swap_bounds
 # min > max is a caller mistake, not an error: swap and carry on, so
 # {min:10,max:1} behaves like {min:1,max:10} instead of producing
 # nothing at all.

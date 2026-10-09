@@ -1,5 +1,5 @@
 # ======================================================================================
-# macroengine:systems/trim/_private/fire_matched  [INTERNAL]
+# macroengine:core/internal/systems/trim/_private/fire_matched  [INTERNAL]
 # ======================================================================================
 # $(slot) — armor slot that just matched circuit + overload.
 # Fires "macroengine:trim_matched" via the existing events system so any

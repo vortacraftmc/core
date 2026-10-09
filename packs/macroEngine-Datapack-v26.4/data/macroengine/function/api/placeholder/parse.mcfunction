@@ -35,7 +35,7 @@ data modify storage macroengine:placeholder segs set from storage macroengine:te
 function macroengine:core/internal/text/reset
 
 scoreboard players set #ph_name macroengine.tmp 0
-function macroengine:api/placeholder/_loop
+function macroengine:core/internal/api/placeholder/_loop
 data remove storage macroengine:placeholder segs
 data remove storage macroengine:placeholder cur
 data remove storage macroengine:placeholder name

@@ -5,5 +5,5 @@
 # value inside a range is wanted.
 # ─────────────────────────────────────────────────────────────────
 
-function macroengine:systems/rng/_core
+function macroengine:core/internal/systems/rng/_core
 execute store result storage macroengine:output result int 1 run scoreboard players get $rng_state macroengine.tmp
