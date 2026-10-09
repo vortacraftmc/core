@@ -33,7 +33,7 @@
 data remove storage macroengine:trim result
 data modify storage macroengine:trim result.any_matches set value 0b
 
-function macroengine:systems/trim/_private/check_slot {slot: "head"}
-function macroengine:systems/trim/_private/check_slot {slot: "chest"}
-function macroengine:systems/trim/_private/check_slot {slot: "legs"}
-function macroengine:systems/trim/_private/check_slot {slot: "feet"}
+function macroengine:core/internal/systems/trim/_private/check_slot {slot: "head"}
+function macroengine:core/internal/systems/trim/_private/check_slot {slot: "chest"}
+function macroengine:core/internal/systems/trim/_private/check_slot {slot: "legs"}
+function macroengine:core/internal/systems/trim/_private/check_slot {slot: "feet"}

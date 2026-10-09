@@ -1,5 +1,5 @@
 # ======================================================================================
-# macroengine:input/validate/_private/check_tag_safe  [INTERNAL]
+# macroengine:core/internal/input/validate/_private/check_tag_safe  [INTERNAL]
 # ======================================================================================
 # Rejects empty strings and any string containing one of: space " ' { } [ ] : § | ^ < >
 # or a literal backslash. A safe result can be used as a scoreboard objective/player-name

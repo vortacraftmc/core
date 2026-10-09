@@ -1,4 +1,4 @@
-# macroengine:api/placeholder/_step_text [INTERNAL]
+# macroengine:core/internal/api/placeholder/_step_text [INTERNAL]
 # Emit the head as {text:...} (skipped when empty), pop it, switch to name mode.
 # The text is copied with `set from`, never substituted into a command or JSON
 # string, so quotes, backslashes and braces in user text are harmless.

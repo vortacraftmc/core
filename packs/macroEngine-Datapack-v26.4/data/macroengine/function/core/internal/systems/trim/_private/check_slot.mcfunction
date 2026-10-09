@@ -1,5 +1,5 @@
 # ======================================================================================
-# macroengine:systems/trim/_private/check_slot  [INTERNAL]
+# macroengine:core/internal/systems/trim/_private/check_slot  [INTERNAL]
 # ======================================================================================
 # $(slot) — one of "head" | "chest" | "legs" | "feet" (an armor.<slot> equipment slot)
 #
@@ -18,6 +18,6 @@ $execute unless data storage macroengine:trim {scratch:{has_trim:1b}} run data m
 $execute unless data storage macroengine:trim {scratch:{has_trim:1b}} run data modify storage macroengine:trim result.$(slot).matches set value 0b
 
 # only bother checking the specific pattern/material if a trim is present at all
-$execute if data storage macroengine:trim {scratch:{has_trim:1b}} run function macroengine:systems/trim/_private/check_match {slot: "$(slot)"}
+$execute if data storage macroengine:trim {scratch:{has_trim:1b}} run function macroengine:core/internal/systems/trim/_private/check_match {slot: "$(slot)"}
 
 data remove storage macroengine:trim scratch

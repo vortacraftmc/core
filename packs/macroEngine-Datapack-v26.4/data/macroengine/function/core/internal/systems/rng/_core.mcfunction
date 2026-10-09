@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────
-# macroengine:systems/rng/_core
+# macroengine:core/internal/systems/rng/_core
 # Advances the generator by one step and leaves the new raw state in
 # $rng_state macroengine.tmp. Bounded output is the caller's job.
 #
@@ -10,7 +10,7 @@
 # modulus over the range they actually need.
 # ─────────────────────────────────────────────────────────────────
 
-execute unless data storage macroengine:engine rng.state run function macroengine:systems/rng/_auto_seed
+execute unless data storage macroengine:engine rng.state run function macroengine:core/internal/systems/rng/_auto_seed
 
 execute store result score $rng_state macroengine.tmp run data get storage macroengine:engine rng.state
 

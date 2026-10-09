@@ -1,4 +1,4 @@
-# macroengine:api/placeholder/_resolve [INTERNAL]
+# macroengine:core/internal/api/placeholder/_resolve [INTERNAL]
 # segs[0] is a name enclosed by two '%'. Appends exactly one result to out:
 #   ""           -> a literal '%'   (the %% escape)
 #   score:<obj>  -> scoreboard value of the executor
@@ -12,10 +12,10 @@ execute store result score #ph_len macroengine.tmp run data get storage macroeng
 execute if score #ph_len macroengine.tmp matches 0 run data modify storage macroengine:placeholder cur set value {text:"%"}
 
 # score:<objective>
-execute if score #ph_len macroengine.tmp matches 7.. unless data storage macroengine:placeholder cur run function macroengine:api/placeholder/_try_score
+execute if score #ph_len macroengine.tmp matches 7.. unless data storage macroengine:placeholder cur run function macroengine:core/internal/api/placeholder/_try_score
 
 # registered placeholder
-execute unless data storage macroengine:placeholder cur run function macroengine:api/placeholder/_try_registered
+execute unless data storage macroengine:placeholder cur run function macroengine:core/internal/api/placeholder/_try_registered
 
 execute if data storage macroengine:placeholder cur run data modify storage macroengine:placeholder out append from storage macroengine:placeholder cur
 execute if data storage macroengine:placeholder cur run return 1

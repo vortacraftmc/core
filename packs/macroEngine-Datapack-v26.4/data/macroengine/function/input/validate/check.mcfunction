@@ -44,9 +44,9 @@ data modify storage macroengine:input_validate result.valid set value 0b
 $data modify storage macroengine:input_validate scratch.value set from storage macroengine:input $(source)
 $data modify storage macroengine:input_validate scratch.type set value "$(type)"
 
-execute if data storage macroengine:input_validate {scratch:{type:"int"}} run function macroengine:input/validate/_private/check_int
-execute if data storage macroengine:input_validate {scratch:{type:"float"}} run function macroengine:input/validate/_private/check_float
-execute if data storage macroengine:input_validate {scratch:{type:"bool"}} run function macroengine:input/validate/_private/check_bool
-execute if data storage macroengine:input_validate {scratch:{type:"tag_safe"}} run function macroengine:input/validate/_private/check_tag_safe
+execute if data storage macroengine:input_validate {scratch:{type:"int"}} run function macroengine:core/internal/input/validate/_private/check_int
+execute if data storage macroengine:input_validate {scratch:{type:"float"}} run function macroengine:core/internal/input/validate/_private/check_float
+execute if data storage macroengine:input_validate {scratch:{type:"bool"}} run function macroengine:core/internal/input/validate/_private/check_bool
+execute if data storage macroengine:input_validate {scratch:{type:"tag_safe"}} run function macroengine:core/internal/input/validate/_private/check_tag_safe
 
 data remove storage macroengine:input_validate scratch

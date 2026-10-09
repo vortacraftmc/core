@@ -15,13 +15,13 @@
 $scoreboard players set $rng_min macroengine.tmp $(min)
 $scoreboard players set $rng_max macroengine.tmp $(max)
 
-execute if score $rng_min macroengine.tmp > $rng_max macroengine.tmp run function macroengine:systems/rng/_swap_bounds
+execute if score $rng_min macroengine.tmp > $rng_max macroengine.tmp run function macroengine:core/internal/systems/rng/_swap_bounds
 
 scoreboard players operation $rng_span macroengine.tmp = $rng_max macroengine.tmp
 scoreboard players operation $rng_span macroengine.tmp -= $rng_min macroengine.tmp
 scoreboard players add $rng_span macroengine.tmp 1
 
-function macroengine:systems/rng/_core
+function macroengine:core/internal/systems/rng/_core
 
 # INT_MIN has no positive counterpart in a 32-bit score, so fold it to
 # INT_MAX first; otherwise the negate below leaves it negative.
