@@ -1,0 +1,56 @@
+[build-system]
+# 77 is the floor for the SPDX `license` string form used below; the table form
+# it replaces stops being supported on 2027-Feb-18.
+requires = ["setuptools>=77,<85", "wheel>=0.40,<1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "packd"
+dynamic = ["version"]
+description = "Check, update and roll back the datapacks in a Minecraft world"
+readme = "README.md"
+requires-python = ">=3.9"
+# SPDX expression, not the deprecated table form.
+license = "MIT"
+authors = [{ name = "vortacraftmc" }]
+keywords = ["minecraft", "datapack", "rcon", "server", "cli"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: System Administrators",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Games/Entertainment",
+  "Topic :: System :: Systems Administration",
+]
+# No runtime dependencies. Everything here is standard library, so the tool
+# installs into any server's Python without resolving a dependency tree on a
+# machine that is running a live world.
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://github.com/vortacraftmc/core/tree/main/scripts/packd"
+Documentation = "https://github.com/vortacraftmc/core/blob/main/scripts/packd/README.md"
+Repository = "https://github.com/vortacraftmc/core"
+Issues = "https://github.com/vortacraftmc/core/issues"
+
+[project.scripts]
+packd = "packd.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "packd.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["packd*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

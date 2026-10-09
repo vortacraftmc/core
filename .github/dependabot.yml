@@ -20,11 +20,17 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 0
 
-  # Pip (Python) dependency updates. The only requirements.txt /
-  # pyproject.toml in the tree live in scripts/gui_generator, so "/" never
-  # matched anything.
+  # Pip (Python) dependency updates. Dependabot scans one directory per entry
+  # and does not descend, so each Python project needs its own block - "/"
+  # matches nothing here.
   - package-ecosystem: "pip"
     directory: "/scripts/gui_generator"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "pip"
+    directory: "/scripts/packd"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 0

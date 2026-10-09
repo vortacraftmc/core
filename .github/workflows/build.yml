@@ -265,6 +265,47 @@ jobs:
 
           printf '%s✔ sdist/wheel build, twine check and wheel contents passed%s\n' "$GREEN" "$RESET"
 
+      # ==================================================================
+      # packd - the datapack update/rollback tool.
+      #
+      # Enforcing, unlike the guigenmc steps above: there is no
+      # continue-on-error here, so a failure actually blocks the merge. The
+      # suite runs against an in-process RCON server on a real socket, so it
+      # needs no Minecraft server and no network.
+      # ==================================================================
+      - name: Set up Python for packd
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: packd test suite
+        shell: bash
+        working-directory: ./scripts/packd
+        run: |
+          set -uo pipefail
+          GREEN=$'\033[1;32m'; RED=$'\033[1;31m'; RESET=$'\033[0m'
+
+          echo "::group::🔧 packd test suite"
+          trap 'echo "::endgroup::"' EXIT
+
+          pip install -q pytest
+          pip install -q -e .
+
+          python -m pytest tests/ -q
+
+          # The CLI must also be installed and runnable as an entry point.
+          packd --version
+
+          # The three modes are the core guarantee; assert the default here too
+          # so a config change cannot silently make it autonomous.
+          python - <<'PYCHK'
+          from packd.config import DEFAULT_MODE
+          assert DEFAULT_MODE == "check", f"default mode must stay check-only, got {DEFAULT_MODE!r}"
+          print("default mode is check-only")
+          PYCHK
+
+          printf '%s✔ packd suite passed%s\n' "$GREEN" "$RESET"
+
       - name: Upload generated datapack
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
