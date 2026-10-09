@@ -1,5 +1,5 @@
 # ======================================================================================
-# macroengine:input/validate/_private/check_bool  [INTERNAL]
+# macroengine:core/internal/input/validate/_private/check_bool  [INTERNAL]
 # ======================================================================================
 # Requires scratch.value to be the exact string "true" or "false". No
 # case-folding — "True"/"TRUE" are rejected on purpose, since silently

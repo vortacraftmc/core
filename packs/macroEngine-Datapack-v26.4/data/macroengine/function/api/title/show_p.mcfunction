@@ -31,4 +31,4 @@ function macroengine:api/placeholder/parse
 data modify storage macroengine:title s set from storage macroengine:placeholder out
 execute unless data storage macroengine:title s[0] run data modify storage macroengine:title s set value [{text:""}]
 
-function macroengine:api/title/_apply with storage macroengine:title in
+function macroengine:core/internal/api/title/_apply with storage macroengine:title in

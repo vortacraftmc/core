@@ -1,4 +1,4 @@
-# macroengine:api/placeholder/_validate_name [INTERNAL]
+# macroengine:core/internal/api/placeholder/_validate_name [INTERNAL]
 # INPUT macroengine:text s. RETURN 1 when s holds no quote, backslash or any
 # character from the deny_name table, else 0. Always resets the text buffers.
 execute store result score #ph_ok macroengine.tmp run function macroengine:core/internal/text/safe

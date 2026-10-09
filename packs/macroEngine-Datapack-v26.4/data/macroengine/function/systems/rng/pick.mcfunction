@@ -27,7 +27,7 @@ execute store result storage macroengine:engine _rng_arg.max int 1 run scoreboar
 function macroengine:systems/rng/int with storage macroengine:engine _rng_arg
 
 execute store result storage macroengine:output index int 1 run data get storage macroengine:output result
-function macroengine:systems/rng/_pick_at with storage macroengine:output
+function macroengine:core/internal/systems/rng/_pick_at with storage macroengine:output
 
 data remove storage macroengine:engine _rng_list
 data remove storage macroengine:engine _rng_arg
