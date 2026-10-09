@@ -10,6 +10,8 @@ macroEngine covers the helpers those packs usually provide, with the same macro-
 | scheduled and delayed callbacks | `api/cb/*` |
 | permissions, hooks, rate limits, RNG, math, string/text helpers | `api/perm`, `systems/*` |
 
+Details: [data.md](data.md), [placeholder.md](placeholder.md), [title.md](title.md).
+
 Notes:
 
 * This is a **concept mapping, not a drop-in shim**: function names differ from other packs.
