@@ -4,7 +4,7 @@ macroEngine covers the helpers those packs usually provide, with the same macro-
 
 | Typical need | macroEngine |
 |---|---|
-| read / write / append / merge / remove NBT by `storage` + `path` | `api/data/get`, `set`, `append`, `merge`, `remove`, `exists`, `count`, `copy` |
+| read / write / append / merge / remove NBT by `storage` + `path` | `api/data/get`, `set`, `set_default`, `append`, `merge`, `remove`, `exists`, `count`, `copy`, `add` (counters), `toggle` (flags), `pop` / `shift` (stack / queue) |
 | placeholders in chat, titles, action bars | `api/placeholder/*`, `api/title/*_p` |
 | run a command on a player / as a player | `api/cmd/*` |
 | scheduled and delayed callbacks | `api/cb/*` |

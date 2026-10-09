@@ -21,6 +21,8 @@ data modify storage macroengine:placeholder in set value "Hi %player%! You have 
 function macroengine:api/placeholder/send          # chat, for @s
 function macroengine:api/placeholder/send_all      # chat, resolved per recipient
 function macroengine:api/placeholder/actionbar     # action bar, for @s
+function macroengine:api/placeholder/actionbar_all # action bar, resolved per recipient
+function macroengine:api/placeholder/send_to {player:"Steve"}
 
 # 2. get the component list yourself
 function macroengine:api/placeholder/parse
@@ -36,7 +38,8 @@ tellraw @a {"storage":"macroengine:placeholder","nbt":"out","interpret":true}
 | `%%` | a literal `%` |
 | anything else | left untouched (`50% of 20% more` stays as written) |
 
-Built-ins: `%player%`, `%name%` (executor name), `%nl%` (line break), `%percent%`.
+Built-ins: `%player%`, `%name%` (executor name), `%nl%` (line break), `%percent%`, and live
+values of the executor: `%health%`, `%food%`, `%xp_level%`, `%dimension%`.
 
 Placeholders resolve for the **executor** (`@s`). To address someone else use
 `execute as <player> run function ...`; `send_all`/`broadcast_p` do this per recipient.
@@ -50,7 +53,9 @@ Placeholders resolve for the **executor** (`@s`). To address someone else use
 | `register_storage` | `name`, `storage`, `path` | NBT value, rendered plain |
 | `register_selector` | `name`, `selector` | entity/player name |
 | `register_component` | `name` (+ `in.component` in storage) | any text component |
+| `register_alias` | `alias`, `target` | `%alias%` behaves like the registered `%target%` |
 | `unregister` / `exists` / `list` | `name` | manage the registry |
+| `reset` | none | drop everything, restore the built-ins |
 
 ```mcfunction
 function macroengine:api/placeholder/register_score {name:"kills",holder:"@s",objective:"kills"}
@@ -64,7 +69,8 @@ against quotes, backslashes and the `deny_name` table before they reach a macro.
 
 ## Title and action bar
 
-`api/title/show_p`, `show_to_p`, `broadcast_p`, `actionbar_p` and `actionbar_all_p` take
+`api/title/show_p`, `show_to_p`, `broadcast_p`, `show_team_p {team}`, `show_tag_p {tag}`,
+`show_area_p {radius}`, `actionbar_p`, `actionbar_all_p` and `actionbar_tag_p {tag}` take
 their text from `macroengine:title in` and support the same placeholders; see the
 header of each function.
 
