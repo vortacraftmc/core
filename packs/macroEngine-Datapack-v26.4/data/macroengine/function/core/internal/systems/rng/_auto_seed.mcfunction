@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────
-# macroengine:systems/rng/_auto_seed
+# macroengine:core/internal/systems/rng/_auto_seed
 # First-use seeding. Called only when rng.state does not exist yet, so
 # an explicitly seeded run is never overwritten.
 #

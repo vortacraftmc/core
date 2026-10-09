@@ -2,7 +2,7 @@
 # macroengine:systems/trim/on_matched_example
 # ======================================================================================
 # EXAMPLE hook handler for the "macroengine:trim_matched" event fired by
-# systems/trim/_private/fire_matched. Not bound automatically — this is a
+# core/internal/systems/trim/_private/fire_matched. Not bound automatically — this is a
 # template showing how to react to trim/scan results; register it yourself
 # with:
 #
