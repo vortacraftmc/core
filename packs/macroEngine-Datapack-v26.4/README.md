@@ -36,7 +36,7 @@
 
 - **Placeholder module** (`api/placeholder/`) — `%player%`, `%score:<objective>%`, `%nl%`, `%%` and your own `%name%` tokens resolve to a text component list built on `core/internal/text`. Untrusted text is never substituted into a command or JSON string, so chat/sign/book input is safe; see [`docs/placeholder.md`](docs/placeholder.md)
 - **Title / action bar with placeholders** (`api/title/*_p`, plus `clear`, `reset`, `times`) — storage-driven (no quote/backslash breakage), per-recipient placeholder resolution
-- **Data helpers** (`api/data/`) — `get`, `set`, `append`, `merge`, `remove`, `exists`, `count`, `copy` over any storage/path; values pass through storage so nothing needs escaping. Migration notes: [`docs/migrating-from-data-api.md`](docs/migrating-from-data-api.md)
+- **Data helpers** (`api/data/`) — `get`, `set`, `set_default`, `append`, `merge`, `remove`, `exists`, `count`, `copy`, `add`, `toggle`, `pop`, `shift` over any storage/path; values pass through storage so nothing needs escaping. Migration notes: [`docs/migrating-from-data-api.md`](docs/migrating-from-data-api.md)
 
 ---
 
