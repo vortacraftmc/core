@@ -20,6 +20,23 @@ def validate_menu(menu: dict[str, Any]) -> list[str]:
     slot_count = container_slot_count(menu["container"])
     ctype = menu["container"]["type"]
 
+    # Duplicate page indices are data loss, not a cosmetic clash: the generator
+    # writes one file per index (menu/<menu>/page/<index>.mcfunction), so the
+    # later page overwrites the earlier one and the earlier page's widgets are
+    # never rendered. Reported first, because every later warning about slots
+    # and navigation describes a menu that will not actually be generated.
+    by_index: dict[int, list[dict[str, Any]]] = {}
+    for page in menu["pages"]:
+        by_index.setdefault(page["index"], []).append(page)
+    for index, pages in sorted(by_index.items()):
+        if len(pages) > 1:
+            names = ", ".join(f'"{pg["name"]}"' for pg in pages)
+            warnings.append(
+                f"Page index {index} is used by {len(pages)} pages ({names}) — "
+                f"they write to the same file, so only the last one is generated "
+                f"and the others are silently discarded. Give each page a unique index."
+            )
+
     if ctype not in VALID_CONTAINER_TYPES:
         warnings.append(
             f"Container type '{ctype}' is not in the known list: {', '.join(VALID_CONTAINER_TYPES)}."

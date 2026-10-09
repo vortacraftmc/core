@@ -203,6 +203,12 @@ def test_full_datapack_has_v5_trigger_layer():
     open_fn = files["data/demo/function/menu/shop/open.mcfunction"]
     assert "scoreboard players set @s guigen.demo.opened 1" in open_fn
 
-    # pack format bump (guikit-datapack commit "Update pack format version to 122")
-    assert '"min_format": 122' in files["pack.mcmeta"]
-    assert '"max_format": 122' in files["pack.mcmeta"]
+    # Default pack format is the 26.4 format, written as [major, minor] to
+    # match the rest of the monorepo. min_format/max_format have been mandatory
+    # since 25w31a (1.21.9) and supported_formats was removed, so no pack_format
+    # field is emitted - it is only needed for clients older than data format 82.
+    meta = json.loads(files["pack.mcmeta"])["pack"]
+    assert meta["min_format"] == [122, 0]
+    assert meta["max_format"] == [122, 0]
+    assert "pack_format" not in meta
+    assert "supported_formats" not in meta

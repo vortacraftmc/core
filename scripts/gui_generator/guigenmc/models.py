@@ -885,6 +885,61 @@ def loader_widget(raw: Any) -> dict[str, Any]:
     return w
 
 
+# Data pack format for the generated pack.mcmeta. Expressed as [major, minor]
+# because that is the form the rest of this monorepo uses; a bare integer is
+# equivalent to .0 (see https://minecraft.wiki/w/Pack_format). 122 is the
+# 26.4 snapshot format the generator's output was written against.
+#
+# Configurable per menu - it was hardcoded to 122 in the generator, so the only
+# way to target an older version was to edit library code, and the comment
+# sitting next to the literal ("pack format 119 -> 122") shows that had already
+# been done by hand once.
+DEFAULT_PACK_FORMAT: tuple[int, int] = (122, 0)
+
+
+def _norm_format(value: Any, field: str) -> tuple[int, int]:
+    """Normalise a pack format to (major, minor). Accepts 122 or [122, 1]."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, list, tuple)):
+        raise ValueError(
+            f"'{field}' must be an integer or a [major, minor] pair, got {value!r}"
+        )
+    if isinstance(value, (list, tuple)):
+        if len(value) != 2:
+            raise ValueError(f"'{field}' pair must have exactly 2 elements, got {list(value)}")
+        major, minor = value
+    else:
+        major, minor = value, 0
+    if isinstance(major, bool) or isinstance(minor, bool) or not isinstance(major, int) or not isinstance(minor, int):
+        raise ValueError(f"'{field}' must contain integers, got {value!r}")
+    if major < 1:
+        raise ValueError(f"'{field}' major version must be >= 1, got {major}")
+    if minor < 0:
+        raise ValueError(f"'{field}' minor version must be >= 0, got {minor}")
+    return (major, minor)
+
+
+def loader_pack_formats(data: dict[str, Any]) -> tuple[tuple[int, int], tuple[int, int]]:
+    """Resolve (min_format, max_format) from a raw config dict.
+
+    Accepts the modern `min_format`/`max_format` pair, or the legacy
+    `pack_format` used alone for both bounds. Since 25w31a (1.21.9) the
+    min/max pair is mandatory and `pack_format` is only needed for older
+    clients, so the modern names win when both are present.
+    """
+    if "min_format" in data or "max_format" in data:
+        lo = _norm_format(data.get("min_format", DEFAULT_PACK_FORMAT), "min_format")
+        hi = _norm_format(data.get("max_format", lo), "max_format")
+    elif "pack_format" in data:
+        lo = hi = _norm_format(data["pack_format"], "pack_format")
+    else:
+        lo = hi = DEFAULT_PACK_FORMAT
+    if lo > hi:
+        raise ValueError(
+            f"min_format {list(lo)} is greater than max_format {list(hi)}"
+        )
+    return lo, hi
+
+
 def loader_page(raw: Any, fallback_index: int) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise TypeError("page must be an object")
@@ -941,6 +996,7 @@ def menu_from_dict(data: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(pages_raw, list) or not pages_raw:
         raise ValueError("config requires non-empty 'pages' list")
     pages = [loader_page(p, i) for i, p in enumerate(pages_raw)]
+    _pf = loader_pack_formats(data)
 
     menu: dict[str, Any] = {
         "namespace": namespace,
@@ -961,6 +1017,8 @@ def menu_from_dict(data: dict[str, Any]) -> dict[str, Any]:
         "layout": data.get("layout"),
         "fill_empty": data.get("fill_empty", True),
         "message_prefix": data.get("message_prefix"),
+        "pack_min_format": list(_pf[0]),
+        "pack_max_format": list(_pf[1]),
     }
 
     for page in menu["pages"]:
