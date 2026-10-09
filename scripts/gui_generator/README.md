@@ -123,6 +123,61 @@ Minimal `config.json`:
 }
 ```
 
+### Data pack format
+
+The generator targets the **26.4 snapshot** format by default. Say so in the
+config if you want something else — the version is not guessed from your other
+settings:
+
+```json
+{ "namespace": "mymod", "menu_id": "shop", "pack_format": 107, "pages": [ … ] }
+```
+
+| Key | Meaning |
+|---|---|
+| `pack_format` | One value used for both bounds. Accepts `107` or `[107, 1]`. |
+| `min_format` / `max_format` | A range. Accepts `121` or `[121, 0]`. When either is present these win over `pack_format`. |
+
+Defaults to `[122, 0]`. A bare integer means `.0`. `min_format`/`max_format`
+have been **mandatory** since 25w31a (1.21.9) and `supported_formats` was
+removed in the same change, so neither `pack_format` nor `supported_formats` is
+written into the output — `pack_format` is only needed to stay loadable on
+clients older than data format 82.
+
+Data pack and resource pack formats are **independent sequences**; do not copy a
+number from one into the other. See
+[the pack format table](https://minecraft.wiki/w/Pack_format) for the value
+matching your target version.
+
+> This used to be a hardcoded `122` in the generator. Retargeting meant editing
+> library code, and the comment beside the literal (`pack format 119 → 122`)
+> showed it had already been bumped by hand once.
+
+### Provenance watermark
+
+Every generated pack includes
+`data/<namespace>/function/_vc_origin.mcfunction`. This is not decoration: in
+`vortacraftmc/core` the `zipPacks` Gradle task **aborts the build** when a
+datapack under `packs/` is missing its watermark, and `checkOriginWatermarks`
+reports the omission. Without this file, a pack produced here could not be
+committed under `packs/` without the build failing.
+
+`zipPacks` strips the watermark from the temporary `build/packs-remap/` working
+copy, so it never reaches a distributed ZIP.
+
+### Unique page indices
+
+`index` is how a page is addressed, and pages are written to
+`menu/<menu_id>/page/<index>.mcfunction`. **Two pages sharing an index overwrite
+each other** — only the last one survives. `validate` reports this:
+
+```
+⚠ Page index 0 is used by 2 pages ("First", "Second") — they write to the same
+  file, so only the last one is generated and the others are silently discarded.
+```
+
+Omit `index` and pages are numbered in order, which cannot collide.
+
 ### Widget kinds
 
 | kind | Description |
@@ -362,23 +417,54 @@ guigenmc is a **datapack generator**, not a sandbox for Minecraft commands.
 
 ---
 
-## Install from PyPI
+## Install
+
+**This package is not published to PyPI.** `pip install guigenmc` does not work:
+`https://pypi.org/simple/guigenmc/` answers 404 and pip reports *"No matching
+distribution found"*. This section previously told readers to run exactly that
+command.
+
+Install from the monorepo instead:
 
 ```bash
-pip install guigenmc
+# from a clone of vortacraftmc/core
+pip install ./scripts/gui_generator
+
+# or straight from GitHub, without cloning
+pip install "git+https://github.com/vortacraftmc/core.git#subdirectory=scripts/gui_generator"
+
 guigenmc ui
+```
+
+Inside the repository the tests and examples run without installing anything:
+
+```bash
+cd scripts/gui_generator
+python3 -m guigenmc generate examples/starter_menu.json
+python3 -m pytest tests/
 ```
 
 ## Publish (maintainers)
 
-1. Create a GitHub release (tag `v1.0.0`, etc.) — or run the **Publish to PyPI** workflow manually.
-2. On PyPI, add a **Trusted Publisher** for this repo:
-   - Owner: your GitHub user/org  
-   - Repository: `guigenmc`  
+Publishing is **not set up** and nothing is on PyPI, so treat this as the work
+that would be required rather than as steps that currently work:
 
-   - Workflow: `publish.yml`  (retired, pre-monorepo)
+1. Bump `__version__` in `guigenmc/__init__.py`. That is the only version
+   declaration - `pyproject.toml` reads it through `[tool.setuptools.dynamic]`,
+   so the installed metadata and `guigenmc --version` cannot disagree.
+2. Create a GitHub release tag.
+3. On PyPI, add a **Trusted Publisher** for the repository that actually
+   contains the package:
+   - Owner: `vortacraftmc`
+   - Repository: `core`
+   - Workflow: a publish workflow that does not exist yet. The pre-monorepo
+     `publish.yml` was retired and was never carried over.
    - Environment: `pypi`
-3. No API token needed (OIDC).
+   - The package lives in a subdirectory, so the build step needs
+     `working-directory: scripts/gui_generator`.
+4. No API token needed (OIDC).
+
+Until that exists, install from the repository - see [Install](#install).
 
 Local build check:
 
