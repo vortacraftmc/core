@@ -3,25 +3,23 @@
 This file records which parts of the repository were written or changed with AI assistance, so that
 AI involvement is visible in the repository itself and not only through commit authorship.
 
-## 2026-10-10 - refactor: remove dead scratch storage and an unused function in macroEngine
+## 2026-10-10 - refactor: remove dead `multiCommands` storage writes in macroEngine
 
 **Tool:** Claude (Anthropic), working from a prompt by the maintainer. Review status: _pending - update
 when reviewed_.
 
 ### Changed (AI-assisted edit)
 
-| Path (under `packs/macroEngine-Datapack-v26.4/data/macroengine/function/`) | Change |
+| Path | Change |
 |---|---|
-| `core/internal/core/lib/batch/flush_exec.mcfunction` | Removed write/clear of `engine._bfl_id` (never read). |
-| `core/internal/core/lib/for_each_list_step.mcfunction`, `core/lib/for_each_list.mcfunction` | Removed write/clear of `engine._felist_i` (never read; the `$felist_i` score is what is used). |
-| `core/internal/systems/geo/region_watch/tick_scan.mcfunction` | Removed copy/clear of `engine._rw_watch_list` (never read). |
-| `core/internal/systems/math/vec/angle_exec.mcfunction` | Removed write of `engine._vang_cos` (`arccos_lookup` reads the `$vang_dot` score). |
-| `core/internal/player/stamp_join.mcfunction` | Deleted: no caller, and `players.<name>.joined_tick` is never read. |
+| `packs/macroEngine-Datapack-v26.4/.../api/cmd/other/multi_cmd.mcfunction` | Removed `data remove` of `macroengine:engine multiCommands.type` / `.active`; nothing in this call path sets either. |
+| `packs/macroEngine-Datapack-v26.4/.../api/cmd/other/multi_cmd_adv.mcfunction` | Same two `data remove` lines removed. |
+| `packs/macroEngine-Datapack-v26.4/.../multi_cmd/advanced/run_with_options.mcfunction` | Removed the only writer of `multiCommands.type` (and its "Validate" comment, which described validation that does not exist). Nothing in the repository reads the value. |
 
 ### Verification status
 
-- Verified: raw-name grep over `packs/` finds no remaining reference to any removed name; `scripts/lint_datapacks.sh` (Mecha 0.101.0) passes.
-- **Not verified:** runtime behaviour in a real server. External datapacks reading these `_`-prefixed scratch keys would break.
+- Verified: repo-wide grep shows no remaining reader of `multiCommands.type` / `.active`; `scripts/lint_datapacks.sh` (Mecha 0.101.0) passes.
+- **Not verified:** runtime behaviour in a real Minecraft server. Datapacks or tools outside this repository that read `macroengine:engine multiCommands.*` would be affected.
 
 ## 2026-10-07 - fix: release assets not found (`packs-latest`)
 
