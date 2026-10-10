@@ -3,9 +3,19 @@
 vortacraftmc/core - repository consistency audit tool.
 
 Usage:
-    python3 scripts/audit_repo.py            # human-readable report
-    python3 scripts/audit_repo.py --json     # machine-readable findings
-    python3 scripts/audit_repo.py --fix      # apply the safe automatic fixes
+    python3 scripts/audit_repo.py                      # human-readable report
+    python3 scripts/audit_repo.py --json               # machine-readable findings
+    python3 scripts/audit_repo.py --format github      # ::error/::warning annotations
+    python3 scripts/audit_repo.py --fail-on high       # exit 1 if any finding >= high
+    python3 scripts/audit_repo.py --min-severity high  # hide anything below high
+    python3 scripts/audit_repo.py --only mcfunc. --skip docs.
+    python3 scripts/audit_repo.py --fix --dry-run      # show what --fix would do
+    python3 scripts/audit_repo.py --fix                # apply the safe file fixes
+    python3 scripts/audit_repo.py --fix --delete-stale-branches
+                                                       # also delete MERGED remote branches
+
+Exit status is 0 unless --fail-on is given (so `--json` consumers such as
+scripts/audit_full.py keep working), 1 when the --fail-on threshold is met.
 
 Every finding is a dict:
     {id, severity, path, line, msg, autofix}
@@ -44,6 +54,16 @@ def _find_root():
 
 REPO = _find_root()
 FINDINGS: list[dict] = []
+
+ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+ICONS = {"critical": "x", "high": "^", "medium": "o", "low": "-", "info": "i"}
+
+# Files that are never worth reading as text (secret scan, link scan).
+BINARY_EXTS = {
+    ".jar", ".class", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".zip", ".gz",
+    ".7z", ".ogg", ".mp3", ".mp4", ".ttf", ".otf", ".woff", ".woff2", ".nbt", ".dat",
+}
+MAX_TEXT_BYTES = 2_000_000
 
 # --------------------------------------------------------------------------- #
 # helpers
@@ -430,6 +450,88 @@ def audit_function_refs(pack_info):
 
 
 # --------------------------------------------------------------------------- #
+# 2b. NBT path syntax and function-tag values
+# --------------------------------------------------------------------------- #
+
+# In an NBT path a `{...}` compound filter is only legal on the root or on a
+# name node (`foo{a:1}`) - or inside an index as `[{a:1}]`. `foo[0]{}` is
+# rejected by Mecha *and* by the game's own parser, so the command never runs.
+NBT_FILTER_AFTER_INDEX_RE = re.compile(r"(?<=[\w\]])\[-?\d+\]\{")
+QUOTED_RE = re.compile(r'"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'')
+
+
+def audit_nbt_paths():
+    for f in walk(os.path.join(REPO, "packs"), {".mcfunction"}):
+        for i, line in enumerate(read_text(f).splitlines(), 1):
+            if line.lstrip().startswith("#"):
+                continue
+            code = QUOTED_RE.sub('""', line)  # text-component strings are not paths
+            if NBT_FILTER_AFTER_INDEX_RE.search(code):
+                add("mcfunc.nbt-filter-after-index", "high", f,
+                    "invalid NBT path: a '{}' compound filter cannot follow an index "
+                    "(`[N]{`). Copy the element to a scratch path and test that, or use "
+                    "`[{...}]`",
+                    line=i)
+
+
+def _function_tag_dirs(ns_dir):
+    for name in ("function", "functions"):
+        d = os.path.join(ns_dir, "tags", name)
+        if os.path.isdir(d):
+            yield d
+
+
+def audit_function_tag_values(pack_info):
+    """Every required value in a function tag (load/tick/...) must resolve."""
+    funcs_by_pack, tags_by_pack = {}, {}
+    for name, info in pack_info.items():
+        funcs, tags = set(), set()
+        data_dir = os.path.join(info["path"], "data")
+        if os.path.isdir(data_dir):
+            for ns in os.listdir(data_dir):
+                ns_dir = os.path.join(data_dir, ns)
+                for fn in ("function", "functions"):
+                    d = os.path.join(ns_dir, fn)
+                    if os.path.isdir(d):
+                        for f in walk(d, {".mcfunction"}):
+                            funcs.add(f"{ns}:{rel(f)[len(rel(d)) + 1:-len('.mcfunction')]}")
+                for d in _function_tag_dirs(ns_dir):
+                    for f in walk(d, {".json"}):
+                        tags.add(f"{ns}:{rel(f)[len(rel(d)) + 1:-len('.json')]}")
+        funcs_by_pack[name], tags_by_pack[name] = funcs, tags
+    all_funcs = set().union(*funcs_by_pack.values()) if funcs_by_pack else set()
+    all_tags = set().union(*tags_by_pack.values()) if tags_by_pack else set()
+
+    for name, info in sorted(pack_info.items()):
+        data_dir = os.path.join(info["path"], "data")
+        if not os.path.isdir(data_dir):
+            continue
+        for ns in sorted(os.listdir(data_dir)):
+            for d in _function_tag_dirs(os.path.join(data_dir, ns)):
+                for tp in walk(d, {".json"}):
+                    tj, err = read_json(tp)
+                    if err or not isinstance(tj, dict) or not isinstance(tj.get("values"), list):
+                        continue  # reported by audit_packs
+                    for v in tj["values"]:
+                        required = True
+                        if isinstance(v, dict):
+                            required = v.get("required", True) is not False
+                            v = v.get("id")
+                        if not isinstance(v, str) or not required:
+                            continue
+                        if v.startswith("#"):
+                            ok = v[1:] in tags_by_pack[name] or v[1:] in all_tags
+                        else:
+                            ok = v in funcs_by_pack[name] or v in all_funcs
+                        if not ok:
+                            add("pack.tag-value-dangling", "high", tp,
+                                f"[{name}] required value '{v}' does not resolve to any "
+                                f"{'function tag' if v.startswith('#') else 'function'} "
+                                "- the game logs a tag-load error and skips the entry")
+
+
+
+# --------------------------------------------------------------------------- #
 # 3. mods
 # --------------------------------------------------------------------------- #
 
@@ -648,21 +750,36 @@ GRADLE_BUILTIN = {
 
 
 def slug(h):
-    h = re.sub(r"[`*_]", "", h.strip().lower())
+    h = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", h)  # [text](url) -> text
+    h = re.sub(r"<[^>]+>", "", h)                       # inline HTML
+    h = re.sub(r"[`*]", "", h.strip().lower())           # '_' is kept, like GitHub
     return "".join(c for c in h if c.isalnum() or c in "-_ ").replace(" ", "-")
 
 
+_HEADING_CACHE: dict = {}
+
+
 def headings(path):
-    hs, infence = {}, False
-    for line in read_text(path).splitlines():
-        if line.lstrip().startswith("```"):
+    """Anchors GitHub generates for a Markdown file (duplicates get -1, -2, ...)."""
+    if path in _HEADING_CACHE:
+        return _HEADING_CACHE[path]
+    hs, seen, infence = {}, defaultdict(int), False
+    txt = read_text(path)
+    for line in txt.splitlines():
+        if line.lstrip().startswith(("```", "~~~")):
             infence = not infence
             continue
         if infence:
             continue
-        m = re.match(r"^(#{1,6})\s+(.*)$", line)
+        m = re.match(r"^ {0,3}#{1,6}\s+(.*?)\s*#*\s*$", line)
         if m:
-            hs.setdefault(slug(m.group(2)), 0)
+            base = slug(m.group(1))
+            n = seen[base]
+            seen[base] += 1
+            hs[base if n == 0 else f"{base}-{n}"] = 0
+    for m in re.finditer(r"""<a\s+[^>]*?(?:id|name)=["']([^"']+)["']""", txt, re.I):
+        hs[m.group(1)] = 0  # explicit HTML anchors
+    _HEADING_CACHE[path] = hs
     return hs
 
 
@@ -675,7 +792,14 @@ def audit_docs():
     for p in walk(REPO, {".md"}):
         txt = re.sub(r"<!--.*?-->", "", read_text(p), flags=re.S)
         base = os.path.dirname(p)
+        infence = False
         for i, line in enumerate(txt.splitlines(), 1):
+            if line.lstrip().startswith(("```", "~~~")):
+                infence = not infence
+                continue
+            if infence:  # links in code samples are examples, not references
+                continue
+            line = re.sub(r"`[^`]*`", "", line)  # ...and so are links in inline code
             for target in link_re.findall(line):
                 if target.startswith(("http://", "https://")):
                     path, _, frag = target.partition("#")
@@ -743,12 +867,29 @@ def audit_docs():
 
 SECRET_PATTERNS = [
     (re.compile(r"github_pat_[A-Za-z0-9_]{20,}"), "GitHub fine-grained PAT"),
-    (re.compile(r"ghp_[A-Za-z0-9]{36}"), "GitHub classic PAT"),
+    (re.compile(r"gh[pousr]_[A-Za-z0-9]{36,}"), "GitHub token (ghp_/gho_/ghu_/ghs_/ghr_)"),
+    (re.compile(r"xox[baprs]-[A-Za-z0-9-]{10,}"), "Slack token"),
     (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"), "private key"),
     (re.compile(r"AKIA[0-9A-Z]{16}"), "AWS access key"),
 ]
 
 MEANINGLESS_MESSAGES = {"", ".", "..", "-", "update", "fix", "wip", "asdf", "test", "a", "aa"}
+
+
+PROTECTED_BRANCHES = {"main", "master", "devlop", "develop", "gh-pages"}
+EXTRA_PROTECTED: set = set()  # filled from --protect-branch
+
+
+def default_branch():
+    """`origin/<default>` as the remote declares it; falls back to origin/main."""
+    rc, out, _ = sh(["git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD"])
+    return out.strip() if rc == 0 and out.strip() else "origin/main"
+
+
+def is_protected_branch(name):
+    short = name.split("/", 1)[-1]
+    return (short in PROTECTED_BRANCHES or short in EXTRA_PROTECTED
+            or short.startswith(("release/", "release-", "hotfix/")))
 
 
 def audit_git():
@@ -781,6 +922,13 @@ def audit_git():
                 f"{sz / 1e6:.1f} MB - consider Git LFS or external storage")
 
     for p in walk(REPO):
+        if os.path.splitext(p)[1].lower() in BINARY_EXTS:
+            continue
+        try:
+            if os.path.getsize(p) > MAX_TEXT_BYTES:
+                continue
+        except OSError:
+            continue
         txt = read_text(p)
         for rx, label in SECRET_PATTERNS:
             if rx.search(txt):
@@ -792,28 +940,35 @@ def audit_git():
                      "refs/remotes/origin"])
     if rc == 0:
         now = time.time()
-        _rc, merged_out, _ = sh(["git", "branch", "-r", "--merged", "origin/main"])
+        base = default_branch()
+        _rc, merged_out, _ = sh(["git", "branch", "-r", "--merged", base])
         merged = set(merged_out.split())
         for line in out.splitlines():
             parts = line.split("\t")
             if len(parts) < 3:
                 continue
             name, ts, _subj = parts
-            if name in ("origin/main", "origin/HEAD", "origin"):
+            if name in ("origin/HEAD", "origin", base) or is_protected_branch(name):
                 continue
-            _rc2, ahead, _ = sh(["git", "rev-list", "--count", f"origin/main..{name}"])
+            _rc2, ahead, _ = sh(["git", "rev-list", "--count", f"{base}..{name}"])
+            ahead_n = ahead.strip() or "?"
             is_merged = name in merged
             age = (now - float(ts)) / 86400
             if is_merged or age > 14:
+                # Only a branch that is fully merged AND has no commits of its own is
+                # safe to delete mechanically. An old branch with unmerged work needs
+                # a human: it used to be auto-deleted too, which destroys that work.
+                safe = is_merged and ahead_n == "0"
                 add("git.stale-branch", "medium", None,
                     f"stale branch '{name}': {age:.1f} day(s) old, merged={is_merged}, "
-                    f"ahead={ahead.strip()}",
-                    autofix=True, fix=("delete-remote-branch", name))
+                    f"ahead={ahead_n}"
+                    + ("" if safe else " - has unmerged work, not auto-deletable"),
+                    autofix=safe, fix=("delete-remote-branch", name) if safe else None)
 
     rc, out, _ = sh(["git", "for-each-ref", "--format=%(refname:short)", "refs/remotes/origin"])
     if rc == 0:
         for name in out.splitlines():
-            if name in ("origin/main", "origin/HEAD"):
+            if name in ("origin/HEAD", default_branch()):
                 continue
             base = name.split("/")[-1]
             if any(k in base for k in ("rollback", "undo", "revert")):
@@ -852,34 +1007,78 @@ def audit_readme_structure(pack_info):
 # --------------------------------------------------------------------------- #
 
 
-def apply_fixes():
+def apply_fixes(dry_run=False, delete_branches=False):
     applied = []
+    packs_root = os.path.realpath(os.path.join(REPO, "packs"))
     for f in FINDINGS:
         if not f.get("autofix") or not f.get("fix"):
             continue
         kind, arg = f["fix"]
-        if kind == "delete-remote-branch":
+        if kind == "delete-file":
+            target = os.path.realpath(os.path.join(REPO, arg))
+            # Defence in depth: only ever delete a stray .mcfunction inside packs/.
+            if not (target.startswith(packs_root + os.sep) and target.endswith(".mcfunction")
+                    and f"{os.sep}tags{os.sep}" in target and os.path.isfile(target)):
+                applied.append((arg, "SKIPPED: refused by safety check"))
+            elif dry_run:
+                applied.append((arg, "would delete"))
+            else:
+                rc, _o, _e = sh(["git", "ls-files", "--error-unmatch", arg])
+                if rc == 0:
+                    rc, _o, err = sh(["git", "rm", "-q", "--", arg])
+                else:
+                    try:
+                        os.remove(target)
+                        rc, err = 0, ""
+                    except OSError as e:
+                        rc, err = 1, str(e)
+                applied.append((arg, "deleted" if rc == 0 else f"FAILED: {err.strip()[:120]}"))
+        elif kind == "delete-remote-branch":
             name = arg.replace("origin/", "", 1)
-            rc, _out, err = sh(["git", "push", "origin", "--delete", name])
-            applied.append((name, "deleted" if rc == 0 else f"FAILED: {err.strip()[:120]}"))
+            if not delete_branches:
+                applied.append((name, "SKIPPED: pass --delete-stale-branches to delete remote branches"))
+            elif dry_run:
+                applied.append((name, "would delete remote branch"))
+            else:
+                rc, _out, err = sh(["git", "push", "origin", "--delete", name])
+                applied.append((name, "deleted" if rc == 0 else f"FAILED: {err.strip()[:120]}"))
     return applied
 
 
 # --------------------------------------------------------------------------- #
 
-ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
-ICONS = {"critical": "x", "high": "^", "medium": "o", "low": "-", "info": "i"}
+def matches(fid, prefixes):
+    return any(fid == p or fid.startswith(p) for p in prefixes)
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--json", action="store_true", help="emit findings as JSON")
+    ap.add_argument("--json", action="store_true", help="emit findings as JSON (same as --format json)")
+    ap.add_argument("--format", choices=("text", "json", "github"), default=None,
+                    help="output format; 'github' emits workflow annotations")
     ap.add_argument("--fix", action="store_true", help="apply the safe automatic fixes")
+    ap.add_argument("--dry-run", action="store_true", help="with --fix: only report what would change")
+    ap.add_argument("--delete-stale-branches", action="store_true",
+                    help="with --fix: also delete merged remote branches (never protected ones)")
+    ap.add_argument("--protect-branch", action="append", default=[], metavar="NAME",
+                    help="branch never reported or deleted as stale (repeatable)")
+    ap.add_argument("--min-severity", choices=list(ORDER), default="info",
+                    help="hide findings below this severity")
+    ap.add_argument("--fail-on", choices=[*ORDER, "never"], default="never",
+                    help="exit 1 when a finding at or above this severity remains (default: never)")
+    ap.add_argument("--only", action="append", default=[], metavar="ID",
+                    help="keep only finding ids equal to / starting with ID (repeatable)")
+    ap.add_argument("--skip", action="append", default=[], metavar="ID",
+                    help="drop finding ids equal to / starting with ID (repeatable)")
     args = ap.parse_args()
+    fmt = args.format or ("json" if args.json else "text")
+    EXTRA_PROTECTED.update(args.protect_branch)
 
     pack_info = audit_packs()
     audit_function_refs(pack_info)
+    audit_nbt_paths()
+    audit_function_tag_values(pack_info)
     audit_mods()
     audit_registries(pack_info)
     audit_ci()
@@ -887,12 +1086,34 @@ def main():
     audit_git()
     audit_readme_structure(pack_info)
 
-    FINDINGS.sort(key=lambda f: (ORDER[f["severity"]], f["id"], f["path"] or ""))
+    FINDINGS[:] = [f for f in FINDINGS
+                   if ORDER[f["severity"]] <= ORDER[args.min_severity]
+                   and (not args.only or matches(f["id"], args.only))
+                   and not matches(f["id"], args.skip)]
+    FINDINGS.sort(key=lambda f: (ORDER[f["severity"]], f["id"], f["path"] or "", f["line"] or 0))
 
-    if args.json:
+    threshold = None if args.fail_on == "never" else ORDER[args.fail_on]
+    exit_code = 1 if threshold is not None and any(
+        ORDER[f["severity"]] <= threshold for f in FINDINGS) else 0
+
+    if fmt == "json":
         print(json.dumps([{k: v for k, v in f.items() if k != "fix"} for f in FINDINGS],
                          ensure_ascii=False, indent=2))
-        return 0
+        return exit_code
+
+    if fmt == "github":
+        level = {"critical": "error", "high": "error", "medium": "warning",
+                 "low": "notice", "info": "notice"}
+        for f in FINDINGS:
+            attrs = []
+            if f["path"]:
+                attrs.append(f"file={f['path']}")
+            if f["line"]:
+                attrs.append(f"line={f['line']}")
+            attrs.append(f"title={f['id']}")
+            msg = f["msg"].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+            print(f"::{level[f['severity']]} {','.join(attrs)}::{msg}")
+        return exit_code
 
     counts = defaultdict(int)
     for f in FINDINGS:
@@ -902,7 +1123,7 @@ def main():
     print("vortacraftmc/core AUDIT REPORT")
     print("=" * 78)
     print(f"packs: {len(pack_info)}  |  findings: {len(FINDINGS)}  |  "
-          + "  ".join(f"{ICONS[k]} {k}: {counts[k]}" for k in ORDER if counts[k]))
+          + ("  ".join(f"{ICONS[k]} {k}: {counts[k]}" for k in ORDER if counts[k]) or "clean"))
     print("=" * 78)
 
     by_id = defaultdict(list)
@@ -926,10 +1147,10 @@ def main():
     print(f"auto-fixable: {n_fix}  |  needs a human decision: {len(FINDINGS) - n_fix}")
 
     if args.fix:
-        print("\napplying fixes...")
-        for name, res in apply_fixes():
+        print("\napplying fixes..." if not args.dry_run else "\nfixes (dry run)...")
+        for name, res in apply_fixes(args.dry_run, args.delete_stale_branches):
             print(f"  {name}: {res}")
-    return 0
+    return exit_code
 
 
 if __name__ == "__main__":
