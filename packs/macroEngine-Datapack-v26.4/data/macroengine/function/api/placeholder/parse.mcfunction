@@ -4,8 +4,11 @@
 #
 # INPUT  macroengine:placeholder in  (string)
 # OUTPUT macroengine:placeholder out (list of text components)
-# SAVED  macroengine:output placeholder.in / .out / .reg (input, result, registered
-#        placeholders) are refreshed on every call, including calls without input.
+#        macroengine:placeholder string       the list as an SNBT string
+#        macroengine:placeholder custom_name  ready for custom_name=
+#        macroengine:placeholder lore         ready for lore= (lines split at %nl%)
+# SAVED  macroengine:output placeholder.in / .out / .string / .custom_name / .lore / .reg
+#        (input, results, registered placeholders) are refreshed on every call, including calls without input.
 # RETURN number of components in out.
 #
 # Why a component list and not a string: placeholders such as %player%,

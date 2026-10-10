@@ -49,12 +49,10 @@ Placeholders resolve for the **executor** (`@s`). To address someone else use
 | Function | Macro args | Result |
 |---|---|---|
 | `register_text` | `name`, `value` | fixed text (no quote or backslash in `value`) |
-| `register_string` | `name` (+ `in.string` in storage) | plain string, any characters |
-| `register_array` | `name` (+ `in.array` in storage) | non-empty array of strings / components / arrays |
 | `register_score` | `name`, `holder`, `objective` | scoreboard value (`holder` may be `@s` or `#fake`) |
 | `register_storage` | `name`, `storage`, `path` | NBT value, rendered plain |
 | `register_selector` | `name`, `selector` | entity/player name |
-| `register_component` | `name` (+ `in.component` in storage) | any text component (a string or array works too) |
+| `register_component` | `name` (+ `in.component` in storage) | any text component; a plain string (any characters) or an array of strings/components works too |
 | `register_alias` | `alias`, `target` | `%alias%` behaves like the registered `%target%` |
 | `unregister` / `exists` / `list` | `name` | manage the registry |
 | `reset` | none | drop everything, restore the built-ins |
@@ -81,17 +79,53 @@ any `register_*` call. Empty strings and arrays show nothing. Numbers are not su
 registered value is not parsed for `%placeholders%` again.
 
 ```mcfunction
-data modify storage macroengine:placeholder in.string set value "Say \"hi\" to {everyone}"
-function macroengine:api/placeholder/register_string {name:"greeting"}
-data modify storage macroengine:placeholder in.array set value [{text:"[",color:"gray"},{selector:"@s",color:"white"},{text:"]",color:"gray"}]
-function macroengine:api/placeholder/register_array {name:"tag"}
+# a string with quotes and braces: no escaping problems, it comes from storage
+data modify storage macroengine:placeholder in.component set value "Say \"hi\" to {everyone}"
+function macroengine:api/placeholder/register_component {name:"greeting"}
+
+# an array of parts shown one after another
+data modify storage macroengine:placeholder in.component set value [{text:"[",color:"gray"},{selector:"@s",color:"white"},{text:"]",color:"gray"}]
+function macroengine:api/placeholder/register_component {name:"tag"}
 ```
 
-`register_string` and `register_array` return 1 on success and 0 when their input is missing (or the array is empty).
+`register_component` returns nothing special; there is no separate string or array function because
+the value type is detected when the placeholder is resolved.
 
 Registration arguments are developer input (like every other macro API in this pack).
 Only *text being parsed* is treated as untrusted. Placeholder names are validated
 against quotes, backslashes and the `deny_name` table before they reach a macro.
+
+## Outputs
+
+Every `parse` (and so `send`, `give`, ...) leaves the result in the same four forms, both in
+`macroengine:placeholder` and mirrored to `macroengine:output placeholder.<key>`:
+
+| Key | Form | Use it for |
+|---|---|---|
+| `out` | list of text components | `tellraw`, `title`, `{"storage":...,"nbt":"out","interpret":true}` |
+| `string` | the same list written out as an SNBT **string** | storing, comparing, or `$tellraw @s $(string)` through a macro |
+| `custom_name` | one component, `italic:false` on its root | `custom_name=` |
+| `lore` | list of lines, split at every `%nl%`, each `italic:false` on its root | `lore=` |
+
+A root that sets `italic` itself keeps it. A trailing `%nl%` adds no empty line; two in a row make one.
+`string` is the component as written, not resolved text: `%player%` stays `{selector:"@s"}` in it, because
+Minecraft only turns selectors, scores and NBT into words when a component is displayed.
+
+```mcfunction
+data modify storage macroengine:placeholder in set value "%player%'s sword%nl%Kills: %score:kills%"
+function macroengine:api/placeholder/parse
+
+# straight into an item, through a macro that reads the storage
+function macroengine:api/placeholder/give {item:"minecraft:iron_sword"}
+
+# or your own command: $(custom_name) and $(lore) are written out as SNBT
+# (helper.mcfunction)  $item replace entity @s weapon.mainhand with minecraft:stick[custom_name=$(custom_name),lore=$(lore)]
+function mypack:helper with storage macroengine:placeholder
+
+# the string form through a macro
+# (show.mcfunction)  $tellraw @s $(string)
+function mypack:show with storage macroengine:placeholder
+```
 
 ## Checking results
 
