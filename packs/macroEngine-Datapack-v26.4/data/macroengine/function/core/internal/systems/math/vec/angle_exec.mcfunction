@@ -43,5 +43,4 @@ scoreboard players operation $vang_dot macroengine.tmp /= $vang_la macroengine.t
 execute if score $vang_dot macroengine.tmp matches 1001.. run scoreboard players set $vang_dot macroengine.tmp 1000
 execute if score $vang_dot macroengine.tmp matches ..-1001 run scoreboard players set $vang_dot macroengine.tmp -1000
 
-execute store result storage macroengine:engine _vang_cos int 1 run scoreboard players get $vang_dot macroengine.tmp
 function macroengine:core/internal/systems/math/vec/arccos_lookup
