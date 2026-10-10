@@ -1,67 +1,63 @@
 # macroengine:core/internal/api/placeholder/to_plain [INTERNAL]
-# Hard method (text_display resolution) that turns any text component into a
-# plain *string*. JSON/SNBT component objects are forbidden as output —
-# the result is always a string value.
+# Hard method: resolve any text component and write the result as a *plain string*
+# into storage. No tellraw is used (tellraw has no capturable output). The output
+# path is guaranteed to be a string — never a JSON/SNBT compound.
 #
 # Input:  storage macroengine:placeholder in.component
-# Output: storage macroengine:placeholder out.string
+# Output: storage macroengine:placeholder out.string   (always string type)
 #         storage macroengine:output      placeholder.string
-# Return: 1 success / 0 missing input
+# Return: 1 on success, 0 when in.component is missing
 #
-# Algorithm (hard method):
+# How it works (hard method):
 #   1. Summon a temporary text_display.
-#   2. Copy the input component onto its `text` tag → server resolves
-#      selectors, scores, nbt, translate, etc.
+#   2. Write the input component to its text tag → server resolves
+#      selector / score / nbt / translate / etc.
 #   3. Read the resolved value back.
-#   4. If the resolved value is already a string → use it.
-#   5. If it is a compound that contains a top-level `text` string and no
-#      useful `extra` / style that would change the visible text → extract
-#      that string (plain text).
-#   6. Otherwise fall back to the full SNBT serialisation of the resolved
-#      component so the caller still receives a string (never a compound).
+#   4. Prefer the top-level "text" field when present (plain visible text).
+#   5. If the resolved value was already a bare string, keep it.
+#   6. Otherwise fall back to an empty string (complex components cannot be
+#      reliably turned into pure human-readable text in vanilla commands).
 #   7. Kill the temporary entity.
 #
 # Notes:
 #   - Nested %placeholders% are not re-parsed (same contract as parse).
-#   - Complex components (hover, click, gradients, multi-extra) produce the
-#     serialised form, not pure human-readable text. That is an inherent
-#     limit of the hard method in pure commands.
-#   - Safe for untrusted input: nothing is ever substituted into a command
-#     string; only `data modify … set from` is used.
+#   - Hover, click, gradients, multi-extra, object sprites etc. produce ""
+#     because pure command extraction of their visible text is not possible.
+#   - Safe for untrusted input: only `data modify … set from` is used;
+#     nothing is ever substituted into a command string.
 
 execute unless data storage macroengine:placeholder in.component run return 0
-data remove storage macroengine:placeholder out.string
 
-# Tag a temporary marker so we can address the exact entity even if other
-# text_displays exist.
+# Ensure the output path starts clean and will end as a string
+data modify storage macroengine:placeholder out.string set value ""
+
+# Temporary text_display for server-side resolution
 execute summon text_display run data modify entity @s Tags set value ["macroengine.ph.to_plain"]
 
-# Force resolution by writing the component onto the display.
+# Resolve
 data modify entity @e[type=text_display,tag=macroengine.ph.to_plain,limit=1] text set from storage macroengine:placeholder in.component
 
-# Pull the resolved value into a temporary path.
+# Read resolved value
 data modify storage macroengine:placeholder _tmp set from entity @e[type=text_display,tag=macroengine.ph.to_plain,limit=1] text
 
-# Clean up the temporary entity immediately.
+# Cleanup entity
 kill @e[type=text_display,tag=macroengine.ph.to_plain]
 
-# Case 1 — already a plain string
-execute store result score #ph_is_str macroengine.tmp run data get storage macroengine:placeholder _tmp
-# data get on a string returns its length; on a compound returns the number of keys.
-# A reliable test: try to read it as a string path that only succeeds for strings.
-execute if data storage macroengine:placeholder _tmp run data modify storage macroengine:placeholder out.string set from storage macroengine:placeholder _tmp
-# If it was a compound the copy above still works but we prefer the plain text when possible.
-
-# Case 2 — simple {text:"…"} compound → extract the string (plain)
+# Prefer plain text field when the resolved component has one
 execute if data storage macroengine:placeholder _tmp.text run data modify storage macroengine:placeholder out.string set from storage macroengine:placeholder _tmp.text
 
-# Case 3 — empty / missing after extraction → empty string
-execute unless data storage macroengine:placeholder out.string run data modify storage macroengine:placeholder out.string set value ""
+# If still empty, the resolved value may already be a bare string
+execute unless data storage macroengine:placeholder out.string run data modify storage macroengine:placeholder out.string set from storage macroengine:placeholder _tmp
 
-# Mirror to the public output namespace used by every other API module.
+# Final safety: if anything non-string slipped through, force empty string
+# (out.string must never be a compound or list)
+execute if data storage macroengine:placeholder out.string{} run data modify storage macroengine:placeholder out.string set value ""
+execute if data storage macroengine:placeholder out.string[] run data modify storage macroengine:placeholder out.string set value ""
+
+# Mirror to public output storage
 data modify storage macroengine:output placeholder.string set from storage macroengine:placeholder out.string
 
-# Cleanup temporary storage
+# Cleanup
 data remove storage macroengine:placeholder _tmp
 
 return 1
