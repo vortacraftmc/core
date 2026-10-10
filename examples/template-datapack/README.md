@@ -47,7 +47,8 @@ function.
    a common third-party pack - see `NOTICE.md` on namespace isolation.
 3. Write your code in `load.mcfunction` (runs once on `/reload` and world load)
    and `tick.mcfunction` (runs every tick).
-4. Add `packs/<your-pack>/data/<namespace>/function/_vc_origin.mcfunction`.
+4. Add the provenance watermark by running `python3 scripts/origin_watermarks.py --write`
+   (it creates `packs/<your-pack>/data/<namespace>/function/_vc_origin.mcfunction`).
    `zipPacks` fails the build if a datapack under `packs/` is missing this
    provenance watermark; see `CONTRIBUTING.md`.
 5. Set the format range in `pack.mcmeta` - see the note below.

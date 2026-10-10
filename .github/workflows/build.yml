@@ -94,6 +94,12 @@ jobs:
           java -version
           ./gradlew --version
 
+      - name: Check provenance watermark content
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/origin_watermarks.py --check
+
       # ==================================================================
       # GROUP 2 - test configuration
       # ==================================================================
