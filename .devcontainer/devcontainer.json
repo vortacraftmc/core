@@ -3,7 +3,7 @@
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
 
   "hostRequirements": {
-    "cpus": 6,
+    "cpus": 4,
     "memory": "8gb",
     "storage": "32gb"
   },
