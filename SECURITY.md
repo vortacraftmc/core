@@ -60,7 +60,8 @@ actually runs, and what each tool does and does not prove:
 |---|---|---|---|
 | `scripts/lint_datapacks.sh` (Mecha 0.101.0) | `build.yml`, step `Lint datapacks` - enforced | `.mcfunction` **command syntax** for every pack not in `IGNORE_PATHS` | Whether the pack **loads**, whether references resolve, whether behaviour is correct |
 | `./gradlew checkPacks` | `build.yml` via `check` | `pack.mcmeta` shape and format range, JSON validity, cross-references between packs | Command semantics |
-| `./gradlew checkOriginWatermarks` | `build.yml` via `zipPacks` | every pack carries `data/<namespace>/function/_vc_origin.mcfunction` | Content of the watermark |
+| `./gradlew checkOriginWatermarks` | `build.yml` via `zipPacks` | every pack carries `data/<namespace>/function/_vc_origin.mcfunction` | Content of the watermark (covered by the next row) |
+| `python3 scripts/origin_watermarks.py --check` | `build.yml`, step `Check provenance watermark content` | every watermark equals what the template generates for its pack and namespace, and contains only comments (a no-op) | That the pack's code is what the watermark claims; it proves consistency, not authorship |
 | `./gradlew mergeDatapacks` | `build.yml`, step `Build merged datapack` | load/tick reference resolution (`strictLoadRefs`), pack-format agreement across the merged set | Runtime behaviour |
 | `./gradlew buildAll` / `lint` | `build.yml` | the **Gradle** side only (`mods/`) | Anything under `packs/` |
 
