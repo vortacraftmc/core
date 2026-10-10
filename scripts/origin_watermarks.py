@@ -85,6 +85,11 @@ def repo_root():
 ROOT = repo_root()
 
 
+def read_text(path):
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
+
+
 def rel(path):
     return os.path.relpath(path, ROOT).replace(os.sep, "/")
 
@@ -156,7 +161,7 @@ def non_comment_lines(text):
 
 def check_file(pack_dir, ns, path):
     problems = []
-    text = open(path, encoding="utf-8").read()
+    text = read_text(path)
     bad = non_comment_lines(text)
     if bad:
         i, l = bad[0]
@@ -213,7 +218,7 @@ def do_write(packs):
             targets = [(ns, os.path.join(p["dir"], "data", ns, fdir, NAME))]
         for ns, path in targets:
             new = render(p["dir"], ns)
-            old = open(path, encoding="utf-8").read() if os.path.exists(path) else None
+            old = read_text(path) if os.path.exists(path) else None
             if old != new:
                 with open(path, "w", encoding="utf-8", newline="\n") as fh:
                     fh.write(new)
