@@ -4,6 +4,8 @@
 #
 # INPUT  macroengine:placeholder in  (string)
 # OUTPUT macroengine:placeholder out (list of text components)
+# SAVED  macroengine:output placeholder.in / .out / .reg (input, result, registered
+#        placeholders) are refreshed on every call, including calls without input.
 # RETURN number of components in out.
 #
 # Why a component list and not a string: placeholders such as %player%,
@@ -23,7 +25,7 @@
 # ─────────────────────────────────────────────────────────────────
 data modify storage macroengine:placeholder out set value []
 data modify storage macroengine:placeholder segs set value []
-execute unless data storage macroengine:placeholder in run return 0
+execute unless data storage macroengine:placeholder in run return run function macroengine:core/internal/api/placeholder/_save
 
 # Split on '%'. Segments alternate: text, name, text, name, ... (empties kept).
 data modify storage macroengine:text s set from storage macroengine:placeholder in
@@ -41,4 +43,5 @@ data remove storage macroengine:placeholder cur
 data remove storage macroengine:placeholder name
 data remove storage macroengine:placeholder pre
 data remove storage macroengine:placeholder obj
+function macroengine:core/internal/api/placeholder/_save
 return run data get storage macroengine:placeholder out
