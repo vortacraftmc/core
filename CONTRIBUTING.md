@@ -82,7 +82,9 @@ removed, renamed, or hand-edited in `packs/` by a contributor's PR —
 maintainers ask that it stay untouched in the source tree. Only `build.gradle`
 itself (via its `build/packs-remap/` working copy, never `packs/`) and
 maintainers acting through the project's own tooling are expected to
-touch these files. This is a contribution-conduct expectation, not a
+touch these files. That tooling is `scripts/origin_watermarks.py`:
+`--write` regenerates every watermark from one template, `--check` (run in CI)
+rejects hand edits and any executable line, `--report` lists packs and namespaces. This is a contribution-conduct expectation, not a
 license restriction — the Unlicense in `LICENSE` continues to govern
 what anyone may do with a copy of this code once obtained.
 
