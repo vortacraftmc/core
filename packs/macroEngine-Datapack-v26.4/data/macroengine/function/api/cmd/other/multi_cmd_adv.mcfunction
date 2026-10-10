@@ -6,7 +6,3 @@
 $data merge storage macroengine:input {list:$(list),options:$(options)}
 
 function macroengine:api/cmd/other/multi_cmd/advanced/run_with_options
-
-# Clear type marker
-data remove storage macroengine:engine multiCommands.type
-data remove storage macroengine:engine multiCommands.active
