@@ -3,10 +3,8 @@
 # other part (selector, score, NBT ...) is resolved on the scratch item and its text read
 # back. Joining uses core/internal/text/concat, which refuses a part holding a double quote
 # or backslash: then string stays "" and string_ok becomes 0b rather than being wrong.
-# Uses _resolved_src (out with any "@s" rebound onto the caller, see _derive) rather
-# than `out` directly, for the same reason the name/lore steps do.
 data modify storage macroengine:placeholder _parts set value []
-data modify storage macroengine:placeholder _rest set from storage macroengine:placeholder _resolved_src
+data modify storage macroengine:placeholder _rest set from storage macroengine:placeholder out
 function macroengine:core/internal/api/placeholder/_plain_loop
 data modify storage macroengine:text list set from storage macroengine:placeholder _parts
 execute store result score #ph_ok macroengine.tmp run function macroengine:core/internal/text/concat

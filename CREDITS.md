@@ -3,7 +3,7 @@
 This file records which parts of the repository were written or changed with AI assistance, so that
 AI involvement is visible in the repository itself and not only through commit authorship.
 
-## 2026-10-10 - fix: placeholder `@s` binding and chest_minecart item drop in `parse`
+## 2026-10-10 - fix: placeholder scratch chest_minecart item drop (`@s` rebind reverted)
 
 **Tool:** Claude (Anthropic), working from a prompt by the maintainer. Review status: _pending - update
 when reviewed_.
@@ -12,14 +12,13 @@ when reviewed_.
 
 | Path | Change |
 |---|---|
-| `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_derive.mcfunction` | `"@s"` entity/selector/score references in `out` are rebound onto the caller (temporary tag `macroengine.ph_caller`, copy in `_resolved_src`) before name/lore are resolved on the scratch chest_minecart. The scratch item is cleared before the minecart is killed so it no longer drops a `minecraft:stone`. |
-| `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_plain.mcfunction` | Reads `_resolved_src` instead of `out`, for the same reason. |
-| `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_derive.mcfunction` (follow-up) | The first version of the rebind appended bogus `{entity:..}` / `{score:..}` parts (a filtered `data modify ... set` creates the element when nothing matches), which broke `custom_name`/`lore`/`string` with "Failed to parse component". Each rebind is now guarded with `execute if data`. |
+| `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_derive.mcfunction` | The scratch item is replaced with air before the chest_minecart is killed, so it no longer drops a `minecraft:stone`. |
+| `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_derive.mcfunction`, `_plain.mcfunction` | An earlier AI commit (bb9d972, 0483225) rebound `"@s"` onto the caller via a `macroengine.ph_caller` tag. That was based on an unverified assumption (that `this` in `item modify` is the minecart), and the in-game log (latest.log, 16:06) shows `%player%` already resolved correctly before it. The rebind broke `custom_name` / `lore` (bogus parts, then empty values). It is reverted here. |
 
 ### Verification status
 
-- Verified: both changed files parse with Mecha 0.101.0 (syntax only).
-- **Not verified:** runtime behaviour in a real Minecraft server (that `%player%`, `%health%`, `%name%` etc. now resolve against the caller, that the `distance=..2` selector finds the caller, that no stone drops). Needs a manual in-game test.
+- Verified: both files parse with Mecha 0.101.0 (syntax only). In-game log from before the rebind shows `custom_name` resolving `%player%`.
+- **Not verified:** that the stone no longer drops; `%health%`, `%food%`, `%xp_level%`, `%dimension%`, `register_score` placeholders in a real server. Whether `string` is empty because of the double quote in a test value (documented refusal in `core/internal/text/concat`) is also unconfirmed.
 
 ## 2026-10-10 - refactor: remove dead `multiCommands` storage writes in macroEngine
 
