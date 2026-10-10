@@ -9,23 +9,26 @@
   },
 
   "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/common-utils:2": {
       "configureZshAsDefaultShell": true
     },
     "ghcr.io/devcontainers/features/java:1": {
       "version": "25",
-      "installGradle": false,
+      "installGradle": true,
       "installMaven": false
     },
     "ghcr.io/devcontainers/features/python:1": {
       "version": "3.12"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
     }
   },
 
   "updateRemoteUserUID": true,
 
-  "postCreateCommand": "bash .devcontainer/setup.sh",
-  "postStartCommand": "bash .devcontainer/start.sh",
+  "postCreateCommand": "git lfs install --system 2>/dev/null || git lfs install",
 
   "customizations": {
     "vscode": {
@@ -36,7 +39,13 @@
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
-        "java.configuration.updateBuildConfiguration": "automatic"
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "files.associations": {
+          "*.gradle": "groovy"
+        },
+        "groovy.classpath": [
+          "."
+        ]
       }
     }
   }
