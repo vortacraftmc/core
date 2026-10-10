@@ -9,18 +9,20 @@
   },
 
   "features": {
-    "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/common-utils:2": {
       "configureZshAsDefaultShell": true
     },
     "ghcr.io/devcontainers/features/java:1": {
       "version": "25",
-      "installGradle": false
+      "installGradle": false,
+      "installMaven": false
     },
     "ghcr.io/devcontainers/features/python:1": {
       "version": "3.12"
     }
   },
+
+  "updateRemoteUserUID": true,
 
   "postCreateCommand": "bash .devcontainer/setup.sh",
   "postStartCommand": "bash .devcontainer/start.sh",
@@ -29,9 +31,7 @@
     "vscode": {
       "extensions": [
         "misode.vscode-datapack-helper",
-        "SPGoding.datapack-language-server",
         "vscjava.vscode-java-pack",
-        "vscjava.vscode-gradle",
         "ms-python.python"
       ],
       "settings": {
