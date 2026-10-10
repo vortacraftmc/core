@@ -9,8 +9,7 @@
 #   y     (int)     — CB block Y          [default: -64]
 #   z     (int)     — CB block Z          [default: 0]
 #
-# No permission gate — caller is trusted as-is. See core/internal/cmd/ban_apply
-# and similar for the same convention.
+# No permission gate — caller is trusted as-is.
 #
 # EXAMPLE:
 #   data modify storage macroengine:input cb set value {cmd:"say hello"}

@@ -27,17 +27,5 @@ execute unless data storage macroengine:engine config.namespace_allowlist run da
 # multi_type_allowlist).
 execute unless data storage macroengine:engine security run data modify storage macroengine:engine security set value {}
 
-# ── Experimental feature flags (systems/flag/experimental/*) ──────
-# All default OFF. Each gates one piece of new/previously-removed
-# functionality so it can be toggled without editing files or /reload
-# stripping intent. See systems/flag/experimental/list.mcfunction for
-# the authoritative description of each flag.
+# Generic flag storage used by systems/flag/*.
 execute unless data storage macroengine:engine flags run data modify storage macroengine:engine flags set value {}
-execute unless data storage macroengine:engine flags.experimental run data modify storage macroengine:engine flags.experimental set value {}
-
-execute unless data storage macroengine:engine flags.experimental.hologram run data modify storage macroengine:engine flags.experimental.hologram set value 0b
-execute unless data storage macroengine:engine flags.experimental.particle_trail run data modify storage macroengine:engine flags.experimental.particle_trail set value 0b
-execute unless data storage macroengine:engine flags.experimental.crafting_ui run data modify storage macroengine:engine flags.experimental.crafting_ui set value 0b
-execute unless data storage macroengine:engine flags.experimental.waypoint run data modify storage macroengine:engine flags.experimental.waypoint set value 0b
-execute unless data storage macroengine:engine flags.experimental.combat_tag run data modify storage macroengine:engine flags.experimental.combat_tag set value 0b
-execute unless data storage macroengine:engine flags.experimental.scoreboard_hud run data modify storage macroengine:engine flags.experimental.scoreboard_hud set value 0b
