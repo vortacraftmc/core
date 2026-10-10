@@ -3,6 +3,23 @@
 This file records which parts of the repository were written or changed with AI assistance, so that
 AI involvement is visible in the repository itself and not only through commit authorship.
 
+## 2026-10-10 - fix: placeholder `@s` binding and chest_minecart item drop in `parse`
+
+**Tool:** Claude (Anthropic), working from a prompt by the maintainer. Review status: _pending - update
+when reviewed_.
+
+### Changed (AI-assisted edit)
+
+| Path | Change |
+|---|---|
+| `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_derive.mcfunction` | `"@s"` entity/selector/score references in `out` are rebound onto the caller (temporary tag `macroengine.ph_caller`, copy in `_resolved_src`) before name/lore are resolved on the scratch chest_minecart. The scratch item is cleared before the minecart is killed so it no longer drops a `minecraft:stone`. |
+| `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_plain.mcfunction` | Reads `_resolved_src` instead of `out`, for the same reason. |
+
+### Verification status
+
+- Verified: both changed files parse with Mecha 0.101.0 (syntax only).
+- **Not verified:** runtime behaviour in a real Minecraft server (that `%player%`, `%health%`, `%name%` etc. now resolve against the caller, that the `distance=..2` selector finds the caller, that no stone drops). Needs a manual in-game test.
+
 ## 2026-10-10 - refactor: remove dead `multiCommands` storage writes in macroEngine
 
 **Tool:** Claude (Anthropic), working from a prompt by the maintainer. Review status: _pending - update
