@@ -23,4 +23,3 @@ scoreboard players operation #tx_a macroengine.tmp = #tx_pos macroengine.tmp
 scoreboard players operation #tx_b macroengine.tmp = #tx_len macroengine.tmp
 function macroengine:core/internal/text/_cut_ab
 function macroengine:core/internal/text/split_emit
-return run data get storage macroengine:text out

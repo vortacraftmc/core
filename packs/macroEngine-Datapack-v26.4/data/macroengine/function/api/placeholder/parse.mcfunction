@@ -50,4 +50,4 @@ data remove storage macroengine:placeholder pre
 data remove storage macroengine:placeholder obj
 data remove storage macroengine:placeholder wrap
 function macroengine:core/internal/api/placeholder/_save
-return run data get storage macroengine:placeholder out
+function macroengine:core/internal/api/placeholder/to_plain
