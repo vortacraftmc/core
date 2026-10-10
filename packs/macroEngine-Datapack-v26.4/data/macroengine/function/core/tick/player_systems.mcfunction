@@ -8,12 +8,6 @@ function macroengine:core/internal/api/interaction/tick_scan
 
 function macroengine:core/internal/api/perm/trigger/tick_start
 
-# BACKPORT NOTE (1.21.2): removed the dialog-loading countdown block that
-# lived here (macroengine.dialog_load tick-down + actionbar + calls into
-# macroengine:api/dialog/open). It only existed to drive the native dialog
-# system, which does not exist in 1.21.2 — see setup/open_screen.mcfunction
-# and api/toggle/show.mcfunction for the chat-menu replacement.
-
 function macroengine:core/internal/api/wand/tick_scan
 function macroengine:core/internal/systems/hook/tick_scan
 

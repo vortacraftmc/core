@@ -1,6 +1,0 @@
-{
-  "components": {
-    "minecraft:provides_trim_material": "macroengine:overload"
-  },
-  "type": "minecraft:set_components"
-}

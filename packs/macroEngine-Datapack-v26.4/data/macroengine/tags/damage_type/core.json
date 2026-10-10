@@ -1,8 +1,0 @@
-{
-  "replace": false,
-  "values": [
-    "macroengine:overload",
-    "macroengine:purge",
-    "macroengine:sanctioned"
-  ]
-}
