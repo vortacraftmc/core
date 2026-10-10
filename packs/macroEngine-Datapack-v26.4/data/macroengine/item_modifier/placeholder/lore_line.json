@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:set_lore",
+  "mode": "append",
+  "entity": "this",
+  "lore": [
+    {
+      "storage": "macroengine:placeholder",
+      "nbt": "_cur",
+      "interpret": true
+    }
+  ]
+}

@@ -1,56 +1,31 @@
 # ─────────────────────────────────────────────────────────────────
 # macroengine:api/placeholder/parse
-# Turns text containing %placeholders% into a ready-to-use text component list.
+# parse_live (the live component list) PLUS forms that are resolved right now,
+# so they can be stored, compared or written into an item.
 #
-# INPUT  macroengine:placeholder in  (string)
-# OUTPUT macroengine:placeholder out (list of text components)
-#        macroengine:placeholder string       the list as an SNBT string
-#        macroengine:placeholder custom_name  ready for custom_name=
-#        macroengine:placeholder lore         ready for lore= (lines split at %nl%)
-# SAVED  macroengine:output placeholder.in / .out / .string / .custom_name / .lore / .reg
-#        (input, results, registered placeholders) are refreshed on every call, including calls without input.
+# INPUT  macroengine:placeholder in  (string); run it as and at the player the
+#        placeholders are for (execute as <player> at @s run function ...)
+# OUTPUT macroengine:placeholder, mirrored to macroengine:output placeholder.<key>:
+#   out          live component list (selectors/scores resolve when displayed)
+#   resolved     ONE component, already resolved (names, scores, NBT are plain text)
+#   custom_name  resolved, italic:false on its root: write it into custom_name=
+#   lore         list of resolved lines, split at every %nl%, italic:false: lore=
+#   string       the resolved text as a plain string
+#   string_ok    1b when `string` is complete, 0b when it was left empty because a
+#                part contained a double quote or backslash
 # RETURN number of components in out.
 #
-# Why a component list and not a string: placeholders such as %player%,
-# scores and storage values are resolved by the client/server text engine, so
-# they stay live, need no escaping and cannot break out of a JSON string. The
-# input is never substituted into a command line, so untrusted text (chat,
-# signs, books, name tags) is safe to pass through here.
+# Why resolved forms exist: selector, score and NBT components are resolved by the
+# server only for chat, titles, books and signs. Inside an item name or lore they
+# are shown raw (an unresolved "@s"). parse therefore lets the server resolve them
+# once, through a short-lived scratch item (item modify), and hands back the result.
+# Cost: one chest_minecart is summoned and killed per call, so use parse_live for
+# per-tick or per-message display and parse only when you need these forms.
 #
-# Registered values may be a text component (compound), a plain string or an array
-# of strings/components. Strings and arrays are wrapped into one component each, so
-# `out` always holds components only. Numbers are not supported as stored values.
-# The text of a registered value is not parsed again (no nested %placeholders%).
-#
-# Grammar
-#   %name%          registered placeholder (see register_*), built-ins in load
-#   %score:obj%     scoreboard objective `obj` of the executor
-#   %%              a literal percent sign
-#   unknown/unclosed %...% is kept as plain text
-#
-# Show the result with:   tellraw @s {"storage":"macroengine:placeholder","nbt":"out","interpret":true}
-# or use api/placeholder/send, send_to, actionbar, title.
+# Parts that are neither text nor selector/score/NBT (for example `translate`) are
+# kept in resolved/custom_name/lore but are skipped in `string`.
 # ─────────────────────────────────────────────────────────────────
-data modify storage macroengine:placeholder out set value []
-data modify storage macroengine:placeholder segs set value []
-execute unless data storage macroengine:placeholder in run return run function macroengine:core/internal/api/placeholder/_save
-
-# Split on '%'. Segments alternate: text, name, text, name, ... (empties kept).
-data modify storage macroengine:text s set from storage macroengine:placeholder in
-data modify storage macroengine:text sep set value "%"
-data modify storage macroengine:text keep_empty set value 1b
-data modify storage macroengine:text n set value 0
-function macroengine:core/internal/text/split
-data modify storage macroengine:placeholder segs set from storage macroengine:text out
-function macroengine:core/internal/text/reset
-
-scoreboard players set #ph_name macroengine.tmp 0
-function macroengine:core/internal/api/placeholder/_loop
-data remove storage macroengine:placeholder segs
-data remove storage macroengine:placeholder cur
-data remove storage macroengine:placeholder name
-data remove storage macroengine:placeholder pre
-data remove storage macroengine:placeholder obj
-data remove storage macroengine:placeholder wrap
-function macroengine:core/internal/api/placeholder/_save
+function macroengine:api/placeholder/parse_live
+function macroengine:core/internal/api/placeholder/_derive
+function macroengine:core/internal/api/placeholder/_save_items
 return run data get storage macroengine:placeholder out

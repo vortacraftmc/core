@@ -97,34 +97,48 @@ against quotes, backslashes and the `deny_name` table before they reach a macro.
 
 ## Outputs
 
-Every `parse` (and so `send`, `give`, ...) leaves the result in the same four forms, both in
-`macroengine:placeholder` and mirrored to `macroengine:output placeholder.<key>`:
+Two parse functions, because they cost different amounts:
+
+| Function | Leaves | Cost |
+|---|---|---|
+| `parse_live` | `out` (live component list) | cheap; used by `send`, `send_all`, `actionbar`, title |
+| `parse` | `out` **and** the resolved forms below | one short-lived scratch entity per call |
+
+`parse` leaves these in `macroengine:placeholder`, mirrored to `macroengine:output placeholder.<key>`:
 
 | Key | Form | Use it for |
 |---|---|---|
-| `out` | list of text components | `tellraw`, `title`, `{"storage":...,"nbt":"out","interpret":true}` |
-| `string` | the same list written out as an SNBT **string** | storing, comparing, or `$tellraw @s $(string)` through a macro |
-| `custom_name` | one component, `italic:false` on its root | `custom_name=` |
-| `lore` | list of lines, split at every `%nl%`, each `italic:false` on its root | `lore=` |
+| `out` | live list of components | `tellraw`, `title` (selectors and scores resolve when shown) |
+| `resolved` | **one** component, already resolved | storing; names, scores and NBT are plain text in it |
+| `custom_name` | `resolved` with `italic:false` on its root | `custom_name=` |
+| `lore` | list of resolved lines, cut at every `%nl%`, `italic:false` on each root | `lore=` |
+| `string` | the resolved text as a plain string | macros, comparing, scoreboard-free text handling |
+| `string_ok` | `1b`, or `0b` when `string` was left empty | check before using `string` |
 
-A root that sets `italic` itself keeps it. A trailing `%nl%` adds no empty line; two in a row make one.
-`string` is the component as written, not resolved text: `%player%` stays `{selector:"@s"}` in it, because
-Minecraft only turns selectors, scores and NBT into words when a component is displayed.
+**Why the resolved forms exist.** Selector, score and NBT components are resolved by the server only for
+chat, titles, books and signs. Written into an item name or lore they are shown raw (an unresolved `@s`).
+`parse` has the server resolve them once, through a scratch item (`item modify` with the executor as
+`this`), and returns the result, so `custom_name` and `lore` can be written as they are. Run it as and at
+the player the text is for: `execute as <player> at @s run function macroengine:api/placeholder/parse`.
+
+`string` is built from text parts and from the resolved text of selector/score/NBT parts. Parts without
+text (for example `translate`) are skipped there but kept in `resolved`, `custom_name` and `lore`. Joining
+uses `core/internal/text/concat`, which refuses a double quote or backslash in any part; then `string` is `""`
+and `string_ok` is `0b`, never a wrong string. A trailing `%nl%` adds no empty lore line; two in a row make one.
 
 ```mcfunction
 data modify storage macroengine:placeholder in set value "%player%'s sword%nl%Kills: %score:kills%"
 function macroengine:api/placeholder/parse
 
-# straight into an item, through a macro that reads the storage
+# straight into a new item (a macro reads the storage)
 function macroengine:api/placeholder/give {item:"minecraft:iron_sword"}
 
-# or your own command: $(custom_name) and $(lore) are written out as SNBT
+# or in your own command: $(custom_name) and $(lore) are written out as SNBT
 # (helper.mcfunction)  $item replace entity @s weapon.mainhand with minecraft:stick[custom_name=$(custom_name),lore=$(lore)]
 function mypack:helper with storage macroengine:placeholder
 
-# the string form through a macro
-# (show.mcfunction)  $tellraw @s $(string)
-function mypack:show with storage macroengine:placeholder
+# the plain string
+execute if data storage macroengine:placeholder {string_ok:1b} run data get storage macroengine:placeholder string
 ```
 
 ## Checking results

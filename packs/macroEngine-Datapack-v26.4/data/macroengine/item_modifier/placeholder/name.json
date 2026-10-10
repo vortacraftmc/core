@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:set_name",
+  "target": "custom_name",
+  "entity": "this",
+  "name": {
+    "storage": "macroengine:placeholder",
+    "nbt": "_src",
+    "interpret": true
+  }
+}

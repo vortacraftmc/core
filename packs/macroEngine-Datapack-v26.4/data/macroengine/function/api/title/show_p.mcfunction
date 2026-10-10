@@ -3,7 +3,7 @@
 #
 # Unlike title/show (which builds {"text":"$(title)"} and breaks on quotes or
 # backslashes) this reads everything from storage, so any text is safe, and the
-# text may contain %placeholders% (see api/placeholder/parse).
+# text may contain %placeholders% (see api/placeholder/parse_live).
 #
 # INPUT macroengine:title in (all keys optional):
 #   title     string with %placeholders%   (default: empty)
@@ -21,13 +21,13 @@ execute unless data storage macroengine:title in.fade_out run data modify storag
 
 data modify storage macroengine:placeholder in set value ""
 execute if data storage macroengine:title in.title run data modify storage macroengine:placeholder in set from storage macroengine:title in.title
-function macroengine:api/placeholder/parse
+function macroengine:api/placeholder/parse_live
 data modify storage macroengine:title t set from storage macroengine:placeholder out
 execute unless data storage macroengine:title t[0] run data modify storage macroengine:title t set value [{text:""}]
 
 data modify storage macroengine:placeholder in set value ""
 execute if data storage macroengine:title in.subtitle run data modify storage macroengine:placeholder in set from storage macroengine:title in.subtitle
-function macroengine:api/placeholder/parse
+function macroengine:api/placeholder/parse_live
 data modify storage macroengine:title s set from storage macroengine:placeholder out
 execute unless data storage macroengine:title s[0] run data modify storage macroengine:title s set value [{text:""}]
 
