@@ -10,9 +10,6 @@ data modify storage macroengine:engine _mcmd_queue set from storage macroengine:
 execute unless data storage macroengine:input options run data modify storage macroengine:input options set value {}
 data modify storage macroengine:engine _mcmd_options merge from storage macroengine:input options
 
-# Validate options.type if caller explicitly specified one
-execute if data storage macroengine:engine _mcmd_options.type run data modify storage macroengine:engine multiCommands.type set from storage macroengine:engine _mcmd_options.type
-
 execute unless data storage macroengine:engine _mcmd_options.error_mode run data modify storage macroengine:engine _mcmd_options.error_mode set value "continue"
 execute unless data storage macroengine:engine _mcmd_options.profile run data modify storage macroengine:engine _mcmd_options.profile set value 0b
 execute unless data storage macroengine:engine _mcmd_options.spread_ticks run data modify storage macroengine:engine _mcmd_options.spread_ticks set value 0
