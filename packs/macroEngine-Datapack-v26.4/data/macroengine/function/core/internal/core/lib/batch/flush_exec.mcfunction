@@ -16,12 +16,10 @@ scoreboard players set $bfl_idx macroengine.tmp 0
 
 # Copy items to working storage
 $data modify storage macroengine:engine _bfl_items set from storage macroengine:engine batches.$(id).items
-$data modify storage macroengine:engine _bfl_id set value "$(id)"
 
 function macroengine:core/internal/core/lib/batch/flush_loop
 
 data remove storage macroengine:engine _bfl_items
-data remove storage macroengine:engine _bfl_id
 scoreboard players reset $bfl_idx macroengine.tmp
 scoreboard players reset $bfl_total macroengine.tmp
 scoreboard players reset $bfl_spread macroengine.tmp
