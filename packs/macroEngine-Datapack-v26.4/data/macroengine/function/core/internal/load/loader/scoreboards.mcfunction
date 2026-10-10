@@ -77,10 +77,3 @@ scoreboard objectives add macroengine.gamerule dummy
 
 # State scoreboard — per-player state machine (0=idle 1=combat 2=menu ...)
 scoreboard objectives add macroengine.state dummy
-
-# experimental/combat_tag — damage_dealt delta detection (same
-# stat-delta pattern as the hook_* objectives above), plus a countdown
-# timer per tagged player. Self-contained: only touched while
-# flags.experimental.combat_tag is on.
-scoreboard objectives add macroengine.exp_dmg_dealt minecraft.custom:minecraft.damage_dealt
-scoreboard objectives add macroengine.exp_combat_timer dummy

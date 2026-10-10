@@ -21,12 +21,11 @@
 - **API layer** (`api/`) — stable public entry points: `cmd`, `cb` (callback queue), `color`, `dialog`, `gamerule`, `interaction`, `data`, `item`, `macro`, `perm`, `placeholder`, `title`, `toggle`, `trigger`, `wand`
 - **Systems layer** (`systems/`) — internal utility modules: `math`, `string`, `nbt`, `logic`, `geo`, `flag`, `hook`, `log`, `rate_limit`, `sound`, `uuid`, `color`
 - **Input system** (`input/`) — capture player-provided values via writable book, sign, lectern, name tag, dialog, or command block minecart, with shared validation (`input/validate`) for int/float/bool/tag-safe strings
-- **Toggle system** — per-module runtime enable/disable for `cb`, `perm`, `geo`, `wand`, `interaction`, `hook`, and `experimental` features
+- **Toggle system** — per-module runtime enable/disable for `cb`, `perm`, `geo`, `wand`, `interaction`, and `hook` modules
 - **Rate limiting** — global, per-player, and per-channel request throttling
 - **Hook system** — bind functions to fire on events such as block break, dimension change, and advancement grant
 - **Item modifiers** (`item_modifier/`) — reusable `item_modifier` definitions for enchanting, glint, lore, tooltip, and rename operations
 - **Advancement-driven triggers** (`advancement/`) — core, hidden, and system advancements used to drive internal logic and hooks
-- **Experimental namespace** — gated behind `toggle/experimental`, for features not yet considered stable
 - **Enchantments** (`enchantment/`) — `steady_hand`, `xp_thrift`, plus `momentum_surge` (movement speed on boots) and `overload_ward` (protection against macroEngine's own `overload`/`purge`/`sanctioned` damage types, grouped under `#macroengine:core` in `tags/damage_type/`)
 - **Armor trim** (`trim_pattern/`, `trim_material/`) — custom `macroengine:circuit` pattern and `macroengine:overload` material (1.21.5+ registry shape: no `template_item`/`ingredient`, `override_armor_assets` only). Applied via any vanilla smithing template + the crafted trim ingot (`recipe/util/overload_trim_ingot.json`). Matching resource pack assets (overlay textures, color palette, `armor_trims.json` atlas extension via `replace:false`) ship in the companion resource pack
 - **Trim processing** (`systems/trim/`) — example module that scans an entity's armor for the circuit+overload trim and fires a `macroengine:trim_matched` hook event per matching slot; `on_matched_example.mcfunction` shows a handler you can bind with `systems/hook/bind`. This fills the gap where the pack previously only had validation helpers (`input/validate/`) but no processing logic for the trim registries
@@ -34,7 +33,7 @@
 - **Deterministic RNG** (`systems/rng/`) — `seed`, `state`, `next`, `int`, `chance`, `pick`. Seeding makes randomised behaviour reproducible, which the previous generator could not do: it kept an undocumented `_rng_state` key with no way to set it. `systems/math/random` is now a thin wrapper over `systems/rng/int`, so there is one generator rather than two
 - **Text-component rendering** (`systems/text/`) — helpers for NBT-backed components. On 26.1+ a `{"storage":...,"nbt":...}` component renders a string *with its quotes* and a number or boolean *with vanilla colouring* unless `interpret` and `plain` are both set. Every such component in this pack now sets both explicitly; `scripts/fix_text_components.py` at the repository root enforces it
 
-- **Placeholder module** (`api/placeholder/`) — `%player%`, `%score:<objective>%`, `%nl%`, `%%` and your own `%name%` tokens resolve to a text component list built on `core/internal/text`. Untrusted text is never substituted into a command or JSON string, so chat/sign/book input is safe; see [`docs/placeholder.md`](docs/placeholder.md)
+- **Placeholder module** (`api/placeholder/`) — `%player%`, `%score:<objective>%`, `%nl%`, `%%` and your own `%name%` tokens (text component, string or array values) resolve to a text component list built on `core/internal/text`. Untrusted text is never substituted into a command or JSON string, so chat/sign/book input is safe; see [`docs/placeholder.md`](docs/placeholder.md)
 - **Title / action bar with placeholders** (`api/title/*_p`, plus `clear`, `reset`, `times`; see [`docs/title.md`](docs/title.md)) — storage-driven (no quote/backslash breakage), per-recipient placeholder resolution
 - **Data helpers** (`api/data/`, see [`docs/data.md`](docs/data.md)) — `get`, `set`, `set_default`, `append`, `merge`, `remove`, `exists`, `count`, `copy`, `add`, `toggle`, `pop`, `shift` over any storage/path; values pass through storage so nothing needs escaping. Migration notes: [`docs/migrating-from-data-api.md`](docs/migrating-from-data-api.md)
 
@@ -85,7 +84,6 @@ execute as @a run function macroengine:systems/trim/scan
 ## Notes
 
 - This is the 26.4-snapshot-1 build of macroEngine, derived from the 26.3 pack of the archived `runtoolkit/suite` monorepo (`packs/macroEngine-Datapack-v26.3`). Development continues in `vortacraftmc/core`; do not file issues or PRs against `runtoolkit/*`.
-- Experimental features are opt-in via `api/toggle/experimental/true` and are not guaranteed stable between versions.
 
 ---
 
@@ -98,7 +96,7 @@ execute as @a run function macroengine:systems/trim/scan
 **Short answer:** no malicious content was found, but it is not safe to install blindly either. It is a powerful toolkit and can be dangerous if misused.
 
 - **What is not in the pack:** the zip contains no `.jar`, `.exe`, scripts, `.git/` or `.env` files, only datapack files (`.mcfunction`, `.json`, `pack.png`). A datapack cannot open network connections or write to the server's file system on its own.
-- **The real risk is the command-executing APIs.** Several functions run a caller-supplied string as a command (the `$execute ... run $(cmd)` pattern: `api/cmd/as_player`, `api/cmd/other/run_*`, `api/perm/run`, `api/perm/exec`, `core/lib/queue_add_cmd`, `core/lib/schedule_cmd`). Passing player-controlled text (sign, book, dialog, name tag) into them results in **command injection**. `api/cmd/op`, `ban_ip`, `whitelist` and `publish` also run server administration commands through macros.
+- **The real risk is the command-executing APIs.** Several functions run a caller-supplied string as a command (the `$execute ... run $(cmd)` pattern: `api/cmd/as_player`, `api/cmd/other/run_*`, `api/perm/run`, `api/perm/exec`, `core/lib/queue_add_cmd`, `core/lib/schedule_cmd`). Passing player-controlled text (sign, book, dialog, name tag) into them results in **command injection**.
 - **The input system does not execute input.** Captured raw text is only written to the `macroengine:input` storage. Validate it with `input/validate/check` (`int`, `float`, `bool`, `tag_safe`) before using it.
 - **There is no built-in protection.** The pack has no load gate or caller authorization. Any other datapack in the same world can call these functions (there is no isolation between datapacks).
 - **Permission level:** everything runs at the server's function permission level.
@@ -110,7 +108,7 @@ Yes. It is a purely server-side datapack, and players do not need any mods. Requ
 1. **Version:** the pack targets `26.4-snapshot-1` (pack format `122`).
 2. **Text rendering:** use it together with `macroEngine-Resourcepack-v26.4`.
 3. **Back up first** and try it on a test server.
-4. **Removal:** `/function macroengine:disable`. See the forceload note under Known Issues.
+4. **Removal:** delete the pack from the world's `datapacks` folder (Realms: re-upload the world without it). The pack no longer ships server-administration commands (`/datapack`, `/op`, ...).
 
 ### Is it paid?
 
@@ -146,7 +144,6 @@ The diagrams above are generated from the source code. Real in-game captures (in
 - **Command-executing APIs do not check who is calling.** See "Is it safe?".
 - **NBT-filtered `@e[type=item]` scan every tick** (performance note above).
 - **License and file inconsistencies.** `LICENSE` and `THIRD_PARTY_LICENSES.md` are not in this zip (the statement "Both files ship inside the distributed zip" above is wrong). `_rt_origin.mcfunction` is claimed to be stripped from distribution zips but is present (the game ignores it, so it is harmless) and its license header contradicts the Unlicense.
-- **The restart hint depends on the file name.** After `disable`, the suggested command assumes `file/macroEngine-Datapack-v26.4.zip`; if the zip is named differently (e.g. `v26_4`), the command will not work.
 
 ## License
 

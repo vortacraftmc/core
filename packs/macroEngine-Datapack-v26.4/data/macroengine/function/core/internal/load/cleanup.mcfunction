@@ -98,8 +98,6 @@ scoreboard players reset $tick macroengine.tmp
 scoreboard players reset $epoch macroengine.time
 
 # ── reverse of loader/scoreboards ────────────────────────────────────────
-scoreboard objectives remove macroengine.exp_combat_timer
-scoreboard objectives remove macroengine.exp_dmg_dealt
 scoreboard objectives remove macroengine.state
 scoreboard objectives remove macroengine.gamerule
 scoreboard objectives remove macroengine.config

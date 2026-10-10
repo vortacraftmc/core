@@ -1,9 +1,10 @@
 # macroengine:api/placeholder/register_component [MACRO]
 # Registers %name% as an arbitrary text component (colours, hover, click,
 # translate, gradients ...). The component is read from storage, so it needs no
-# string escaping at all.
+# string escaping at all. A string or an array is accepted too and is handled
+# exactly like register_string / register_array when the placeholder is resolved.
 #
-# Input: macroengine:placeholder in.component — any SNBT text component
+# Input: macroengine:placeholder in.component — any SNBT text component, string or array
 #        macro arg: name
 #
 # Usage:
