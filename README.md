@@ -14,17 +14,6 @@ vortacraftmc ecosystem."), which is circular - the organization *is*
 vortacraftmc, so the description said nothing about what is in here.
 -->
 
-## Project status (maintenance paused)
-
-**Maintenance paused since 2026-10-04 — not permanently archived.** The
-maintainer is expected to be inactive on GitHub until at least 2027–2028.
-Issues, pull requests and security reports may go unanswered, and no fixes
-or releases are planned during the pause.
-
-The repository is still writable and CI still runs on push; the pause is an
-availability statement, not a read-only archive. `archived/` is a separate,
-per-project concept — see `archived/README.md`.
-
 ## Structure
 
 - `mods/`        — Fabric mods (Gradle subprojects, auto-discovered by `settings.gradle`)
