@@ -1,0 +1,20 @@
+{
+  "criteria": {
+    "use": {
+      "trigger": "minecraft:default_block_use",
+      "conditions": {
+        "location": {
+          "predicate": {
+            "block": {
+              "blocks": "#minecraft:shulker_boxes"
+            }
+          },
+          "type": "minecraft:location_check"
+        }
+      }
+    }
+  },
+  "rewards": {
+    "function": "macroengine:core/internal/pev/block/shulker_box"
+  }
+}

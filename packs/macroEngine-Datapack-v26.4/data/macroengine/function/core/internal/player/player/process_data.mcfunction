@@ -23,15 +23,5 @@ execute if predicate macroengine:core/internal/player/riding_donkey run tag @s a
 execute if predicate macroengine:core/internal/player/riding_strider run tag @s add player_action.riding_strider
 execute if predicate macroengine:core/internal/player/riding_minecart run tag @s add player_action.riding_minecart
 
-# One-shot events -> user hooks
-execute if score @s player_action.death matches 1.. run function #macroengine:core/internal/player/died
-execute if score @s player_action.enchant matches 1.. run function #macroengine:core/internal/player/enchanted
-execute if score @s player_action.jump matches 1.. run function #macroengine:core/internal/player/jumped
-execute if score @s player_action.use_coas matches 1.. run function #macroengine:core/internal/player/right_click
-execute if score @s player_action.use_wfoas matches 1.. run function #macroengine:core/internal/player/right_click
-
-# Join handling: fires on the leave_game statistic and once for players
-# whose join score was never initialized (first tick after load/join).
-execute if score @s player_action.join matches 1.. run function #macroengine:core/internal/player/joined
-execute unless score @s player_action.join matches 0.. run function #macroengine:core/internal/player/joined
-execute unless score @s player_action.join matches 0.. run scoreboard players add @s player_action.join 0
+# One-shot events (death, jump, enchant, right click, join) live in
+# macroengine:core/internal/pev.

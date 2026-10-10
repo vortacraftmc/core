@@ -28,11 +28,4 @@ scoreboard objectives add player_action.climb minecraft.custom:minecraft.climb_o
 scoreboard objectives add player_action.fall minecraft.custom:minecraft.fall_one_cm
 scoreboard objectives add player_action.fly minecraft.custom:minecraft.fly_one_cm
 scoreboard objectives add player_action.walk minecraft.custom:minecraft.walk_one_cm
-scoreboard objectives add player_action.jump minecraft.custom:minecraft.jump
 
-# Event counters (dispatched once per tick, then reset)
-scoreboard objectives add player_action.death minecraft.custom:minecraft.deaths
-scoreboard objectives add player_action.join minecraft.custom:minecraft.leave_game
-scoreboard objectives add player_action.enchant minecraft.custom:minecraft.enchant_item
-scoreboard objectives add player_action.use_coas minecraft.used:minecraft.carrot_on_a_stick
-scoreboard objectives add player_action.use_wfoas minecraft.used:minecraft.warped_fungus_on_a_stick

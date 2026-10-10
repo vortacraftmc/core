@@ -1,0 +1,23 @@
+{
+  "criteria": {
+    "use": {
+      "trigger": "minecraft:item_used_on_block",
+      "conditions": {
+        "location": {
+          "predicate": {
+            "block": {
+              "blocks": [
+                "minecraft:campfire",
+                "minecraft:soul_campfire"
+              ]
+            }
+          },
+          "type": "minecraft:location_check"
+        }
+      }
+    }
+  },
+  "rewards": {
+    "function": "macroengine:core/internal/pev/block/campfire"
+  }
+}

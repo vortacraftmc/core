@@ -16,6 +16,9 @@ function macroengine:core/internal/player/resolve
 # Step 4: Player Initialization
 function macroengine:core/internal/player/init
 
+# Step 4b: Player events (join, death, jump, enchant, clicks, GUI blocks)
+function macroengine:core/internal/pev/load
+
 # Step 5: Core Main Load
 function macroengine:core/internal/load/main
 
