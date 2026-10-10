@@ -2,7 +2,6 @@ execute unless data storage macroengine:engine _felist_input[0] run execute as @
 execute unless data storage macroengine:engine _felist_input[0] run return 0
 
 data modify storage macroengine:engine _felist_current set from storage macroengine:engine _felist_input[0]
-execute store result storage macroengine:engine _felist_i int 1 run scoreboard players get $felist_i macroengine.tmp
 
 function macroengine:core/internal/core/lib/for_each_list_call with storage macroengine:engine _felist_state
 
