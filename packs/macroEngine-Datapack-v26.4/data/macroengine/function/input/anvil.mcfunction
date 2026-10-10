@@ -5,35 +5,35 @@
 # TRIGGERED BY: #macroengine:loop (polled every tick)
 #
 # PURPOSE:
-#   Detect a player who has picked up a marked item
-#   (custom_data={macroengine:{input:1b,inputItem:"anvil"}}, given via
-#   give_anvil / give_anvil_custom) into their cursor slot after
-#   anvil-renaming it. Capture into macroengine:input anvil.old_name /
-#   anvil.new_name / anvil.raw, then clear the carrier item.
+#   Anvil-rename input. The player renames a marked carrier item
+#   (custom_data={macroengine:{input:1b,inputItem:"anvil"}}, from give_anvil /
+#   give_anvil_custom) in an anvil and takes the result out. The renamed item is
+#   captured into macroengine:input anvil.old_name / anvil.new_name / anvil.raw
+#   and the carrier is consumed (see private/anvil_capture).
 #
-# WHY player.cursor:
-#   The cursor slot (the item currently "held" by the mouse while a
-#   container/inventory screen is open) has been a checkable slot name
-#   since 1.20.5. It only exists while some inventory-type screen is
-#   open for that player — with no screen open there is nothing in the
-#   cursor slot, so this naturally only fires during a GUI interaction,
-#   which an anvil rename-then-pick-up always is.
+# HOW IT KNOWS IT IS AN ANVIL (and not the player inventory):
+#   Vanilla has no "which screen is open" query, so the pack builds the
+#   evidence itself. A player is only examined during an ANVIL SESSION:
 #
-# UNLIKE name_tag/writable_book (kept on capture), THIS INPUT IS
-# CONSUMED: the carrier item is cleared as part of capture, matching the
-# behavior described for this input type — capture then clear, no
-# hold-session debounce needed since the item no longer exists after.
+#   1. start  - the advancement macroengine:input/anvil_open fires when the
+#               player opens an anvil (any #minecraft:anvil block) and tags them
+#               macroengine.anvil_session (private/anvil_open).
+#   2. proof  - the carrier must disappear from hotbar/inventory/offhand while
+#               it is NOT on the cursor either. The only place it can be then is
+#               the anvil's input slot. That sets macroengine.anvil_hidden.
+#   3. capture- only a hidden carrier that now sits on the cursor WITH a
+#               custom_name (the rename) is captured. A carrier picked up from
+#               the inventory never passes through step 2, so it is ignored.
+#   4. end    - capture, the carrier coming back into the inventory (anvil
+#               closed or shift-clicked out) or a 60 second timeout.
+#
+# COST: nothing scans all players. With no session open the whole function is
+# one cheap tag selector; a session player costs three item checks per tick.
+#
+# KNOWN LIMIT: a hidden carrier could in theory also be sitting in some other
+# container GUI opened during the same 60 s. Items cannot be told apart by
+# screen, only by this chain of evidence.
 # ======================================================================================
 
-# Fast exit — skip entirely if no player has the marked item in cursor.
-# inputItem:"anvil" distinguishes this from other input:1b carriers
-# (name_tag, writable_book) that used to share the same bare flag and
-# could cross-trigger each other's capture.
-execute store success score #macroengine.AnvilHit macroengine.tmp if items entity @a player.cursor *[minecraft:custom_data={macroengine:{input:1b,inputItem:"anvil"}}]
-execute if score #macroengine.AnvilHit macroengine.tmp matches 0 run return 0
-
-execute as @a at @s anchored eyes positioned ^ ^ ^1.5 if block ~ ~ ~ minecraft:anvil if items entity @s player.cursor *[custom_data={macroengine:{input:1b,inputItem:"anvil"}}] run function macroengine:input/private/anvil_capture
-execute as @a at @s anchored eyes positioned ^ ^ ^2.5 if block ~ ~ ~ minecraft:anvil if items entity @s player.cursor *[custom_data={macroengine:{input:1b,inputItem:"anvil"}}] run function macroengine:input/private/anvil_capture
-execute as @a at @s anchored eyes positioned ^ ^ ^3.5 if block ~ ~ ~ minecraft:anvil if items entity @s player.cursor *[custom_data={macroengine:{input:1b,inputItem:"anvil"}}] run function macroengine:input/private/anvil_capture
-execute as @a at @s anchored eyes positioned ^ ^ ^4.5 if block ~ ~ ~ minecraft:anvil if items entity @s player.cursor *[custom_data={macroengine:{input:1b,inputItem:"anvil"}}] run function macroengine:input/private/anvil_capture
-execute as @a at @s anchored eyes positioned ^ ^ ^5.5 if block ~ ~ ~ minecraft:anvil if items entity @s player.cursor *[custom_data={macroengine:{input:1b,inputItem:"anvil"}}] run function macroengine:input/private/anvil_capture
+execute unless entity @a[tag=macroengine.anvil_session] run return 0
+execute as @a[tag=macroengine.anvil_session] at @s run function macroengine:input/private/anvil_tick
