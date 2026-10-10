@@ -3,7 +3,7 @@
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
 
   "hostRequirements": {
-    "cpus": 4,
+    "cpus": 6,
     "memory": "8gb",
     "storage": "32gb"
   },
@@ -27,8 +27,6 @@
   },
 
   "updateRemoteUserUID": true,
-
-  "postCreateCommand": "git lfs install --system 2>/dev/null || git lfs install",
 
   "customizations": {
     "vscode": {
