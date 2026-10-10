@@ -77,6 +77,23 @@ execute store result score #r mypack.tmp run function macroengine:api/placeholde
 execute if score #r mypack.tmp matches 1 run say registered
 ```
 
+## Output storage
+
+Every `parse` call (and so `send`, `send_to`, `actionbar`, ...) also copies its data to
+`macroengine:output`:
+
+| Path | Content |
+|---|---|
+| `placeholder.in` | the input string; absent when there was no input |
+| `placeholder.out` | the resolved component list (`[]` when there was no input) |
+| `placeholder.reg` | snapshot of all registered placeholders; absent when none exist |
+
+```mcfunction
+data modify storage macroengine:placeholder in set value "Hi %player%"
+function macroengine:api/placeholder/parse
+data get storage macroengine:output placeholder.out
+```
+
 ## Title and action bar
 
 [title.md](title.md) documents the title functions. `api/title/show_p`, `show_to_p`, `broadcast_p`, `show_team_p {team}`, `show_tag_p {tag}`,
