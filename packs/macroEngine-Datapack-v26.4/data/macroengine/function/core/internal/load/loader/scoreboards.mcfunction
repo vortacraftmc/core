@@ -3,6 +3,7 @@
 #  separates gate/confirmation logic from the actual init routines)
 
 scoreboard objectives add macroengine.tmp dummy
+scoreboard objectives add macroengine.anvil_t dummy
 scoreboard objectives add macroengine.meta dummy
 scoreboard objectives add macroengine.time dummy
 scoreboard objectives add macroengine_run trigger

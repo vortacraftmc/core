@@ -3,9 +3,10 @@
 # ======================================================================================
 #
 # Gives a marked paper item ready for anvil-rename input capture.
-# Flow: player renames it in an anvil, then places/clicks it into the
-# cursor slot (opens their inventory or any container and picks the item
-# up) to submit. See macroengine:input/anvil for the capture trigger.
+# Flow: the player opens an anvil, renames the item there and takes the result
+# out with the cursor (click, not shift-click). That submits it. It does NOT work
+# from the plain inventory screen: see macroengine:input/anvil for how the anvil
+# is recognised.
 #
 # For a custom carrier item instead of paper, use give_anvil_custom
 # (macro function) with: function macroengine:input/give_anvil_custom {item:"minecraft:item_id"}

@@ -26,9 +26,9 @@
 #            the literal string "Anvil Input" if item_name is somehow
 #            missing (should not happen via the give functions above).
 # new_name — the post-rename name (minecraft:custom_name), i.e. whatever
-#            the player typed into the anvil. Empty string if the player
-#            picked the item back up without renaming it — callers
-#            should treat empty new_name as "no input submitted".
+#            the player typed into the anvil. input/anvil only calls this for
+#            a renamed carrier, so it is normally non-empty; callers should
+#            still treat an empty new_name as "no input submitted".
 # raw      — alias for new_name. This is the RAW, UNVALIDATED string;
 #            run it through macroengine:input/validate/check before
 #            using it as a number/bool/tag-safe literal.
