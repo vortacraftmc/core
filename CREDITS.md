@@ -14,11 +14,12 @@ when reviewed_.
 |---|---|
 | `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_derive.mcfunction` | The scratch item is replaced with air before the chest_minecart is killed, so it no longer drops a `minecraft:stone`. |
 | `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_derive.mcfunction`, `_plain.mcfunction` | An earlier AI commit (bb9d972, 0483225) rebound `"@s"` onto the caller via a `macroengine.ph_caller` tag. That was based on an unverified assumption (that `this` in `item modify` is the minecart), and the in-game log (latest.log, 16:06) shows `%player%` already resolved correctly before it. The rebind broke `custom_name` / `lore` (bogus parts, then empty values). It is reverted here. |
+| `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_plain_resolve.mcfunction`, `_plain.mcfunction` | `string` read resolved parts only via `custom_name.text`. The item stores unstyled plain text (e.g. a `plain` NBT value like Health, a score) as a bare string, so those parts were silently dropped. Now reads both shapes (compound with `text`, or bare string). Evidence: latest.log shows unstyled parts serialized as bare strings (`extra: ["%", "tag", ...]`). |
 
 ### Verification status
 
 - Verified: both files parse with Mecha 0.101.0 (syntax only). In-game log from before the rebind shows `custom_name` resolving `%player%`.
-- **Not verified:** that the stone no longer drops; `%health%`, `%food%`, `%xp_level%`, `%dimension%`, `register_score` placeholders in a real server. Whether `string` is empty because of the double quote in a test value (documented refusal in `core/internal/text/concat`) is also unconfirmed.
+- **Not verified:** that `string` now contains `%health%`/`%food%`/`%xp_level%`/`%dimension%`/score values (needs an in-game run); that the stone no longer drops; `%health%`, `%food%`, `%xp_level%`, `%dimension%`, `register_score` placeholders in a real server. Whether `string` is empty because of the double quote in a test value (documented refusal in `core/internal/text/concat`) is also unconfirmed.
 
 ## 2026-10-10 - refactor: remove dead `multiCommands` storage writes in macroEngine
 

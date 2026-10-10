@@ -13,3 +13,4 @@ execute if score #ph_ok macroengine.tmp matches 0 run data modify storage macroe
 function macroengine:core/internal/text/reset
 data remove storage macroengine:placeholder _parts
 data remove storage macroengine:placeholder _piece
+data remove storage macroengine:placeholder _res
