@@ -48,11 +48,13 @@ Placeholders resolve for the **executor** (`@s`). To address someone else use
 
 | Function | Macro args | Result |
 |---|---|---|
-| `register_text` | `name`, `value` | fixed text |
+| `register_text` | `name`, `value` | fixed text (no quote or backslash in `value`) |
+| `register_string` | `name` (+ `in.string` in storage) | plain string, any characters |
+| `register_array` | `name` (+ `in.array` in storage) | non-empty array of strings / components / arrays |
 | `register_score` | `name`, `holder`, `objective` | scoreboard value (`holder` may be `@s` or `#fake`) |
 | `register_storage` | `name`, `storage`, `path` | NBT value, rendered plain |
 | `register_selector` | `name`, `selector` | entity/player name |
-| `register_component` | `name` (+ `in.component` in storage) | any text component |
+| `register_component` | `name` (+ `in.component` in storage) | any text component (a string or array works too) |
 | `register_alias` | `alias`, `target` | `%alias%` behaves like the registered `%target%` |
 | `unregister` / `exists` / `list` | `name` | manage the registry |
 | `reset` | none | drop everything, restore the built-ins |
@@ -62,6 +64,30 @@ function macroengine:api/placeholder/register_score {name:"kills",holder:"@s",ob
 data modify storage macroengine:placeholder in.component set value {text:"VIP",color:"gold",bold:true}
 function macroengine:api/placeholder/register_component {name:"rank"}
 ```
+
+### Value types
+
+A registered value (`reg.<name>` in `macroengine:placeholder`) can be:
+
+| Stored as | Shown as |
+|---|---|
+| compound (text component) | the component itself |
+| string | a plain text component |
+| array | its elements one after another; each element may be a string, a component or another array, and none of them styles the others |
+
+Strings and arrays are wrapped into a single component when the placeholder is resolved, so
+`out` only ever contains components and raw `data modify ... reg.<name> set value "text"` or `[...]` works without
+any `register_*` call. Empty strings and arrays show nothing. Numbers are not supported as stored values. The text of a
+registered value is not parsed for `%placeholders%` again.
+
+```mcfunction
+data modify storage macroengine:placeholder in.string set value "Say \"hi\" to {everyone}"
+function macroengine:api/placeholder/register_string {name:"greeting"}
+data modify storage macroengine:placeholder in.array set value [{text:"[",color:"gray"},{selector:"@s",color:"white"},{text:"]",color:"gray"}]
+function macroengine:api/placeholder/register_array {name:"tag"}
+```
+
+`register_string` and `register_array` return 1 on success and 0 when their input is missing (or the array is empty).
 
 Registration arguments are developer input (like every other macro API in this pack).
 Only *text being parsed* is treated as untrusted. Placeholder names are validated

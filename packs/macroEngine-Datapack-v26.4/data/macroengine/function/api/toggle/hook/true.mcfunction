@@ -1,6 +1,6 @@
 # macroengine:api/toggle/hook/true — Enable the hook module
-# Called by the module toggle dialog when State = true.
-# Caller: macroengine.admin tag required (enforced by dialog show guard in show.mcfunction)
+# Called by the module toggle menu when State = true.
+# Caller: macroengine.admin tag required (enforced by the admin-tag guard in show.mcfunction)
 
 execute unless entity @s[tag=macroengine.admin] run return 0
 

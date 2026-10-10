@@ -10,8 +10,7 @@
 # (macroengine.book_captured) so the same held book does not re-fire every tick.
 # Tag is cleared when the player stops holding the marked book (see writable_book).
 #
-# book.raw is a RAW, UNVALIDATED string — same contract as cbm.command and
-# dialog.raw. If the caller needs it as a number/bool/tag-safe literal,
+# book.raw is a RAW, UNVALIDATED string — same contract as cbm.command. If the caller needs it as a number/bool/tag-safe literal,
 # run it through macroengine:input/validate/check first:
 #   function macroengine:input/validate/check with storage <yourpath> {source:"book.raw", type:"int"}
 # ======================================================================================

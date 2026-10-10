@@ -4,7 +4,7 @@
 #
 # TYPE-SAFETY GUARD FOR CAPTURED PLAYER INPUT.
 #
-# Every input capture point (book_capture, dialog_capture, cbm_capture) only
+# Every input capture point (book_capture, cbm_capture) only
 # ever stores the RAW string a player submitted — it does not know or care
 # whether that string is the shape the caller actually needs. This function
 # is the missing check: run it AFTER a capture, BEFORE you use the value as
@@ -15,7 +15,7 @@
 # CALL WITH:
 #   function macroengine:input/validate/check with storage <yourpath> {source: "<path.to.field>", type: "int"|"float"|"bool"|"tag_safe"}
 #
-#   $(source) — a dot-path INTO macroengine:input, e.g. "book.raw", "dialog.raw",
+#   $(source) — a dot-path INTO macroengine:input, e.g. "book.raw",
 #               "cbm.command". Read via macro from macroengine:input directly.
 #   $(type)   — one of:
 #       "int"      — string must parse as a whole number (optional leading -)

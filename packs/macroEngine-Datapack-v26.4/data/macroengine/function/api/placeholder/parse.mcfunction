@@ -14,6 +14,11 @@
 # input is never substituted into a command line, so untrusted text (chat,
 # signs, books, name tags) is safe to pass through here.
 #
+# Registered values may be a text component (compound), a plain string or an array
+# of strings/components. Strings and arrays are wrapped into one component each, so
+# `out` always holds components only. Numbers are not supported as stored values.
+# The text of a registered value is not parsed again (no nested %placeholders%).
+#
 # Grammar
 #   %name%          registered placeholder (see register_*), built-ins in load
 #   %score:obj%     scoreboard objective `obj` of the executor
@@ -43,5 +48,6 @@ data remove storage macroengine:placeholder cur
 data remove storage macroengine:placeholder name
 data remove storage macroengine:placeholder pre
 data remove storage macroengine:placeholder obj
+data remove storage macroengine:placeholder wrap
 function macroengine:core/internal/api/placeholder/_save
 return run data get storage macroengine:placeholder out

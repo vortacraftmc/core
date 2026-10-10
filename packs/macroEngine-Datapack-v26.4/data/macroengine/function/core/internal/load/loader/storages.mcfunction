@@ -25,7 +25,7 @@
 # validate.mcfunction blocks a second load if global{loaded:1b} is set,
 # so we only reach here when storage is either:
 #   (a) fresh / never initialized, or
-#   (b) was cleanly disabled via macroengine:disable (cleanup removed global).
+#   (b) was cleaned up via core/internal/load/cleanup (cleanup removed global).
 # In both cases, initializing with 'unless data' guards is safe.
 
 execute unless score $epoch macroengine.time matches -2147483648..2147483647 run scoreboard players set $epoch macroengine.time 0
@@ -66,11 +66,11 @@ execute unless data storage macroengine:engine hook_binds run data modify storag
 
 # lib/fiber module init
 # BUGFIX: same issue as the queue note below — fibers was only ever
-# cleared in cleanup.mcfunction (disable-only path, never /reload).
+# cleared in cleanup.mcfunction (manual teardown path, never /reload).
 # A fiber record left over from before a reload would be orphaned now
 # that queue is cleared below (nothing will ever resume it again), but
 # clearing it explicitly here keeps the storage clean and matches what
-# cleanup.mcfunction already does for the disable path.
+# cleanup.mcfunction already does for the teardown path.
 data remove storage macroengine:engine fibers
 data modify storage macroengine:engine fibers set value {}
 # NOTE: fibers._pending no longer exists as of the resume_dispatch
@@ -81,8 +81,8 @@ data modify storage macroengine:engine fibers set value {}
 # BUGFIX: the header comment above ("pq_depth is reset — queue state
 # cannot survive reload safely") describes intent that was never
 # actually implemented. queue is only ever cleared in
-# core/internal/load/cleanup.mcfunction, which is exclusively called
-# from macroengine:disable — never from the /reload path (load/all.mcfunction
+# core/internal/load/cleanup.mcfunction, which is a manual teardown
+# helper and is never called from the /reload path (load/all.mcfunction
 # does not call it). A queue entry left over from before a reload (e.g.
 # a fiber resume, a delayed function/command) would silently keep
 # running against whatever state exists after the reload, including
