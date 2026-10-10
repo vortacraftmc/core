@@ -7,7 +7,3 @@ $data modify storage macroengine:engine _mcmd_queue set value $(commands)
 data modify storage macroengine:engine _mcmd_options set value {error_mode:"continue",profile:0b,spread:0}
 
 execute at @s run function macroengine:api/cmd/other/multi_cmd/run
-
-# Clear type marker
-data remove storage macroengine:engine multiCommands.type
-data remove storage macroengine:engine multiCommands.active
