@@ -23,11 +23,15 @@ item replace entity @e[type=minecraft:chest_minecart,tag=macroengine.ph_scratch,
 # %player%, %health%, %food%, %xp_level%, %dimension%, %name% and any
 # register_selector/register_score placeholder resolve correctly instead of
 # resolving against the minecart (empty/wrong values).
+# NOTE: every rebind below is guarded by `execute if data ...[filter]`. A filtered
+# path (`list[{k:v}]`) on `data modify ... set` CREATES a new `{k:v}` element when
+# nothing matches, which injected bogus {entity:..}/{score:..} parts into the text
+# ("Failed to parse component"). Do not drop the guards.
 tag @s add macroengine.ph_caller
 data modify storage macroengine:placeholder _resolved_src set from storage macroengine:placeholder out
-data modify storage macroengine:placeholder _resolved_src[{entity:"@s"}].entity set value "@e[tag=macroengine.ph_caller,distance=..2,limit=1]"
-data modify storage macroengine:placeholder _resolved_src[{selector:"@s"}].selector set value "@e[tag=macroengine.ph_caller,distance=..2,limit=1]"
-data modify storage macroengine:placeholder _resolved_src[{score:{name:"@s"}}].score.name set value "@e[tag=macroengine.ph_caller,distance=..2,limit=1]"
+execute if data storage macroengine:placeholder _resolved_src[{entity:"@s"}] run data modify storage macroengine:placeholder _resolved_src[{entity:"@s"}].entity set value "@e[tag=macroengine.ph_caller,distance=..2,limit=1]"
+execute if data storage macroengine:placeholder _resolved_src[{selector:"@s"}] run data modify storage macroengine:placeholder _resolved_src[{selector:"@s"}].selector set value "@e[tag=macroengine.ph_caller,distance=..2,limit=1]"
+execute if data storage macroengine:placeholder _resolved_src[{score:{name:"@s"}}] run data modify storage macroengine:placeholder _resolved_src[{score:{name:"@s"}}].score.name set value "@e[tag=macroengine.ph_caller,distance=..2,limit=1]"
 
 # the whole text as one resolved component (a bare root makes it a single compound)
 data modify storage macroengine:placeholder _src set from storage macroengine:placeholder _resolved_src

@@ -14,6 +14,7 @@ when reviewed_.
 |---|---|
 | `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_derive.mcfunction` | `"@s"` entity/selector/score references in `out` are rebound onto the caller (temporary tag `macroengine.ph_caller`, copy in `_resolved_src`) before name/lore are resolved on the scratch chest_minecart. The scratch item is cleared before the minecart is killed so it no longer drops a `minecraft:stone`. |
 | `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_plain.mcfunction` | Reads `_resolved_src` instead of `out`, for the same reason. |
+| `packs/macroEngine-Datapack-v26.4/.../api/placeholder/_derive.mcfunction` (follow-up) | The first version of the rebind appended bogus `{entity:..}` / `{score:..}` parts (a filtered `data modify ... set` creates the element when nothing matches), which broke `custom_name`/`lore`/`string` with "Failed to parse component". Each rebind is now guarded with `execute if data`. |
 
 ### Verification status
 
