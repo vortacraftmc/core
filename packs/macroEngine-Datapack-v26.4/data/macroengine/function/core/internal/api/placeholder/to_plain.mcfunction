@@ -60,6 +60,7 @@ data remove storage macroengine:placeholder _frags
 data remove storage macroengine:placeholder _walk
 data remove storage macroengine:placeholder _nested
 data remove storage macroengine:placeholder _nested2
+data remove storage macroengine:placeholder _elem
 data remove storage macroengine:text list
 data remove storage macroengine:text out
 data remove storage macroengine:text err
